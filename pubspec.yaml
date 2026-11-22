@@ -87,7 +87,6 @@ flutter:
   assets:
     - assets/danbooru.tsv
     - assets/character_tags/
-    - assets/presets/
     - assets/tokenizers/
 
   fonts:
