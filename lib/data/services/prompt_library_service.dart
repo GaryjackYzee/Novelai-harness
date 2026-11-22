@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../models/prompt_library_models.dart';
@@ -16,6 +16,12 @@ class PromptLibraryService {
 
   String? _customStorageDir;
   List<PromptComboEntry>? _cachedEntries;
+
+  /// 最近一次加载是否因为文件损坏而失败；写入前会先保留损坏副本。
+  bool _loadFailed = false;
+
+  /// 词库文件损坏时的最近一次错误（供 UI/日志展示）。
+  String? lastLoadError;
 
   /// 获取当前已加载的词库条目内存缓存 (未显式加载时视为空)
   List<PromptComboEntry> get cachedEntries => _cachedEntries ?? const [];
@@ -48,7 +54,8 @@ class PromptLibraryService {
   Future<Directory> _getAppSupportDir() async {
     try {
       return await getApplicationSupportDirectory();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return Directory.current;
     }
   }
@@ -58,6 +65,8 @@ class PromptLibraryService {
   Future<List<PromptComboEntry>> loadEntries() async {
     final file = await _getDataFile();
     if (!file.existsSync()) {
+      _loadFailed = false;
+      lastLoadError = null;
       // 返回可增长列表 (addEntry 等会直接在返回值上修改)
       _cachedEntries = [];
       return [];
@@ -66,30 +75,63 @@ class PromptLibraryService {
     try {
       final text = await file.readAsString();
       final decoded = jsonDecode(text);
-      if (decoded is List) {
-        final list = <PromptComboEntry>[];
-        for (final item in decoded) {
-          if (item is Map<String, dynamic>) {
-            try {
-              list.add(PromptComboEntry.fromJson(item));
-            } catch (_) {}
+      if (decoded is! List) {
+        throw const FormatException('词库根节点不是数组');
+      }
+      final list = <PromptComboEntry>[];
+      for (final item in decoded) {
+        if (item is Map<String, dynamic>) {
+          try {
+            list.add(PromptComboEntry.fromJson(item));
+          } on Object {
+            // 单条损坏允许跳过；整体结构损坏才标记 loadFailed。
           }
         }
-        _cachedEntries = list;
-        return list;
       }
-    } catch (_) {}
-
-    _cachedEntries = [];
-    return [];
+      _loadFailed = false;
+      lastLoadError = null;
+      _cachedEntries = list;
+      return list;
+    } catch (error) {
+      _loadFailed = true;
+      lastLoadError = '$error';
+      debugPrint('[PromptLibraryService] 词库读取失败，已保留原文件待恢复: $error');
+      _cachedEntries = [];
+      return [];
+    }
   }
 
-  /// 持久化保存词组合列表
+  /// 持久化保存词组合列表。
+  ///
+  /// 采用 tmp + rename 原子写入，并在覆写前保留 `.bak`；若上一次加载
+  /// 失败（文件损坏），额外保留一份 `.corrupt-<时间戳>.json`，避免一次
+  /// 写操作把用户词库永久清零。
   Future<void> saveEntries(List<PromptComboEntry> entries) async {
     _cachedEntries = List.from(entries);
     final file = await _getDataFile();
     final jsonList = entries.map((e) => e.toJson()).toList();
-    await file.writeAsString(jsonEncode(jsonList), flush: true);
+    final encoded = jsonEncode(jsonList);
+
+    if (file.existsSync()) {
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      try {
+        await file.copy('${file.path}.bak');
+      } on Object {
+        // 备份失败不阻断保存
+      }
+      if (_loadFailed) {
+        try {
+          await file.copy('${file.path}.corrupt-$stamp.json');
+        } on Object {
+          // 无法保留损坏副本时继续，至少 .bak 仍在
+        }
+        _loadFailed = false;
+      }
+    }
+
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(encoded, flush: true);
+    await tmp.rename(file.path);
   }
 
   /// 搜索词库中的所有词组合条目 (含角色与非角色) 并转换为自动补全建议 (TagSuggestion)
@@ -171,7 +213,8 @@ class PromptLibraryService {
       if (imgFile.existsSync()) {
         imgFile.deleteSync();
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 更新词组合条目 (预览图被更换时自动清理旧托管文件，避免孤儿文件堆积)
@@ -214,7 +257,8 @@ class PromptLibraryService {
       final file = File(p.join(previewDir.path, filename));
       await file.writeAsBytes(bytes);
       return file.path;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -230,7 +274,8 @@ class PromptLibraryService {
         bytes,
         extension: ext.isNotEmpty ? ext : 'png',
       );
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -251,7 +296,8 @@ class PromptLibraryService {
       if (item is Map<String, dynamic>) {
         try {
           imported.add(PromptComboEntry.fromJson(item));
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
     }
 

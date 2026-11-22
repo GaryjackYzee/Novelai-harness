@@ -282,10 +282,19 @@ mixin _StudioInpaintMixin on _StudioCore {
     notifyListeners();
 
     try {
+      // 历史快照的 bytes 为空，像素在缓存或文件里；请求前统一取一次原图，
+      // 异步加载期间换图也不会改变这次要修复的图。
+      final sourceBytes = await ensureImageLoaded(target);
+      if (sourceBytes == null || sourceBytes.isEmpty) {
+        _errorMessage = vmL10n.vmInpaintNoImage;
+        _statusMessage = null;
+        return;
+      }
+
       if (config.enableStreamPreview) {
         final stream = _repository.generateInpaintStream(
           apiKey: config.novelAiKey,
-          sourceImageBytes: target.bytes,
+          sourceImageBytes: sourceBytes,
           inpaintParams: _inpaintParams,
           generationParams: _params,
           saveDir: config.saveDirectory,
@@ -315,7 +324,7 @@ mixin _StudioInpaintMixin on _StudioCore {
       } else {
         final result = await _repository.generateInpaint(
           apiKey: config.novelAiKey,
-          sourceImageBytes: target.bytes,
+          sourceImageBytes: sourceBytes,
           inpaintParams: _inpaintParams,
           generationParams: _params,
           saveDir: config.saveDirectory,

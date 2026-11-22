@@ -29,6 +29,11 @@ String localizeHarnessError(AppLocalizations l10n, ErrorEvent event) =>
 mixin _StudioChatMixin on _StudioCore {
   Completer<void>? _chatCompletion;
 
+  /// 每 N 轮对话后在后台做一次轻量自动复盘（产品设计，保留）。
+  static const int _autoReflectEveryTurns = 12;
+  int _chatTurnsSinceReflection = 0;
+  bool _autoReflectionRunning = false;
+
   /// 立即全局刷新：仅用于低频结构变化 (消息列表变更 / 流开始结束 / 错误等)。
   /// 思考链与正文的高频增量由 [streamingText] 控制器局部刷新，
   /// 不再触发全工作台 notifyListeners()。
@@ -76,7 +81,10 @@ mixin _StudioChatMixin on _StudioCore {
     }
 
     // 流式进行中禁止重入：并发监听会往同一流式缓冲写入，造成重复文本
-    if (_isChatStreaming) return;
+    if (_isChatStreaming) {
+      await queueChatMessage(trimmed, images: images);
+      return;
+    }
 
     // 发送消息后清空草稿
     _chatDraft = '';
@@ -174,6 +182,84 @@ mixin _StudioChatMixin on _StudioCore {
       // 先提交最终气泡与停止键状态，不等会话目录扫描/日志落盘。
       _notifyNow();
       await refreshSessions();
+      if (!_chatQueuePaused && !_suppressQueueDrain && _chatQueue.isNotEmpty) {
+        final next = _chatQueue.removeAt(0);
+        unawaited(ChatQueueStore.instance.removeFirst());
+        await sendChatMessage(next.content, images: next.images);
+      }
+      _chatTurnsSinceReflection += 1;
+      if (_chatTurnsSinceReflection >= _autoReflectEveryTurns) {
+        _chatTurnsSinceReflection = 0;
+        unawaited(_runAutoReflection());
+      }
+    }
+  }
+
+  /// 后台自动复盘：不打断对话，把本轮区间内的主题、纠正与经验写回长期记忆。
+  Future<void> _runAutoReflection() async {
+    if (_autoReflectionRunning) return;
+    _autoReflectionRunning = true;
+    try {
+      final messages = _harness.messages
+          .where(
+            (message) =>
+                message.role == AgentRole.user ||
+                message.role == AgentRole.assistant,
+          )
+          .toList(growable: false);
+      if (messages.length < 6) return;
+      final recent = messages.length > 16
+          ? messages.sublist(messages.length - 16)
+          : messages;
+      final userTexts = <String>[];
+      for (final message in recent) {
+        if (message.role != AgentRole.user) continue;
+        final text = message.content.trim();
+        if (text.isNotEmpty) userTexts.add(text);
+      }
+      if (userTexts.isEmpty) return;
+      final topics = userTexts
+          .take(3)
+          .map((text) => text.length > 40 ? text.substring(0, 40) : text)
+          .join(' / ');
+      final corrections = userTexts
+          .where(
+            (text) =>
+                text.contains('不对') ||
+                text.contains('错了') ||
+                text.contains('别') ||
+                text.contains('不要') ||
+                text.contains('应该是'),
+          )
+          .take(3)
+          .map((text) => text.length > 40 ? text.substring(0, 40) : text)
+          .join(' / ');
+      final stamp = DateTime.now()
+          .toIso8601String()
+          .replaceFirst('T', ' ')
+          .substring(0, 16);
+      final buffer = StringBuffer('自动复盘 $stamp：');
+      buffer.write('近期主题：$topics');
+      if (corrections.isNotEmpty) {
+        buffer.write('；用户纠正：$corrections');
+      }
+      final existing = memoryEntries;
+      if (existing.any(
+        (entry) => entry.startsWith('自动复盘') && entry.contains(topics),
+      )) {
+        return;
+      }
+      await addMemoryEntry(buffer.toString());
+      await addReflection(
+        title: topics.isEmpty ? '自动复盘' : topics,
+        summary: buffer.toString(),
+        lessons: corrections.isEmpty ? const <String>[] : <String>[corrections],
+        source: 'auto',
+      );
+    } on Object {
+      // 后台复盘失败不影响对话。
+    } finally {
+      _autoReflectionRunning = false;
     }
   }
 
@@ -249,6 +335,23 @@ mixin _StudioChatMixin on _StudioCore {
 
     if (answer == null || answer.isEmpty) return false;
     return answer.first.contains(vmL10n.vmCostGenConfirm);
+  }
+
+  @override
+  Future<bool> _confirmCharacterTagChange(String summary) async {
+    final answer = await _presentQuestionsToUser([
+      AgentQuestion(
+        header: vmL10n.vmCharTagConfirmTitle,
+        question: summary,
+        allowCustomInput: false,
+        options: [
+          AgentQuestionOption(label: vmL10n.vmCharTagConfirm),
+          AgentQuestionOption(label: vmL10n.vmCharTagCancel),
+        ],
+      ),
+    ]);
+    if (answer == null || answer.isEmpty) return false;
+    return answer.first.contains(vmL10n.vmCharTagConfirm);
   }
 
   /// 付费超分确认 (内嵌于对话流，纯选择按钮)

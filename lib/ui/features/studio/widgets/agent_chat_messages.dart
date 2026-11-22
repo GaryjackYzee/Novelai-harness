@@ -2,11 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+// ignore: depend_on_referenced_packages
+import 'package:markdown/markdown.dart' as md;
 import '../../../../core/harness/reply_marker.dart';
 import '../../../../core/harness/types.dart';
+import '../../../../data/services/image_edit_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../core/widgets/stable_edge_selection.dart';
 import 'agent_chat_blocks.dart';
 import 'chat_image_attachment.dart';
 import 'image_lightbox.dart';
@@ -301,20 +305,14 @@ class ToolResultBlock extends StatelessWidget {
                 ),
               ],
             ),
-            bodyBuilder: (context) => Container(
-              width: double.infinity,
-              constraints: const BoxConstraints(maxHeight: 320),
-
-              child: SingleChildScrollView(
-                child: SelectableText(
-                  message.content,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                    color: colors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
+            bodyBuilder: (context) => BoundedSelectableText(
+              text: message.content,
+              maxHeight: 320,
+              style: TextStyle(
+                fontSize: 12,
+                fontFamily: 'monospace',
+                color: colors.textSecondary,
+                height: 1.45,
               ),
             ),
           ),
@@ -536,6 +534,65 @@ MarkdownStyleSheet buildAgentMarkdownStyleSheet(BuildContext context) {
   );
 }
 
+/// 代码块单独横向滚动，避免列表边缘自动滚动把代码视口来回拽。
+class _AgentCodeBlockBuilder extends MarkdownElementBuilder {
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    var text = element.textContent;
+    if (text.endsWith('\n')) {
+      text = text.substring(0, text.length - 1);
+    }
+    return _AgentCodeBlock(
+      text: text,
+      style:
+          preferredStyle ??
+          const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+    );
+  }
+}
+
+class _AgentCodeBlock extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+
+  const _AgentCodeBlock({required this.text, required this.style});
+
+  @override
+  State<_AgentCodeBlock> createState() => _AgentCodeBlockState();
+}
+
+class _AgentCodeBlockState extends State<_AgentCodeBlock> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StableEdgeSelection(
+      controller: _controller,
+      axis: Axis.horizontal,
+      child: SingleChildScrollView(
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        physics: const StableSelectionScrollPhysics(),
+        padding: const EdgeInsets.all(8),
+        child: SelectableText(
+          widget.text,
+          style: widget.style,
+          scrollPhysics: const StableSelectionScrollPhysics(),
+        ),
+      ),
+    );
+  }
+}
+
 /// 正文与思考增量分开缓存；仅正文或主题变化时重新创建 Markdown 子树。
 class AgentMarkdownBody extends StatefulWidget {
   final String data;
@@ -561,10 +618,55 @@ class _AgentMarkdownBodyState extends State<AgentMarkdownBody> {
   }
 
   @override
-  Widget build(BuildContext context) => _rendered ??= MarkdownBody(
-    data: widget.data,
-    selectable: true,
-    softLineBreak: true,
-    styleSheet: buildAgentMarkdownStyleSheet(context),
-  );
+  Widget build(BuildContext context) {
+    return _rendered ??= MarkdownBody(
+      data: widget.data,
+      // 正文保持可选中复制；外层 SelectionArea 仍支持跨段拖选。
+      selectable: true,
+      softLineBreak: true,
+    builders: {'pre': _AgentCodeBlockBuilder()},
+      styleSheet: buildAgentMarkdownStyleSheet(context),
+      imageBuilder: (uri, title, alt) => _buildSafeImage(context, uri),
+    );
+  }
+
+  /// 模型输出属于不可信内容：只允许公网 https 图片，禁止 file:/data:/内网，
+  /// 并限制解码宽度，避免本地文件读取、SSRF 与超大图片 OOM。
+  Widget _buildSafeImage(BuildContext context, Uri uri) {
+    final blocked = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: context.colors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: context.colors.borderDefault),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.image_not_supported_outlined,
+            size: 14,
+            color: context.colors.textSecondary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            context.l10n.chatImageBlocked,
+            style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+    if (uri.scheme != 'https' || ImageEditService.isPrivateHost(uri.host)) {
+      return blocked;
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Image.network(
+        uri.toString(),
+        fit: BoxFit.contain,
+        cacheWidth: 900,
+        errorBuilder: (context, error, stack) => blocked,
+      ),
+    );
+  }
 }

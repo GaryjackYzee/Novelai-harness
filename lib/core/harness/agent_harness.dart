@@ -6,6 +6,7 @@ import 'reply_marker.dart';
 import 'session_recorder.dart';
 import 'skills/skills.dart';
 import 'tools/agent_tool.dart';
+import 'tools/memory_tool.dart';
 import 'types.dart';
 import 'context_memory.dart';
 
@@ -38,6 +39,9 @@ class AgentHarness {
   /// 是否启用上下文自动压缩 (按估算 Token 自适应触发)
   bool compactionEnabled = true;
   bool backgroundCompactionEnabled = true;
+
+  /// 历史图片每轮重发；关闭时折叠为占位符省 Token。
+  bool persistentImages = false;
   LlmProvider? compactionProvider;
   int compactionModelWindowTokens = 128000;
   Duration compactionTimeout = const Duration(minutes: 2);
@@ -61,7 +65,8 @@ class AgentHarness {
   /// 压缩时保留的近期消息 Token 预算 (从新到旧回溯)
   int compactionKeepRecentTokens = 20000;
 
-  AgentPreset get currentPreset => _currentPreset ?? BuiltinPresets.v5Architect;
+  AgentPreset get currentPreset =>
+      _currentPreset ?? BuiltinPresets.v5FullExpert;
   set currentPreset(AgentPreset preset) => _currentPreset = preset;
 
   /// 供应商标识 (如 'deepseek')，仅用于会话记录元数据
@@ -97,9 +102,69 @@ class AgentHarness {
     this.maxTurns = 30,
     this.maxRetryAttempts = 3,
     this.retryBaseDelay = const Duration(seconds: 1),
-  }) : _currentPreset = initialPreset ?? BuiltinPresets.v5Architect;
+  }) : _currentPreset = initialPreset ?? BuiltinPresets.v5FullExpert;
 
   List<AgentMessage> get messages => List.unmodifiable(_messages);
+
+  /// 补齐 assistant.tool_calls 对应的 tool 消息。
+  ///
+  /// 中断/异常结束时可能只留下 tool_calls 没有 tool 结果，
+  /// OpenAI 兼容协议会拒绝后续请求，这里插入占位结果。
+  List<AgentMessage> _pruneOrphanToolMessages(List<AgentMessage> list) {
+    final output = <AgentMessage>[];
+    final pending = <String>{};
+    for (final message in list) {
+      if (message.role == AgentRole.assistant) {
+        pending.clear();
+        final calls = message.toolCalls;
+        if (calls != null) {
+          pending.addAll(calls.map((call) => call.id));
+        }
+        output.add(message);
+      } else if (message.role == AgentRole.tool) {
+        final id = message.toolCallId;
+        if (id != null && pending.remove(id)) {
+          output.add(message);
+        }
+      } else {
+        pending.clear();
+        output.add(message);
+      }
+    }
+    return output;
+  }
+
+  void _repairDanglingToolCalls() {
+    for (var i = 0; i < _messages.length; i += 1) {
+      final message = _messages[i];
+      if (message.role != AgentRole.assistant) continue;
+      final calls = message.toolCalls;
+      if (calls == null || calls.isEmpty) continue;
+      final required = calls.map((call) => call.id).toSet();
+      final provided = <String>{};
+      var next = i + 1;
+      while (next < _messages.length &&
+          _messages[next].role == AgentRole.tool) {
+        final id = _messages[next].toolCallId;
+        if (id != null) provided.add(id);
+        next += 1;
+      }
+      final missing = required.difference(provided);
+      if (missing.isEmpty) continue;
+      final repairs = <AgentMessage>[
+        for (final id in missing)
+          AgentMessage(
+            id: 'repair_${id}_${DateTime.now().microsecondsSinceEpoch}',
+            role: AgentRole.tool,
+            content: '工具调用未返回结果（上一轮被中断），请基于现有信息继续。',
+            toolCallId: id,
+            isError: true,
+          ),
+      ];
+      _messages.insertAll(next, repairs);
+      i = next + repairs.length;
+    }
+  }
 
   /// 是否已处于压缩状态 (上下文中存在摘要替身)
   bool get isCompacted => _compactionSummary != null;
@@ -121,6 +186,33 @@ class AgentHarness {
     currentPreset = preset;
     memoryChanged();
   }
+
+  /// 用户长期记忆条目提供者（由 StudioViewModel 装配时注入）。
+  ///
+  /// Harness 不直接依赖 UI 层，只通过这个可选回调读取摘要用于系统提示；
+  /// 未注入时退化为“无长期记忆”，不影响正常对话。
+  List<String> Function()? memoryEntriesProvider;
+
+  /// 系统提示中最多注入的长期记忆条数，避免 prompt 膨胀。
+  static const int maxInjectedMemoryEntries = MemoryTool.maxPromptEntries;
+
+  /// 不依赖预设白名单的基础工具：记忆、复盘与只读资料库。
+  ///
+  /// 这三类能力是跨会话连续性的前提，自定义预设未显式勾选时也应可用，
+  /// 否则模型无法检索既有偏好，也无法把本轮结论沉淀下来。
+  static const Set<String> _alwaysAllowedTools = {
+    PresetToolKeys.libraryQuery,
+    PresetToolKeys.memory,
+    PresetToolKeys.reflection,
+    PresetToolKeys.wd14Tag,
+    PresetToolKeys.grep,
+  };
+
+  bool _isToolAllowed(String name) =>
+      _alwaysAllowedTools.contains(name) || currentPreset.isToolEnabled(name);
+
+  /// 供工具自检复用的统一权限判断（与请求侧白名单保持一致）。
+  bool isToolAllowed(String name) => _isToolAllowed(name);
 
   /// 构建本轮对话的完整系统提示词
   /// (预设人设/工作流 + Pi 标准 available_skills 按需加载声明)
@@ -147,7 +239,61 @@ class AgentHarness {
       '按编号读取或释放旧回复；清理请用 ids 数组一次批量处理，不要逐条多次调用。'
       '释放不删除用户原文；请先记录必要结论。',
     );
+    if (tools.getAll().any((tool) => tool.name == PresetToolKeys.library)) {
+      buffer.writeln(
+        '\n用户资料库里可能有角色设定、世界观或参考文档。需要依据这些资料时，'
+        '调用 library_query 工具：先用 tree 或 find 查看深层文件路径，'
+        '需要快速判断文档内容时用 digest/outline 看标题与首段，'
+        '再 read 按相对路径分页读取，或用 search 搜索关键词；不要臆测未读取的内容。',
+      );
+    }
+    final memoryEntries = _memoryEntriesForPrompt();
+    if (memoryEntries.isNotEmpty ||
+        tools.getAll().any(
+          (tool) =>
+              tool.name == PresetToolKeys.memory ||
+              tool.name == PresetToolKeys.reflection,
+        )) {
+      buffer.writeln(
+        '\n【长期记忆与检索】'
+        '开始任务前先检索：用 memory search 或 memory list 查用户长期偏好，'
+        '需要资料时用 library_query 的 tree/find/digest/read/search，'
+        '历史复盘用 reflection search；查到的结论直接采用，不要重复询问用户。'
+        '任务结束前把稳定的用户偏好与结论用 memory add 记下来，'
+        '把可复用的经验与教训用 reflection add 写入梳理串；'
+        '只在确有长期价值时写入，避免刷屏。',
+      );
+      if (memoryEntries.isNotEmpty) {
+        final digest = MemoryTool.formatDigest(
+          memoryEntries,
+          limit: maxInjectedMemoryEntries,
+        );
+        if (digest.isNotEmpty) {
+          buffer.writeln(
+            '\n<user_memory>\n'
+            '用户长期记忆摘要（共 ${memoryEntries.length} 条，按新到旧，'
+            '最多注入 $maxInjectedMemoryEntries 条；完整内容可用 memory list 查看）：',
+          );
+          buffer.writeln(digest);
+          buffer.writeln('</user_memory>');
+        }
+      }
+    }
     return buffer.toString();
+  }
+
+  /// 通过注入的回调读取长期记忆；回调异常或未注入时返回空列表。
+  List<String> _memoryEntriesForPrompt() {
+    final provider = memoryEntriesProvider;
+    if (provider == null) return const [];
+    try {
+      return provider()
+          .map((entry) => entry.trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
+    } on Object {
+      return const [];
+    }
   }
 
   /// 发送用户消息并启动 Agent 循环流
@@ -173,6 +319,7 @@ class AgentHarness {
   }) async* {
     try {
       // 新一轮发送：本轮新增的图片对模型可见，更早轮次的图片折叠为占位符
+      _repairDanglingToolCalls();
       _sendEpoch++;
 
       // 1. 记录用户消息
@@ -200,7 +347,7 @@ class AgentHarness {
       final systemPrompt = buildSystemPrompt(currentPreset);
       final activeTools = tools
           .getAll()
-          .where((tool) => currentPreset.isToolEnabled(tool.name))
+          .where((tool) => _isToolAllowed(tool.name))
           .toList();
 
       final allowedToolNames = activeTools.map((tool) => tool.name).toSet();
@@ -461,20 +608,31 @@ class AgentHarness {
               isError: true,
             );
           } else if (!allowedToolNames.contains(call.name) ||
-              !currentPreset.isToolEnabled(call.name)) {
+              !_isToolAllowed(call.name)) {
             result = ToolResult(
               toolCallId: call.id,
               content: '错误：当前预设未启用工具 "${call.name}"，未执行。',
               isError: true,
             );
           } else {
-            result =
-                await run.wait(tool.execute(call.id, call.arguments)) ??
-                ToolResult(
-                  toolCallId: call.id,
-                  content: '用户已中断；已启动的外部操作可能仍在执行。',
-                  isError: true,
-                );
+            try {
+              result =
+                  await run.wait(tool.execute(call.id, call.arguments)) ??
+                  ToolResult(
+                    toolCallId: call.id,
+                    content: '用户已中断；已启动的外部操作可能仍在执行。',
+                    isError: true,
+                  );
+            } on Object catch (error) {
+              // 工具异常也必须落一条配对的 tool 结果，否则历史里会留下
+              // 孤立 tool_calls，下一轮会被 OpenAI/Anthropic 直接拒绝。
+              result = ToolResult(
+                toolCallId: call.id,
+                toolName: call.name,
+                content: '工具执行异常：$error',
+                isError: true,
+              );
+            }
           }
 
           // 记录工具结果消息 (含可选的图片附件，供视觉模型查看；
@@ -562,6 +720,8 @@ class AgentHarness {
     final forgottenToolIds = <String>{};
     for (var i = _contextStartIndex; i < _messages.length; i++) {
       var m = _messages[i];
+      // UI 提示消息 (队列通知、/help 等) 只属于界面，不进入模型上下文。
+      if (m.id.startsWith('info_')) continue;
       if (m.role == AgentRole.tool && forgottenToolIds.contains(m.toolCallId)) {
         continue;
       }
@@ -586,13 +746,15 @@ class AgentHarness {
         );
       }
       // 本轮新产生的图片原样发送；更早轮次的图片折叠为占位符
-      if (m.imageEpoch == _sendEpoch || !m.hasVisionImages) {
+      if (persistentImages ||
+          m.imageEpoch == _sendEpoch ||
+          !m.hasVisionImages) {
         result.add(m);
       } else {
         result.add(m.withVisionImagesCollapsed(_kCollapsedImagePlaceholder));
       }
     }
-    return result;
+    return _pruneOrphanToolMessages(result);
   }
 
   // ---------------------------------------------------------------------------
@@ -651,7 +813,7 @@ class AgentHarness {
     final request = _buildRequestMessages(prompt);
     final toolTokens = tools
         .getAll()
-        .where((t) => currentPreset.isToolEnabled(t.name))
+        .where((t) => _isToolAllowed(t.name))
         .fold<int>(
           0,
           (sum, t) =>

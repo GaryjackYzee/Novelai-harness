@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 /// 发送给多模态模型的图片压缩上限：最长边 (像素)
@@ -86,7 +87,8 @@ Future<VisionImagePayload> compressVisionImage(
       );
     }
     return VisionImagePayload(bytes: outBytes, mimeType: 'image/png');
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     return VisionImagePayload(
       bytes: bytes,
       mimeType: sniffImageMimeType(bytes),

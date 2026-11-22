@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -34,7 +36,8 @@ class ImageStorageDirectoryService {
         throw FileSystemException('无法读写应用图片存储目录', directory.path);
       }
       return directory.path;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       // 安卓不能静默返回空目录：仓储会因此只留内存图片，重启即丢失。
       if (_isAndroid) rethrow;
       return '';

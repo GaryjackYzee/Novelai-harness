@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/novelai_models.dart';
@@ -297,7 +299,8 @@ class LlmModelFetcher {
   Future<ModelsDevModelInfo?> _lookupDev(String modelId) async {
     try {
       return await modelsDevCatalog.lookup(modelId);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -448,9 +451,7 @@ class LlmModelFetcher {
     final contextWindow =
         raw.contextWindow ?? dev?.contextWindow ?? detectContextWindow(raw.id);
     final maxTokens =
-        raw.maxTokens ??
-        dev?.maxTokens ??
-        (isGeminiReasoning ? 65536 : 8192);
+        raw.maxTokens ?? dev?.maxTokens ?? (isGeminiReasoning ? 65536 : 8192);
 
     final imageOutput =
         raw.imageOutput ??

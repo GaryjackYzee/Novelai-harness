@@ -2,8 +2,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../../../../data/models/novelai_models.dart';
+import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../core/widgets/app_progress_bar.dart';
 import '../../../core/widgets/smooth_scroll_controller.dart';
 import '../../../core/widgets/context_menu.dart';
 import '../view_models/studio_view_model.dart';
@@ -134,6 +136,7 @@ class _ImageStreamViewState extends State<ImageStreamView> {
   int _lastGalleryLength = 0;
   String? _lastFirstImageId;
   bool _lastIsGenerating = false;
+  bool _lastGenerationBackgrounded = false;
   bool _selectionScheduled = false;
 
   @override
@@ -142,6 +145,9 @@ class _ImageStreamViewState extends State<ImageStreamView> {
     final controller = widget.controller;
     final gallery = viewModel.gallery;
     final isGenerating = viewModel.isGenerating;
+    final isBackgrounded = viewModel.generationBackgrounded;
+    // 后台生成不占用画布：占位卡隐藏，但 isGenerating 与流式进度保持不变。
+    final showGeneratingCard = isGenerating && !isBackgrounded;
     final selectedImage =
         viewModel.selectedImage ?? (gallery.isNotEmpty ? gallery.first : null);
 
@@ -165,7 +171,7 @@ class _ImageStreamViewState extends State<ImageStreamView> {
         final maxCardHeight = (constraints.maxHeight - 64).clamp(240.0, 1600.0);
         final maxCardWidth = (constraints.maxWidth - 48).clamp(240.0, 1200.0);
 
-        final firstCardParams = (isGenerating || showPositionPlaceholder)
+        final firstCardParams = (showGeneratingCard || showPositionPlaceholder)
             ? viewModel.params
             : (gallery.isNotEmpty ? gallery.first.params : viewModel.params);
         final lastCardParams = gallery.isNotEmpty
@@ -188,14 +194,31 @@ class _ImageStreamViewState extends State<ImageStreamView> {
 
         // 占位符与历史图总数 (生成中或比例不匹配的位置编辑模式下头部多一个占位符)
         final totalItemCount =
-            (isGenerating ? 1 : 0) +
+            (showGeneratingCard ? 1 : 0) +
             (showPositionPlaceholder ? 1 : 0) +
             gallery.length;
+
+        // 后台生成且无历史图：画布空态提示生成仍在进行，只提供「查看生成」
+        // 恢复入口，不暴露重新生成按钮，避免误触发第二轮付费请求。
+        if (totalItemCount == 0 && isBackgrounded) {
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: BackgroundGenerationBanner(
+                  viewModel: viewModel,
+                  showDescription: true,
+                ),
+              ),
+            ),
+          );
+        }
 
         // 单元素 (首张生成占位符 / 临时位置占位卡片 / 仅一张历史图)：整体居中展示
         if (totalItemCount == 1) {
           final Widget card;
-          if (isGenerating) {
+          if (showGeneratingCard) {
             card = CanvasGeneratingCard(
               viewModel: viewModel,
               maxCardWidth: maxCardWidth,
@@ -273,7 +296,7 @@ class _ImageStreamViewState extends State<ImageStreamView> {
             ),
             itemBuilder: (context, index) {
               var adjustedIndex = index;
-              if (isGenerating) {
+              if (showGeneratingCard) {
                 if (adjustedIndex == 0) {
                   return CanvasGeneratingCard(
                     viewModel: viewModel,
@@ -295,7 +318,7 @@ class _ImageStreamViewState extends State<ImageStreamView> {
               }
               final item = gallery[adjustedIndex];
               final isSelected =
-                  !isGenerating &&
+                  !showGeneratingCard &&
                   !showPositionPlaceholder &&
                   selectedImage?.id == item.id;
               return CanvasImageCard(
@@ -376,6 +399,8 @@ class _ImageStreamViewState extends State<ImageStreamView> {
         firstImageId != _lastFirstImageId &&
         gallery.length > _lastGalleryLength;
     final isGeneratingChanged = _lastIsGenerating != viewModel.isGenerating;
+    final isBackgrounded = viewModel.generationBackgrounded;
+    final isBackgroundedChanged = _lastGenerationBackgrounded != isBackgrounded;
 
     if (isGeneratingChanged || isNewItemPrepend) {
       if (viewModel.isViewingLatest) {
@@ -391,11 +416,19 @@ class _ImageStreamViewState extends State<ImageStreamView> {
           if (mounted) controller.anchorToItemSilently(selectedImage.id);
         });
       }
+    } else if (isBackgroundedChanged && !isBackgrounded) {
+      // 从后台恢复到前台：占位卡重新插入头部，若用户正看最新图则滚回顶部看实时预览。
+      if (viewModel.isViewingLatest) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) controller.scrollToTop();
+        });
+      }
     }
 
     _lastGalleryLength = gallery.length;
     _lastFirstImageId = firstImageId;
     _lastIsGenerating = viewModel.isGenerating;
+    _lastGenerationBackgrounded = isBackgrounded;
   }
 
   /// 滚动停止时把"最接近视口中心"的图选为当前图
@@ -533,10 +566,251 @@ class CanvasGeneratingCard extends StatelessWidget {
                     );
                   },
                 ),
+                // 生图进行中的明确出口：丢弃本次生成，或转后台继续跑但不占画布。
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      _GeneratingCardAction(
+                        icon: Icons.visibility_off_outlined,
+                        label: context.l10n.canvasGeneratingBackground,
+                        tooltip: context.l10n.canvasGeneratingBackgroundTooltip,
+                        onPressed: viewModel.backgroundGeneration,
+                      ),
+                      const SizedBox(width: 8),
+                      _GeneratingCardAction(
+                        icon: Icons.delete_outline_rounded,
+                        label: context.l10n.canvasGeneratingDiscard,
+                        tooltip: context.l10n.canvasGeneratingDiscardTooltip,
+                        onPressed: viewModel.abortGeneration,
+                        destructive: true,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 生图占位卡上的胶囊按钮 (丢弃 / 转后台)
+class _GeneratingCardAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final bool destructive;
+
+  const _GeneratingCardAction({
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Tooltip(
+      message: tooltip,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.black.withValues(alpha: 0.68),
+          foregroundColor: destructive ? colors.error : Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, 34),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+          ),
+        ),
+        icon: Icon(icon, size: 15),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
+
+/// 后台生成提示条：去噪小进度 + 「查看生成」恢复入口。
+///
+/// 画布空态、生成坞与历史侧栏共用这一份实现；只监听
+/// [StudioViewModel.liveProgressController]，后台中间帧不触发全局重建。
+class BackgroundGenerationBanner extends StatelessWidget {
+  final StudioViewModel viewModel;
+
+  /// 紧凑尺寸 (生成坞 / 历史侧栏)
+  final bool compact;
+
+  /// 纵向排布 (历史侧栏等窄容器)
+  final bool vertical;
+
+  /// 是否展示副说明 (画布空态)
+  final bool showDescription;
+
+  final EdgeInsetsGeometry padding;
+
+  const BackgroundGenerationBanner({
+    super.key,
+    required this.viewModel,
+    this.compact = false,
+    this.vertical = false,
+    this.showDescription = false,
+    this.padding = const EdgeInsets.all(10),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: viewModel.liveProgressController,
+      builder: (context, _) {
+        final current = viewModel.liveCurrentStep;
+        final total = viewModel.liveTotalSteps;
+        final hasSteps = total > 0 && current > 0;
+
+        final title = Text(
+          l10n.canvasGeneratingInBackground,
+          style: TextStyle(
+            fontSize: compact ? (vertical ? 10.5 : 11) : 13,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+          maxLines: vertical ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+        );
+        final description = showDescription
+            ? Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  l10n.canvasGeneratingInBackgroundDescription,
+                  style: TextStyle(fontSize: 11.5, color: colors.textSecondary),
+                ),
+              )
+            : null;
+        final progress = hasSteps
+            ? Padding(
+                padding: EdgeInsets.only(top: vertical ? 5 : 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppProgressBar(
+                        value: viewModel.liveProgress,
+                        height: 3,
+                        color: colors.primary,
+                        backgroundColor: colors.borderDefault,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$current/$total',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: colors.textSecondary,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : null;
+        final viewButton = TextButton(
+          onPressed: viewModel.foregroundGeneration,
+          style: TextButton.styleFrom(
+            foregroundColor: colors.primary,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 6 : 10,
+              vertical: vertical ? 2 : 4,
+            ),
+            minimumSize: const Size(0, 30),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            l10n.viewGeneration,
+            style: TextStyle(
+              fontSize: compact ? 11 : 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+
+        return Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: colors.cardBackground,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: colors.borderDefault),
+          ),
+          child: vertical
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _BackgroundSpinner(compact: compact),
+                        const SizedBox(width: 6),
+                        Expanded(child: title),
+                      ],
+                    ),
+                    ?progress,
+                    ?description,
+                    Align(alignment: Alignment.centerRight, child: viewButton),
+                  ],
+                )
+              : Row(
+                  children: [
+                    _BackgroundSpinner(compact: compact),
+                    SizedBox(width: compact ? 6 : 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [title, ?description, ?progress],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    viewButton,
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+/// 后台生成提示条上的转圈图标
+class _BackgroundSpinner extends StatelessWidget {
+  final bool compact;
+
+  const _BackgroundSpinner({this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 14.0 : 18.0;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        valueColor: AlwaysStoppedAnimation<Color>(context.colors.primary),
       ),
     );
   }

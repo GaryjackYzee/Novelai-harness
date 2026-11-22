@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' show Rect;
 import '../types.dart';
@@ -10,6 +11,7 @@ import '../../../data/services/config_service.dart';
 import '../../../data/services/inpaint_service.dart';
 import 'agent_tool.dart';
 import 'novelai_tools.dart';
+import 'tool_path_guard.dart';
 
 /// 归一化两点矩形：钳制 0~1 并自动纠正坐标乱序 (模型给出的
 /// [ymin, xmin, ymax, xmax] 或 left/top/width/h 都不保证有序合法)
@@ -82,7 +84,8 @@ ParsedToolRect parseToolRectArg(
     if (s.isEmpty) return unparseable();
     try {
       raw = jsonDecode(s);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       final parts = s
           .split(RegExp(r'[,\s]+'))
           .where((p) => p.isNotEmpty)
@@ -293,6 +296,12 @@ class NovelAiInpaintTool extends AgentTool {
   final CurrentAccountInfoGetter? _getAccountInfo;
   final OnBeforeGenerateCallback? _onBeforeGenerate;
 
+  /// 工作台是否正在生图/超分；用于阻止 Agent 与手动操作并发扣费。
+  final bool Function()? _isBusy;
+
+  /// 允许读取的本地目录（保存目录/资料库）。为空时拒绝 image_path。
+  final List<String> Function()? _getAllowedRoots;
+
   NovelAiInpaintTool({
     required this._repository,
     required this._configService,
@@ -302,6 +311,8 @@ class NovelAiInpaintTool extends AgentTool {
     this._onConfirmPaidGeneration,
     this._getAccountInfo,
     this._onBeforeGenerate,
+    this._isBusy,
+    this._getAllowedRoots,
   }) : super(
          name: 'novelai_inpaint',
          label: '局部修复 / 焦点特写重绘',
@@ -369,6 +380,13 @@ class NovelAiInpaintTool extends AgentTool {
     Map<String, dynamic> args,
   ) async {
     try {
+      if (_isBusy?.call() ?? false) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: '错误：工作台正在生成/放大图片，本次修复调用已拒绝，请等待完成后再试。',
+          isError: true,
+        );
+      }
       final config = await _configService.loadConfig();
       if (config.novelAiKey.trim().isEmpty) {
         return ToolResult(
@@ -382,24 +400,32 @@ class NovelAiInpaintTool extends AgentTool {
       NaiGeneratedImage? targetImage;
       final imagePath = args['image_path'] as String?;
       if (imagePath != null && imagePath.isNotEmpty) {
-        final file = File(imagePath);
-        if (file.existsSync()) {
-          final bytes = await file.readAsBytes();
-          final dims = await AnlasCalculator.decodeImageDimensions(bytes);
-          targetImage = NaiGeneratedImage(
-            id: 'file_${DateTime.now().millisecondsSinceEpoch}',
-            bytes: bytes,
-            localFilePath: imagePath,
-            params: NaiGenerationParams(
-              prompt: '',
-              width: dims?.width ?? 1024,
-              height: dims?.height ?? 1024,
-            ),
-            createdAt: DateTime.now(),
-            seed: 0,
-            isOpusFree: false,
+        final read = await readAgentImagePath(
+          imagePath,
+          _getAllowedRoots?.call() ?? const <String>[],
+        );
+        if (read.error != null) {
+          return ToolResult(
+            toolCallId: toolCallId,
+            content: '错误：${read.error}',
+            isError: true,
           );
         }
+        final bytes = read.bytes!;
+        final dims = await AnlasCalculator.decodeImageDimensions(bytes);
+        targetImage = NaiGeneratedImage(
+          id: 'file_${DateTime.now().millisecondsSinceEpoch}',
+          bytes: bytes,
+          localFilePath: imagePath,
+          params: NaiGenerationParams(
+            prompt: '',
+            width: dims?.width ?? 1024,
+            height: dims?.height ?? 1024,
+          ),
+          createdAt: DateTime.now(),
+          seed: 0,
+          isOpusFree: false,
+        );
       }
 
       if (targetImage == null) {
@@ -558,36 +584,31 @@ class NovelAiInpaintTool extends AgentTool {
         );
       }
 
-      final isOpusFree =
-          geometry.requestArea <= 1048576 && currentParams.steps <= 28;
+      // 点数闸门必须基于账号真实权益：仅按“面积/步数”推断免费会把
+      // 非 Opus 用户当成免费，跳过确认后照常扣费。
       var account = _getAccountInfo?.call();
-      if (account == null && !isOpusFree) {
+      if (account == null) {
         try {
           account = await _repository.fetchAccountInfo(
             apiKey: config.novelAiKey,
           );
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
 
-      final estimatedCost = isOpusFree
-          ? 0
-          : (account != null
-                ? AnlasCalculator.estimateGenerationCost(
-                    params: currentParams.copyWith(
-                      width: geometry.requestWidth,
-                      height: geometry.requestHeight,
-                    ),
-                    isOpus: account.isOpus,
-                    opusQuotaExhausted: account.v5QuotaExhausted,
-                  )
-                : AnlasCalculator.invalidCost);
+      final costParams = currentParams.copyWith(
+        width: geometry.requestWidth,
+        height: geometry.requestHeight,
+      );
+      final estimatedCost = AnlasCalculator.estimateGenerationCost(
+        params: costParams,
+        isOpus: account?.isOpus ?? false,
+        opusQuotaExhausted: account?.v5QuotaExhausted ?? false,
+      );
 
       if (estimatedCost != 0 && _onConfirmPaidGeneration != null) {
         final confirmed = await _onConfirmPaidGeneration(
-          params: currentParams.copyWith(
-            width: geometry.requestWidth,
-            height: geometry.requestHeight,
-          ),
+          params: costParams,
           estimatedCost: estimatedCost,
         );
         if (!confirmed) {
@@ -691,9 +712,7 @@ class NovelAiInpaintTool extends AgentTool {
         );
       }
       buffer.writeln('• 重绘强度: $strength (附加噪声: $noise)');
-      buffer.writeln(
-        '• 点数状态: ${isOpusFree ? '0 Anlas (Opus 免费)' : '预计 $estimatedCost Anlas'}',
-      );
+      buffer.writeln('• 点数状态: ${AnlasCalculator.describeCost(estimatedCost)}');
 
       return ToolResult(
         toolCallId: toolCallId,

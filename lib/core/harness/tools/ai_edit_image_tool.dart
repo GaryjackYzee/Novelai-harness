@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import '../types.dart';
 import '../../../data/models/novelai_models.dart';
 import '../../../data/repositories/novelai_repository.dart';
@@ -7,6 +5,7 @@ import '../../../data/services/anlas_calculator.dart';
 import '../../../data/services/config_service.dart';
 import 'agent_tool.dart';
 import 'novelai_tools.dart';
+import 'tool_path_guard.dart';
 
 /// AI 整图编辑工具：把整张图片发给外部绘图模型 (如 nano banana) 按指令重绘
 ///
@@ -18,11 +17,15 @@ class AiEditImageTool extends AgentTool {
   final OnImageGeneratedCallback? _onGenerated;
   final OnBeforeGenerateCallback? _onBeforeGenerate;
 
+  /// 允许读取的本地目录（保存目录/资料库）。为空时拒绝 image_path。
+  final List<String> Function()? getAllowedRoots;
+
   AiEditImageTool({
     required this._repository,
     required this._configService,
     this._onGenerated,
     this._onBeforeGenerate,
+    this.getAllowedRoots,
   }) : super(
          name: 'ai_edit_image',
          label: 'AI 整图编辑',
@@ -106,15 +109,18 @@ class AiEditImageTool extends AgentTool {
       NaiGeneratedImage? targetImage;
       final imagePath = args['image_path'] as String?;
       if (imagePath != null && imagePath.isNotEmpty) {
-        final file = File(imagePath);
-        if (!file.existsSync()) {
+        final read = await readAgentImagePath(
+          imagePath,
+          getAllowedRoots?.call() ?? const <String>[],
+        );
+        if (read.error != null) {
           return ToolResult(
             toolCallId: toolCallId,
-            content: '错误：本地图片不存在: $imagePath',
+            content: '错误：${read.error}',
             isError: true,
           );
         }
-        final bytes = await file.readAsBytes();
+        final bytes = read.bytes!;
         final dims = await AnlasCalculator.decodeImageDimensions(bytes);
         targetImage = NaiGeneratedImage(
           id: 'file_${DateTime.now().millisecondsSinceEpoch}',

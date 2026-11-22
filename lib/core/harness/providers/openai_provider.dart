@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -554,7 +556,8 @@ class OpenAiCompatibleProvider implements LlmProvider, LlmRequestOverhead {
         Map<String, dynamic> json;
         try {
           json = jsonDecode(data) as Map<String, dynamic>;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           continue;
         }
 
@@ -719,7 +722,8 @@ class OpenAiCompatibleProvider implements LlmProvider, LlmRequestOverhead {
         Map<String, dynamic> args = {};
         try {
           args = jsonDecode(argsStr) as Map<String, dynamic>;
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
 
         if (name.isNotEmpty) {
           completedCalls.add(
@@ -992,7 +996,8 @@ class OpenAiCompatibleProvider implements LlmProvider, LlmRequestOverhead {
             } else {
               invalid = true;
             }
-          } catch (_) {
+          } catch (error) {
+    debugPrint('[ignored] $error');
             invalid = true;
           }
         } else {
@@ -1217,7 +1222,8 @@ class OpenAiCompatibleProvider implements LlmProvider, LlmRequestOverhead {
             continue;
           }
           json = Map<String, dynamic>.from(decoded);
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           pendingEvent = null;
           continue;
         }
@@ -1496,7 +1502,8 @@ class OpenAiCompatibleProvider implements LlmProvider, LlmRequestOverhead {
             continue;
           }
           json = Map<String, dynamic>.from(decoded);
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           pendingEvent = null;
           continue;
         }

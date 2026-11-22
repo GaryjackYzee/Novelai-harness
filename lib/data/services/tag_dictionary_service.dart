@@ -209,7 +209,8 @@ void _searchIsolateMain(_SearchInit init) {
           category: message.category,
           limit: message.limit,
         );
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
       replyPort.send(_SearchReply(message.id, results));
     } else if (message is _SearchReplace) {
       entries = message.entries;
@@ -672,7 +673,8 @@ class TagDictionaryService {
         // 超时/异常路径的挂起请求清理 (正常回投路径已在端口监听里移除)
         _pendingSearches.remove(id);
       }
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }

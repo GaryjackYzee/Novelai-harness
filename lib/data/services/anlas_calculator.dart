@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import '../models/novelai_models.dart';
@@ -155,7 +156,8 @@ class AnlasCalculator {
       frame.image.dispose();
       codec.dispose();
       return size;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }

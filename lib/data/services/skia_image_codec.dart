@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 /// 裸 RGBA 像素图：编解码与像素运算之间的统一数据容器。
@@ -48,7 +49,8 @@ Future<RawRgbaImage?> decodeToRawRgba(Uint8List bytes) async {
     } finally {
       frame.image.dispose();
     }
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     return null;
   } finally {
     codec?.dispose();

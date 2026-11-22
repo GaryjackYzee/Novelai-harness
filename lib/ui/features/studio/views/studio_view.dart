@@ -23,6 +23,7 @@ import '../widgets/image_canvas_card.dart';
 import '../widgets/metadata_reader_dialog.dart';
 import '../widgets/parameter_card.dart';
 import '../widgets/prompt_library_view.dart';
+import '../widgets/source_gallery_view.dart';
 import '../widgets/studio_sidebar.dart';
 
 class StudioView extends StatefulWidget {
@@ -244,7 +245,8 @@ class _StudioViewState extends State<StudioView> {
           }
         }
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 根级 ESC：双击 400ms 内进入回溯视图；单击中断生成/流式
@@ -272,7 +274,7 @@ class _StudioViewState extends State<StudioView> {
       return;
     }
 
-    if (_viewModel.activeSidebarTab == StudioSidebarTab.library) {
+    if (_isOverlayTab(_viewModel.activeSidebarTab)) {
       _viewModel.setActiveSidebarTab(_previousSidebarTab);
       return;
     }
@@ -306,6 +308,9 @@ class _StudioViewState extends State<StudioView> {
       builder: (context, _) {
         final isLibraryTab =
             _viewModel.activeSidebarTab == StudioSidebarTab.library;
+        final isSourcesTab =
+            _viewModel.activeSidebarTab == StudioSidebarTab.sources;
+        final isOverlayTab = isLibraryTab || isSourcesTab;
 
         return CallbackShortcuts(
           bindings: <ShortcutActivator, VoidCallback>{
@@ -332,9 +337,14 @@ class _StudioViewState extends State<StudioView> {
                     body: isNarrow
                         ? _buildNarrowLayout(
                             context,
-                            isLibraryTab: isLibraryTab,
+                            isLibraryTab: isOverlayTab,
+                            isSourcesTab: isSourcesTab,
                           )
-                        : _buildWideLayout(context, isLibraryTab: isLibraryTab),
+                        : _buildWideLayout(
+                            context,
+                            isLibraryTab: isLibraryTab,
+                            isSourcesTab: isSourcesTab,
+                          ),
                   ),
                 );
               },
@@ -346,7 +356,11 @@ class _StudioViewState extends State<StudioView> {
   }
 
   /// 桌面端 / 宽屏 (宽度 >= [StudioView.wideLayoutMinWidth])：保持经典三栏自适应工作台与无边框拖拽标题栏
-  Widget _buildWideLayout(BuildContext context, {required bool isLibraryTab}) {
+  Widget _buildWideLayout(
+    BuildContext context, {
+    required bool isLibraryTab,
+    required bool isSourcesTab,
+  }) {
     return Column(
       children: [
         // 顶部自定义 Notion 风格标题栏 (支持窗口拖拽与三键控制)
@@ -366,21 +380,28 @@ class _StudioViewState extends State<StudioView> {
                 activeTab: _viewModel.activeSidebarTab,
                 onTabChanged: (tab) {
                   FocusManager.instance.primaryFocus?.unfocus();
-                  if (tab == StudioSidebarTab.library &&
-                      _viewModel.activeSidebarTab != StudioSidebarTab.library) {
+                  if (_isOverlayTab(tab) &&
+                      !_isOverlayTab(_viewModel.activeSidebarTab)) {
                     _previousSidebarTab = _viewModel.activeSidebarTab;
                   }
                   _viewModel.setActiveSidebarTab(tab);
                 },
               ),
 
-              // 2. 主区域：全屏词库视图 (覆盖所有三栏) 或 主三栏自适应工作台
+              // 2. 主区域：全屏词库/图源视图 (覆盖所有三栏) 或 主三栏自适应工作台
               Expanded(
                 child: AppPageStack(
-                  index: isLibraryTab ? 1 : 0,
-                  itemCount: 2,
+                  index: isSourcesTab ? 2 : (isLibraryTab ? 1 : 0),
+                  itemCount: 3,
                   itemBuilder: (context, index) => index == 1
                       ? PromptLibraryView(
+                          viewModel: _viewModel,
+                          onClose: () {
+                            _viewModel.setActiveSidebarTab(_previousSidebarTab);
+                          },
+                        )
+                      : index == 2
+                      ? SourceGalleryView(
                           viewModel: _viewModel,
                           onClose: () {
                             _viewModel.setActiveSidebarTab(_previousSidebarTab);
@@ -439,6 +460,7 @@ class _StudioViewState extends State<StudioView> {
   Widget _buildNarrowLayout(
     BuildContext context, {
     required bool isLibraryTab,
+    required bool isSourcesTab,
   }) {
     return SafeArea(
       top: true,
@@ -525,6 +547,13 @@ class _StudioViewState extends State<StudioView> {
                       _viewModel.setActiveSidebarTab(_previousSidebarTab);
                     },
                   ),
+                if (isSourcesTab)
+                  SourceGalleryView(
+                    viewModel: _viewModel,
+                    onClose: () {
+                      _viewModel.setActiveSidebarTab(_previousSidebarTab);
+                    },
+                  ),
               ],
             ),
           ),
@@ -582,7 +611,7 @@ class _StudioViewState extends State<StudioView> {
 
   /// 系统返回键是否存在可消费的层内动作 (与 [_handleSystemBack] 分支顺序严格一致)
   bool _hasSystemBackAction({required bool isNarrow}) {
-    if (_viewModel.activeSidebarTab == StudioSidebarTab.library) return true;
+    if (_isOverlayTab(_viewModel.activeSidebarTab)) return true;
     // 动态读取卡片当前 State：卡片被批注模式卸载后 currentState 为 null，
     // 判态自然归 false，不会吞掉返回键。
     if (_chatCardKey.currentState?.hasOverlayView ?? false) return true;
@@ -597,7 +626,7 @@ class _StudioViewState extends State<StudioView> {
   /// 词库覆盖层 → 对话卡覆盖视图 → 批注/定位编辑模式 → 窄屏三卡片回到第 0 卡片；
   /// 以上均无命中时不动手，由 [PopScope] 的 canPop 交还系统。
   void _handleSystemBack({required bool isNarrow}) {
-    if (_viewModel.activeSidebarTab == StudioSidebarTab.library) {
+    if (_isOverlayTab(_viewModel.activeSidebarTab)) {
       _viewModel.setActiveSidebarTab(_previousSidebarTab);
       return;
     }
@@ -618,6 +647,10 @@ class _StudioViewState extends State<StudioView> {
       _setMobilePage(0);
     }
   }
+
+  /// 覆盖整页的侧栏页签（词库 / 图源）。
+  static bool _isOverlayTab(StudioSidebarTab tab) =>
+      tab == StudioSidebarTab.library || tab == StudioSidebarTab.sources;
 
   /// 全局错误提示微胶囊
   Widget _buildErrorMessage(BuildContext context) {

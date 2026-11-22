@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../data/models/comfyui_models.dart';
 import '../../../../data/models/novelai_models.dart';
+import '../../../../data/services/network_proxy_service.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -14,6 +15,7 @@ import '../../../core/widgets/app_segmented_controls.dart';
 import '../../../core/widgets/app_setting_tile.dart';
 import '../../../core/widgets/overlay_anchor.dart';
 import '../view_models/studio_view_model.dart';
+import 'proxy_feature_switch.dart';
 import 'resolution_pad_picker.dart';
 import 'studio_shared.dart';
 import 'watermark_pad_picker.dart';
@@ -93,13 +95,13 @@ class _ParametersPageState extends State<ParametersPage> {
         final params = viewModel.params;
 
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           children: [
             PageHeader(
               title: l10n.paramsPageTitle,
               subtitle: l10n.paramsPageSubtitle,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
             // 0. 生成后端切换 (NovelAI 官方接口 ↔ ComfyUI AI Bridge)
             AppSegmentedPillBar<String>(
@@ -117,7 +119,18 @@ class _ParametersPageState extends State<ParametersPage> {
               expand: true,
               onValueChanged: (v) => viewModel.setComfyUiMode(v == 'comfyui'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
+
+            // 0.1 生图网络代理开关：直接放在参数页，不需要进设置
+            if (!viewModel.isComfyUiMode)
+              Align(
+                alignment: Alignment.centerRight,
+                child: ProxyFeatureSwitch(
+                  viewModel: viewModel,
+                  feature: NetworkFeature.novelAi,
+                  label: l10n.proxyFeatureNovelAi,
+                ),
+              ),
 
             // 1. 模型选择 (NovelAI 模式) / ComfyUI 连接状态卡 (ComfyUI 模式)
             if (viewModel.isComfyUiMode)
@@ -135,7 +148,7 @@ class _ParametersPageState extends State<ParametersPage> {
                 onChanged: viewModel.selectModel,
               ),
               if (params.supportsEffort) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 SectionHeader(l10n.paramsEffort),
                 const SizedBox(height: 8),
                 AppSegmentedPillBar<NaiEffort>(
@@ -166,7 +179,7 @@ class _ParametersPageState extends State<ParametersPage> {
                 ],
               ],
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
             // 2. 官方标准分辨率预设与 2D 可视化画板
             ResolutionPadPicker(
@@ -189,7 +202,7 @@ class _ParametersPageState extends State<ParametersPage> {
               onChanged: (v) =>
                   viewModel.updateParams(params.copyWith(steps: v)),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
             // 4. Prompt Guidance
             AppNumberSlider(
@@ -737,7 +750,7 @@ class _AdvancedSettingsSection extends StatelessWidget {
             onChanged: (v) =>
                 viewModel.updateParams(params.copyWith(cfgRescale: v)),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SectionHeader(l10n.paramsSectionNoiseSchedule),
           const SizedBox(height: 8),
           AppDropdown<NoiseSchedule>.simple(
@@ -750,7 +763,7 @@ class _AdvancedSettingsSection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Divider(height: 1, color: colors.borderSubtle),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // 1. 删除元数据开关
           AppSettingTile.switchTile(

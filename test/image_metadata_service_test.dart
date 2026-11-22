@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:novelai_harness/data/models/novelai_models.dart';
 import 'package:novelai_harness/data/services/image_metadata_service.dart';
+import 'package:novelai_harness/data/services/watermark_service.dart';
 
 void main() {
   group('ImageMetadataService Tests', () {
@@ -701,6 +702,90 @@ void main() {
       expect(result.negativePrompt, equals('lowres, bad anatomy'));
       expect(result.qualityToggle, isNull);
       expect(result.ucPreset, isNull);
+    });
+
+    test(
+      'stripPngStealthAsync clears Alpha LSB but keeps PNG text metadata',
+      () async {
+        final image = img.Image(width: 8, height: 8, numChannels: 4);
+        final png = Uint8List.fromList(img.encodePng(image));
+        final withMeta = ImageMetadataService.embedNovelAiMetadata(
+          pngBytes: png,
+          params: const NaiGenerationParams(
+            prompt: '1girl',
+            width: 8,
+            height: 8,
+          ),
+          seed: 42,
+        );
+        expect(
+          ImageMetadataService.extractPngTextData(withMeta)['Comment'],
+          isNotNull,
+        );
+
+        final stripped = await ImageMetadataService.stripPngStealthAsync(
+          withMeta,
+        );
+        expect(
+          ImageMetadataService.extractPngTextData(stripped)['Comment'],
+          isNotNull,
+        );
+        final decoded = img.decodeImage(stripped)!;
+        for (var y = 0; y < decoded.height; y++) {
+          for (var x = 0; x < decoded.width; x++) {
+            expect(decoded.getPixel(x, y).a.toInt() & 1, 0);
+          }
+        }
+      },
+    );
+
+    test(
+      'processExportImage stripMetadata clears both text and Alpha LSB',
+      () async {
+        final image = img.Image(width: 8, height: 8, numChannels: 4);
+        final png = Uint8List.fromList(img.encodePng(image));
+        final withMeta = ImageMetadataService.embedNovelAiMetadata(
+          pngBytes: png,
+          params: const NaiGenerationParams(
+            prompt: '1girl',
+            width: 8,
+            height: 8,
+          ),
+          seed: 42,
+        );
+
+        final processed = await WatermarkService.processExportImage(
+          rawBytes: withMeta,
+          stripMetadata: true,
+          enableWatermark: false,
+        );
+        expect(ImageMetadataService.extractPngTextData(processed), isEmpty);
+        final decoded = img.decodeImage(processed)!;
+        for (var y = 0; y < decoded.height; y++) {
+          for (var x = 0; x < decoded.width; x++) {
+            expect(decoded.getPixel(x, y).a.toInt() & 1, 0);
+          }
+        }
+      },
+    );
+
+    test('V4.5 Source metadata is not mis-restored as V5', () {
+      final naiJson = jsonEncode({
+        'prompt': '1girl, solo',
+        'uc': '',
+        'steps': 28,
+        'sampler': 'k_euler',
+        'width': 832,
+        'height': 1216,
+        'Source': 'NovelAI Diffusion V4.5 Full',
+      });
+      final testImage = img.Image(width: 16, height: 16);
+      testImage.textData = {'Comment': naiJson};
+      final pngBytes = Uint8List.fromList(img.encodePng(testImage));
+
+      final result = ImageMetadataService.parseMetadata(pngBytes);
+      expect(result, isNotNull);
+      expect(result!.model, 'nai-diffusion-4-5-full');
     });
   });
 }

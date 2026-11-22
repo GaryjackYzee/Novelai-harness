@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import '../models/novelai_models.dart';
 import 'image_metadata_service.dart';
+import 'image_privacy_settings.dart';
 import 'isolated_compute.dart';
 import 'rgba_pixel_ops.dart';
 import 'skia_image_codec.dart';
@@ -426,7 +427,8 @@ class WatermarkService {
     if (_crc16(data) != crc) return null;
     try {
       return utf8.decode(data);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -788,12 +790,26 @@ class WatermarkService {
         ? _buildBlindPayload(blindText)
         : null;
     if (!visible && payload == null) {
-      return stripMetadata
-          ? ImageMetadataService.stripPngMetadataAsync(rawBytes)
+      // “删除元数据”必须同时清文本块与 Alpha-LSB 官方隐写；
+      // 仅“保留隐写”开关关闭时，才由 stripPngStealthAsync 单独清 LSB。
+      var output = stripMetadata
+          ? await ImageMetadataService.stripPngMetadataAsync(rawBytes)
           : rawBytes;
+      if (ImagePrivacySettings.stripStealth) {
+        output = await ImageMetadataService.stripPngStealthAsync(output);
+      }
+      return output;
     }
     final base = await decodeToRawRgba(rawBytes);
-    if (base == null) return rawBytes;
+    if (base == null) {
+      var output = stripMetadata
+          ? ImageMetadataService.stripPngTextChunks(rawBytes)
+          : rawBytes;
+      if (ImagePrivacySettings.stripStealth) {
+        output = await ImageMetadataService.stripPngStealthAsync(output);
+      }
+      return output;
+    }
     final wm = visible ? await decodeToRawRgba(watermarkBytes) : null;
     final transfer = IsolateBytes(base.rgba);
     final result = await runIsolated(
@@ -814,15 +830,33 @@ class WatermarkService {
                 config: watermarkConfig!,
               ),
         stripMetadata: stripMetadata,
-        clearAlpha: ImageMetadataService.pngMayHaveAlpha(rawBytes),
+        clearAlpha:
+            stripMetadata && ImageMetadataService.pngMayHaveAlpha(rawBytes),
         payload: payload,
         strength: (watermarkConfig?.blindStrength ?? 3).clamp(1, 5),
       ),
     );
-    // 一次解码、一次像素任务、一次编码；每个阶段的语义顺序不变。
-    return result == null
-        ? rawBytes
-        : encodeRawRgbaToPng(result, base.width, base.height);
+    // 一次解码、一次像素任务、一次编码；文本块在编码后单独清理。
+    if (result == null) {
+      var output = stripMetadata
+          ? ImageMetadataService.stripPngTextChunks(rawBytes)
+          : rawBytes;
+      if (ImagePrivacySettings.stripStealth) {
+        output = await ImageMetadataService.stripPngStealthAsync(output);
+      }
+      return output;
+    }
+    var output = await encodeRawRgbaToPng(result, base.width, base.height);
+    if (stripMetadata) {
+      output = ImageMetadataService.stripPngTextChunks(output);
+    } else {
+      // 重编码会丢掉 tEXt/iTXt/zTXt，导出必须把原元数据放回。
+      output = ImageMetadataService.reinsertTextChunks(rawBytes, output);
+    }
+    if (ImagePrivacySettings.stripStealth) {
+      output = await ImageMetadataService.stripPngStealthAsync(output);
+    }
+    return output;
   }
 }
 
@@ -851,7 +885,8 @@ Uint8List? _processExportPixels(_ExportPixelTask task) {
     try {
       rgba = WatermarkService._applyWatermarkPixels(visible, base: rgba);
       changed = true;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       /* 与原管线相同：可见水印失败不阻断后续处理 */
     }
   }
@@ -872,7 +907,8 @@ Uint8List? _processExportPixels(_ExportPixelTask task) {
             task.strength,
           ) ||
           changed;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       /* 容量不足/处理失败不影响已有结果 */
     }
   }

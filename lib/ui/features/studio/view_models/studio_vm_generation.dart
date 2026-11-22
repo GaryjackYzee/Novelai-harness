@@ -1,3 +1,4 @@
+
 part of 'studio_view_model.dart';
 
 /// 生图 / 超分 / 实时预览 / 账号信息
@@ -13,6 +14,10 @@ mixin _StudioGenerationMixin on _StudioCore {
     NaiGeneratedImage image, {
     required bool wasViewingLatest,
   }) {
+    // 成品落图即本轮生成结束：无论手动/Agent/ComfyUI 路径，后台标记都必须复位，
+    // 避免下一轮生成误判为一直在后台。
+    _generationBackgrounded = false;
+    unawaited(stripStealthFromFile(image.localFilePath));
     if (wasViewingLatest) {
       _selectedImage = image;
       _scheduleAdaptiveAccent(image);
@@ -20,7 +25,9 @@ mixin _StudioGenerationMixin on _StudioCore {
     } else {
       _hasUnseenLatest = true;
     }
-    _statusMessage = image.isUnsaved
+    _statusMessage = image.localFilePath == null
+        ? vmL10n.vmGenCacheFailed
+        : image.isUnsaved
         ? vmL10n.vmGenDoneUnsaved
         : vmL10n.vmGenDoneSavedTo(image.localFilePath ?? vmL10n.vmGenLocalPath);
   }
@@ -52,7 +59,7 @@ mixin _StudioGenerationMixin on _StudioCore {
         saveDir: targetDir,
         enablePersistence: _config.enableImagePersistence,
         maxImages: _config.maxPersistentImages,
-        stripMetadata: _config.stripMetadata,
+        stripMetadata: effectiveStripMetadata,
         enableWatermark: _config.enableWatermark,
         keepOriginalImage: _config.keepOriginalImage,
         watermarkConfig: _config.watermarkConfig,
@@ -63,6 +70,7 @@ mixin _StudioGenerationMixin on _StudioCore {
         notifyListeners();
         return false;
       }
+      await stripStealthFromFile(saved.localFilePath);
       if (_selectedImage?.id == saved.id) {
         _selectedImage = saved;
       }
@@ -128,7 +136,10 @@ mixin _StudioGenerationMixin on _StudioCore {
 
   /// 强行中止当前正在执行的生图流
   Future<void> abortGeneration() async {
+    _batchAborted = true;
     if (!_isGenerating) return;
+    // 终止后不再保留后台态：画布/侧栏与恢复入口都必须立即复位。
+    _generationBackgrounded = false;
     if (_isRtxUpscaling) {
       _repository.cancelRtxUpscale();
       return;
@@ -136,24 +147,102 @@ mixin _StudioGenerationMixin on _StudioCore {
     // ComfyUI 模式：置中止标记，由轮询循环自行收尾
     if (isComfyUiMode) {
       _requestComfyAbort();
+      notifyListeners();
       return;
     }
-    await _generationSubscription?.cancel();
+    // cancel() 不会触发 onDone：主动完成等待信号，否则 generateImage 永久挂起。
+    // 不等待 cancel 的 Future (底层取消可能依赖真实 IO 事件循环)：subscription
+    // 在 cancel 调用时已同步标记失效，不会再有事件投递；UI 复位必须立即生效。
+    final subscription = _generationSubscription;
     _generationSubscription = null;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+    }
+    final pending = _generationCompleter;
+    if (pending != null && !pending.isCompleted) pending.complete();
+    _generationCompleter = null;
     _isGenerating = false;
     _liveProgressController.clear();
     _statusMessage = vmL10n.vmGenAborted;
     notifyListeners();
   }
 
+  /// 把当前生成转入后台：请求与流式进度继续接收，但画布与历史侧栏隐藏
+  /// 实时预览占位卡；生成坞/画布空态/历史侧栏会展示「查看生成」恢复入口。
+  void backgroundGeneration() {
+    if (!_isGenerating || _generationBackgrounded) return;
+    _generationBackgrounded = true;
+    _statusMessage = vmL10n.vmGenMovedToBackground;
+    notifyListeners();
+  }
+
+  /// 从后台恢复到前台：画布重新展示实时预览占位卡与去噪进度。
+  void foregroundGeneration() {
+    if (!_generationBackgrounded) return;
+    _generationBackgrounded = false;
+    notifyListeners();
+  }
+
   /// 手动快速生图 (使用左侧面板参数，支持实时流式去噪步数预览)
+  /// 批量生图：种子从当前值开始逐张 +1，按顺序串行生成。
+  Future<void> generateBatch() async {
+    final count = _batchCount.clamp(1, 20);
+    if (count <= 1) {
+      await generateImage();
+      return;
+    }
+    if (_isGenerating || _isStartingGeneration) return;
+    if (_params.prompt.trim().isEmpty) {
+      await generateImage(); // 复用空提示词报错
+      return;
+    }
+    final originalSeedMode = _params.seedMode;
+    final originalSeedTiming = _params.seedTiming;
+    final baseSeed = _params.seed >= 0 ? _params.seed : generateRandomSeed();
+    _batchTotal = count;
+    _batchCurrent = 0;
+    _batchAborted = false;
+    notifyListeners();
+    try {
+      for (var index = 0; index < count; index += 1) {
+        if (_batchAborted) break;
+        _batchCurrent = index + 1;
+        // 固定模式 + 显式种子，避免用户原有定时策略把序列打乱。
+        _params = _params.copyWith(
+          seed: (baseSeed + index) % 4294967295,
+          seedMode: NaiSeedMode.fixed,
+          seedTiming: NaiSeedTiming.after,
+        );
+        notifyListeners();
+        await generateImage();
+        if (_errorMessage != null && _errorMessage!.isNotEmpty) break;
+      }
+    } finally {
+      _params = _params.copyWith(
+        seed: (baseSeed + count) % 4294967295,
+        seedMode: originalSeedMode,
+        seedTiming: originalSeedTiming,
+      );
+      _batchTotal = 0;
+      _batchCurrent = 0;
+      _batchAborted = false;
+      notifyListeners();
+      _scheduleParameterSave();
+    }
+  }
+
   @override
   Future<void> generateImage() async {
+    // 同步占位必须在任何 await 之前，否则双击/斜杠命令会在窗口期重复扣费。
+    if (_isGenerating || _isStartingGeneration) return;
     if (_params.prompt.trim().isEmpty) {
       _errorMessage = vmL10n.vmGenEmptyPrompt;
       notifyListeners();
       return;
     }
+
+    // 新一轮生成默认在前台开始，清掉上一轮可能残留的后台标记。
+    _generationBackgrounded = false;
 
     // ComfyUI 模式：改走 PromptToolkit AI Bridge 驱动流水线
     if (isComfyUiMode) {
@@ -161,147 +250,158 @@ mixin _StudioGenerationMixin on _StudioCore {
       return;
     }
 
-    if (_config.novelAiKey.trim().isEmpty) {
-      _errorMessage = vmL10n.vmGenNoApiKey;
+    _isStartingGeneration = true;
+    try {
+      await rotateAccountForGeneration();
+
+      if (_config.novelAiKey.trim().isEmpty) {
+        _errorMessage = vmL10n.vmGenNoApiKey;
+        notifyListeners();
+        return;
+      }
+
+      // 用户手动生图不再弹付费确认：生成坞按钮已实时显示预计点数
+      // (需点数/生成图片 (N Anlas) 警示色)，足够的 UI 提醒已前置；
+      // 点数消耗申请卡片只保留给 Agent (模型主动调用生图工具) 场景。
+      if (_accountInfo == null) {
+        await refreshAccountInfo();
+      }
+
+      final wasViewingLatest = isViewingLatest;
+
+      // 种子生成控制：生图前变更种子 (若 timing == before)
+      if (_params.seedTiming == NaiSeedTiming.before) {
+        _applySeedMutationBefore();
+      }
+
+      _isGenerating = true;
+      _liveProgressController.begin(_params.effectiveSteps, DateTime.now());
+      _errorMessage = null;
+      _statusMessage = vmL10n.vmGenRequesting(
+        _params.width,
+        _params.height,
+        _params.effectiveSteps,
+      );
       notifyListeners();
-      return;
-    }
 
-    // 用户手动生图不再弹付费确认：生成坞按钮已实时显示预计点数
-    // (需点数/生成图片 (N Anlas) 警示色)，足够的 UI 提醒已前置；
-    // 点数消耗申请卡片只保留给 Agent (模型主动调用生图工具) 场景。
-    if (_accountInfo == null) {
-      await refreshAccountInfo();
-    }
-
-    final wasViewingLatest = isViewingLatest;
-
-    // 种子生成控制：生图前变更种子 (若 timing == before)
-    if (_params.seedTiming == NaiSeedTiming.before) {
-      _applySeedMutationBefore();
-    }
-
-    _isGenerating = true;
-    _liveProgressController.begin(_params.effectiveSteps, DateTime.now());
-    _errorMessage = null;
-    _statusMessage = vmL10n.vmGenRequesting(
-      _params.width,
-      _params.height,
-      _params.effectiveSteps,
-    );
-    notifyListeners();
-
-    if (_config.enableStreamPreview) {
-      final completer = Completer<void>();
-      try {
-        final stream = _repository.generateStream(
-          apiKey: _config.novelAiKey,
-          params: _params,
-          saveDir: _config.saveDirectory,
-          enablePersistence: _config.enableImagePersistence,
-          maxImages: _config.maxPersistentImages,
-          stripMetadata: _config.stripMetadata,
-          enableWatermark: _config.enableWatermark,
-          keepOriginalImage: _config.keepOriginalImage,
-          watermarkConfig: _config.watermarkConfig,
-          watermarkBytes: _config.watermarkConfig.imageBytes,
-          autoSave: _config.autoSaveImages,
-          imageSaveTemplate: _config.imageSaveTemplate,
-        );
-
-        _generationSubscription = stream.listen(
-          (progress) {
-            if (progress.errorMessage != null &&
-                progress.errorMessage!.isNotEmpty) {
-              _errorMessage = progress.errorMessage;
-              notifyListeners();
-              return;
-            }
-
-            if (progress.isFinal) {
-              final newImage = progress.generatedImage;
-              if (newImage != null) {
-                _applyGeneratedImage(
-                  newImage,
-                  // 发起前在看最新，或生成期间已滚回顶部看预览，都视为正在看最新
-                  wasViewingLatest: wasViewingLatest || isViewingLatest,
-                );
-                // 种子生成控制：生图后变更种子 (若 timing == after)
-                if (_params.seedTiming == NaiSeedTiming.after) {
-                  _applySeedMutationAfter(newImage.seed);
-                }
-              }
-              _liveProgressController.complete();
-              notifyListeners();
-            } else {
-              // 中间去噪帧：只驱动画板占位卡/历史缩略图/生成熔按钮局部刷新，
-              // 不触发全局 notifyListeners()，主工作台零重绘
-              _liveProgressController.updateFrame(
-                previewBytes: progress.previewImage,
-                currentStep: progress.currentStep,
-                totalSteps: progress.totalSteps,
-                progress: progress.progress,
-              );
-            }
-          },
-          onError: (e) {
-            _errorMessage = vmL10n.vmGenFailed('$e');
-            _statusMessage = null;
-            if (!completer.isCompleted) completer.complete();
-          },
-          onDone: () {
-            if (!completer.isCompleted) completer.complete();
-          },
-          cancelOnError: true,
-        );
-
-        await completer.future;
-      } catch (e) {
-        _errorMessage = vmL10n.vmGenFailed('$e');
-        _statusMessage = null;
-      } finally {
-        _generationSubscription = null;
-        _isGenerating = false;
-        _liveProgressController.clear();
-        notifyListeners();
-        refreshAccountInfo();
-      }
-    } else {
-      try {
-        final results = await _repository.generate(
-          apiKey: _config.novelAiKey,
-          params: _params,
-          saveDir: _config.saveDirectory,
-          enablePersistence: _config.enableImagePersistence,
-          maxImages: _config.maxPersistentImages,
-          stripMetadata: _config.stripMetadata,
-          enableWatermark: _config.enableWatermark,
-          keepOriginalImage: _config.keepOriginalImage,
-          watermarkConfig: _config.watermarkConfig,
-          watermarkBytes: _config.watermarkConfig.imageBytes,
-          autoSave: _config.autoSaveImages,
-          imageSaveTemplate: _config.imageSaveTemplate,
-        );
-
-        if (results.isNotEmpty) {
-          _applyGeneratedImage(
-            results.first,
-            wasViewingLatest: wasViewingLatest || isViewingLatest,
+      if (_config.enableStreamPreview) {
+        final completer = Completer<void>();
+        _generationCompleter = completer;
+        try {
+          final stream = _repository.generateStream(
+            apiKey: _config.novelAiKey,
+            params: _params,
+            saveDir: _config.saveDirectory,
+            enablePersistence: _config.enableImagePersistence,
+            maxImages: _config.maxPersistentImages,
+            stripMetadata: effectiveStripMetadata,
+            enableWatermark: _config.enableWatermark,
+            keepOriginalImage: _config.keepOriginalImage,
+            watermarkConfig: _config.watermarkConfig,
+            watermarkBytes: _config.watermarkConfig.imageBytes,
+            autoSave: _config.autoSaveImages,
+            imageSaveTemplate: _config.imageSaveTemplate,
           );
-          // 种子生成控制：生图后变更种子 (若 timing == after)
-          if (_params.seedTiming == NaiSeedTiming.after) {
-            _applySeedMutationAfter(results.first.seed);
-          }
+
+          _generationSubscription = stream.listen(
+            (progress) {
+              if (progress.errorMessage != null &&
+                  progress.errorMessage!.isNotEmpty) {
+                _errorMessage = progress.errorMessage;
+                notifyListeners();
+                return;
+              }
+
+              if (progress.isFinal) {
+                final newImage = progress.generatedImage;
+                if (newImage != null) {
+                  _applyGeneratedImage(
+                    newImage,
+                    // 发起前在看最新，或生成期间已滚回顶部看预览，都视为正在看最新
+                    wasViewingLatest: wasViewingLatest || isViewingLatest,
+                  );
+                  // 种子生成控制：生图后变更种子 (若 timing == after)
+                  if (_params.seedTiming == NaiSeedTiming.after) {
+                    _applySeedMutationAfter(newImage.seed);
+                  }
+                }
+                _liveProgressController.complete();
+                notifyListeners();
+              } else {
+                // 中间去噪帧：只驱动画板占位卡/历史缩略图/生成熔按钮局部刷新，
+                // 不触发全局 notifyListeners()，主工作台零重绘
+                _liveProgressController.updateFrame(
+                  previewBytes: progress.previewImage,
+                  currentStep: progress.currentStep,
+                  totalSteps: progress.totalSteps,
+                  progress: progress.progress,
+                );
+              }
+            },
+            onError: (e) {
+              _errorMessage = vmL10n.vmGenFailed('$e');
+              _statusMessage = null;
+              if (!completer.isCompleted) completer.complete();
+            },
+            onDone: () {
+              if (!completer.isCompleted) completer.complete();
+            },
+            cancelOnError: true,
+          );
+
+          await completer.future;
+        } catch (e) {
+          _errorMessage = vmL10n.vmGenFailed('$e');
+          _statusMessage = null;
+        } finally {
+          _generationSubscription = null;
+          _generationCompleter = null;
+          _isGenerating = false;
+          _generationBackgrounded = false;
+          _liveProgressController.clear();
+          notifyListeners();
+          refreshAccountInfo();
         }
-      } catch (e) {
-        _errorMessage = vmL10n.vmGenFailed('$e');
-        _statusMessage = null;
-      } finally {
-        _isGenerating = false;
-        _liveProgressController.clear();
-        notifyListeners();
-        refreshAccountInfo();
+      } else {
+        try {
+          final results = await _repository.generate(
+            apiKey: _config.novelAiKey,
+            params: _params,
+            saveDir: _config.saveDirectory,
+            enablePersistence: _config.enableImagePersistence,
+            maxImages: _config.maxPersistentImages,
+            stripMetadata: effectiveStripMetadata,
+            enableWatermark: _config.enableWatermark,
+            keepOriginalImage: _config.keepOriginalImage,
+            watermarkConfig: _config.watermarkConfig,
+            watermarkBytes: _config.watermarkConfig.imageBytes,
+            autoSave: _config.autoSaveImages,
+            imageSaveTemplate: _config.imageSaveTemplate,
+          );
+
+          if (results.isNotEmpty) {
+            _applyGeneratedImage(
+              results.first,
+              wasViewingLatest: wasViewingLatest || isViewingLatest,
+            );
+            // 种子生成控制：生图后变更种子 (若 timing == after)
+            if (_params.seedTiming == NaiSeedTiming.after) {
+              _applySeedMutationAfter(results.first.seed);
+            }
+          }
+        } catch (e) {
+          _errorMessage = vmL10n.vmGenFailed('$e');
+          _statusMessage = null;
+        } finally {
+          _isGenerating = false;
+          _generationBackgrounded = false;
+          _liveProgressController.clear();
+          notifyListeners();
+          refreshAccountInfo();
+        }
       }
+    } finally {
+      _isStartingGeneration = false;
     }
   }
 
@@ -350,6 +450,8 @@ mixin _StudioGenerationMixin on _StudioCore {
   /// 超分放大当前图片 (官方新超分模型，固定倍率输出)
   @override
   Future<void> upscaleSelected() async {
+    // /upscale 与画板操作条都可能在生成中被触发；付费操作必须互斥。
+    if (_isGenerating || _isStartingGeneration) return;
     if (_selectedImage == null) {
       _errorMessage = vmL10n.vmUpscaleNoImage;
       notifyListeners();
@@ -366,6 +468,7 @@ mixin _StudioGenerationMixin on _StudioCore {
     // 画板操作条与账号栏已展示点数信息，付费确认卡片只保留给 Agent 场景。
 
     _isGenerating = true;
+    _generationBackgrounded = false;
     _errorMessage = null;
     _statusMessage = vmL10n.vmUpscaleRunning;
     notifyListeners();
@@ -381,7 +484,7 @@ mixin _StudioGenerationMixin on _StudioCore {
         saveDir: _config.saveDirectory,
         enablePersistence: _config.enableImagePersistence,
         maxImages: _config.maxPersistentImages,
-        stripMetadata: _config.stripMetadata,
+        stripMetadata: effectiveStripMetadata,
         enableWatermark: _config.enableWatermark,
         keepOriginalImage: _config.keepOriginalImage,
         watermarkConfig: _config.watermarkConfig,
@@ -401,6 +504,7 @@ mixin _StudioGenerationMixin on _StudioCore {
       _statusMessage = null;
     } finally {
       _isGenerating = false;
+      _generationBackgrounded = false;
       notifyListeners();
       refreshAccountInfo();
     }
@@ -410,6 +514,7 @@ mixin _StudioGenerationMixin on _StudioCore {
   Future<void> _upscaleRtxImage(NaiGeneratedImage image) async {
     if (_isGenerating || _rtxDisposed || !supportsRtxUpscale) return;
     _isGenerating = true;
+    _generationBackgrounded = false;
     _isRtxUpscaling = true;
     _errorMessage = null;
     _statusMessage = vmL10n.vmUpscaleRunning;
@@ -455,6 +560,7 @@ mixin _StudioGenerationMixin on _StudioCore {
     } finally {
       _isRtxUpscaling = false;
       _isGenerating = false;
+      _generationBackgrounded = false;
       if (!_rtxDisposed) notifyListeners();
     }
   }
@@ -475,7 +581,8 @@ mixin _StudioGenerationMixin on _StudioCore {
 
     return WatermarkService.processExportImage(
       rawBytes: rawBytes,
-      stripMetadata: _config.stripMetadata,
+      stripMetadata: effectiveStripMetadata,
+
       enableWatermark: _config.enableWatermark,
       watermarkConfig: _config.watermarkConfig,
       watermarkBytes: _config.watermarkConfig.imageBytes,
@@ -483,6 +590,135 @@ mixin _StudioGenerationMixin on _StudioCore {
   }
 
   /// 刷新账号与体力信息
+  /// 图生图：设置或清除源图 (null 表示回到纯文生图)。
+  @override
+  void setImg2imgSource(Uint8List? bytes) {
+    updateParams(
+      bytes == null
+          ? _params.copyWith(clearImg2img: true)
+          : _params.copyWith(img2imgBytes: bytes),
+    );
+  }
+
+  void setImg2imgStrength(double value) {
+    updateParams(
+      _params.copyWith(img2imgStrength: value.clamp(0.01, 0.99).toDouble()),
+    );
+  }
+
+  void setImg2imgNoise(double value) {
+    updateParams(
+      _params.copyWith(img2imgNoise: value.clamp(0.0, 0.99).toDouble()),
+    );
+  }
+
+  /// 把当前画板选中的图片设为图生图源图。
+  @override
+  Future<bool> useSelectedImageAsImg2imgSource() async {
+    final image = _selectedImage;
+    if (image == null) return false;
+    final bytes = await ensureImageLoaded(image);
+    if (bytes == null || bytes.isEmpty) return false;
+    setImg2imgSource(bytes);
+    return true;
+  }
+
+  /// 把当前画板选中的图片追加为一张 Vibe Transfer 参考图。
+  @override
+  Future<bool> useSelectedImageAsReference() async {
+    final image = _selectedImage;
+    if (image == null) return false;
+    final bytes = await ensureImageLoaded(image);
+    if (bytes == null || bytes.isEmpty) return false;
+    addReferenceImage(bytes);
+    return true;
+  }
+
+  void addReferenceImage(Uint8List bytes) {
+    updateParams(
+      _params.copyWith(
+        referenceImages: <NaiReferenceImage>[
+          ..._params.referenceImages,
+          NaiReferenceImage(bytes: bytes),
+        ],
+      ),
+    );
+  }
+
+  void updateReferenceImage(
+    int index, {
+    double? strength,
+    double? informationExtracted,
+  }) {
+    final list = List<NaiReferenceImage>.from(_params.referenceImages);
+    if (index < 0 || index >= list.length) return;
+    final current = list[index];
+    list[index] = NaiReferenceImage(
+      bytes: current.bytes,
+      strength: strength ?? current.strength,
+      informationExtracted:
+          informationExtracted ?? current.informationExtracted,
+    );
+    updateParams(_params.copyWith(referenceImages: list));
+  }
+
+  void removeReferenceImage(int index) {
+    final list = List<NaiReferenceImage>.from(_params.referenceImages);
+    if (index < 0 || index >= list.length) return;
+    list.removeAt(index);
+    updateParams(_params.copyWith(referenceImages: list));
+  }
+
+  @override
+  void clearReferenceImages() {
+    updateParams(_params.copyWith(clearReferenceImages: true));
+  }
+
+  /// 添加一张 Precise Reference（角色 / 画风参考，仅 V4.5）。
+  void addPreciseReference(
+    Uint8List bytes, {
+    NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
+  }) {
+    if (!_params.model.supportsPreciseReference || bytes.isEmpty) return;
+    updateParams(
+      _params.copyWith(
+        preciseReferences: <NaiPreciseReference>[
+          ..._params.preciseReferences,
+          NaiPreciseReference(bytes: bytes, type: type),
+        ],
+      ),
+    );
+  }
+
+  void updatePreciseReference(
+    int index, {
+    NaiPreciseRefType? type,
+    double? strength,
+    double? fidelity,
+    bool? enabled,
+  }) {
+    final list = List<NaiPreciseReference>.from(_params.preciseReferences);
+    if (index < 0 || index >= list.length) return;
+    list[index] = list[index].copyWith(
+      type: type,
+      strength: strength,
+      fidelity: fidelity,
+      enabled: enabled,
+    );
+    updateParams(_params.copyWith(preciseReferences: list));
+  }
+
+  void removePreciseReference(int index) {
+    final list = List<NaiPreciseReference>.from(_params.preciseReferences);
+    if (index < 0 || index >= list.length) return;
+    list.removeAt(index);
+    updateParams(_params.copyWith(preciseReferences: list));
+  }
+
+  void clearPreciseReferences() {
+    updateParams(_params.copyWith(clearPreciseReferences: true));
+  }
+
   @override
   Future<void> refreshAccountInfo() async {
     if (_config.novelAiKey.trim().isEmpty) return;
@@ -494,7 +730,9 @@ mixin _StudioGenerationMixin on _StudioCore {
       _accountInfo = await _repository.fetchAccountInfo(
         apiKey: _config.novelAiKey,
       );
-    } catch (_) {
+      await _syncActiveAccountInfo();
+    } catch (error) {
+    debugPrint('[ignored] $error');
       // ignore
     } finally {
       _isLoadingAccount = false;

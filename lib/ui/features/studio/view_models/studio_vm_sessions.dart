@@ -168,6 +168,33 @@ mixin _StudioSessionsMixin on _StudioCore {
     unawaited(refreshSessions());
   }
 
+  /// 把外部图片放到 Agent 输入栏作为待发送附件 (不直接发送)。
+  /// 保留当前草稿文字，附件列表由输入栏按 composerRestore 重建。
+  void attachImageToAgentComposer(AgentMessageImage image) {
+    _publishComposerRestore(_chatDraft, <AgentMessageImage>[image]);
+    notifyListeners();
+  }
+
+  /// 把图源作品的提示词/标签 (可附一张图片) 填入 Agent 输入栏 (不自动发送)。
+  ///
+  /// 与 [attachImageToAgentComposer] 共用 composerRestore 通道：输入栏挂载在
+  /// 图源画廊覆盖层下方时也能即时套用，发送动作始终留给用户。
+  void attachSourceToAgentComposer({
+    required String text,
+    AgentMessageImage? image,
+  }) {
+    _publishComposerRestore(
+      text,
+      image == null ? const <AgentMessageImage>[] : <AgentMessageImage>[image],
+    );
+    notifyListeners();
+  }
+
+  /// 仅把文本填入 Agent 输入栏 (不自动发送)。
+  void attachTextToAgentComposer(String text) {
+    attachSourceToAgentComposer(text: text);
+  }
+
   void _publishComposerRestore(String text, List<AgentMessageImage> images) {
     _composerRestoreEpoch++;
     _composerRestore = ComposerRestore(

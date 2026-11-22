@@ -1,6 +1,8 @@
 /// NovelAI 官方模型、采样器、噪声调度与分辨率预设目录。
 library;
 
+import 'package:flutter/foundation.dart';
+
 import 'dart:math';
 import 'nai_character_prompt.dart';
 
@@ -43,12 +45,13 @@ enum NaiModel {
         return m;
       }
     }
-    if (normalized.contains('5')) return NaiModel.v5Full;
+    if (normalized.contains('furry')) return NaiModel.v3Furry;
+    // '4-5' / '4.5' 包含字符 '5'，必须先于裸 '5' 判断。
     if (normalized.contains('4-5') || normalized.contains('4.5')) {
       return NaiModel.v45Full;
     }
+    if (normalized.contains('5')) return NaiModel.v5Full;
     if (normalized.contains('4')) return NaiModel.v4Full;
-    if (normalized.contains('furry')) return NaiModel.v3Furry;
     if (normalized.contains('3')) return NaiModel.v3;
     return NaiModel.v5Full;
   }
@@ -57,6 +60,10 @@ enum NaiModel {
       id.startsWith('nai-diffusion-5') || id.startsWith('nai-diffusion-4');
 
   bool get isV5 => id.startsWith('nai-diffusion-5');
+
+  /// Precise Reference (角色/画风参考) 仅 V4.5 正式支持；V5 与 V4 不支持。
+  bool get supportsPreciseReference =>
+      this == NaiModel.v45Full || this == NaiModel.v45Curated;
 
   /// 模型出厂默认 CFG Scale (官网对齐，切模型时若未手动调整则跟随)
   double get defaultScale => switch (this) {
@@ -403,7 +410,8 @@ enum NaiSeedTiming {
 int generateRandomSeed() {
   try {
     return Random.secure().nextInt(1 << 32);
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     return Random().nextInt(4294967295);
   }
 }

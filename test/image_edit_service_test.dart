@@ -465,4 +465,75 @@ void main() {
       }
     });
   });
+
+  group('安全回归：模型返回图片下载', () {
+    test('跨域图片下载不携带 Authorization，且仍能取回图片', () async {
+      final hosts = <String>[];
+      String? crossOriginHeaders;
+      final client = MockClient((request) async {
+        hosts.add(request.url.host);
+        if (request.url.host == 'api.example.com') {
+          return http.Response(
+            jsonEncode({
+              'choices': [
+                {
+                  'message': {'content': '![x](https://cdn.example.com/p.png)'},
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        crossOriginHeaders = request.headers.entries
+            .map((entry) => '${entry.key}:${entry.value}')
+            .join('|');
+        return http.Response.bytes(fakePngBytes(), 200);
+      });
+
+      final result = await ImageEditService(client: client).editImage(
+        baseUrl: 'https://api.example.com/v1',
+        apiKey: 'SECRET-KEY',
+        modelId: 'test-model',
+        prompt: 'make it blue',
+        imageBytes: fakePngBytes(),
+      );
+
+      expect(result.imageBytes, isNotEmpty);
+      expect(hosts, contains('cdn.example.com'));
+      expect(crossOriginHeaders, isNot(contains('SECRET-KEY')));
+    });
+
+    test('跨域回环/内网地址被拒绝且不发起请求', () async {
+      final requested = <Uri>[];
+      final client = MockClient((request) async {
+        requested.add(request.url);
+        if (request.url.host == 'api.example.com') {
+          return http.Response(
+            jsonEncode({
+              'choices': [
+                {
+                  'message': {'content': '![x](http://127.0.0.1:9/p.png)'},
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response.bytes(fakePngBytes(), 200);
+      });
+
+      await expectLater(
+        ImageEditService(client: client).editImage(
+          baseUrl: 'https://api.example.com/v1',
+          apiKey: 'SECRET-KEY',
+          modelId: 'test-model',
+          prompt: 'p',
+          imageBytes: fakePngBytes(),
+        ),
+        throwsA(isA<Exception>()),
+      );
+      expect(requested.where((uri) => uri.host == '127.0.0.1'), isEmpty);
+    });
+  });
 }

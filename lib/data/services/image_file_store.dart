@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -15,7 +17,8 @@ abstract final class ImageFileStore {
       files.file.writeAsBytesSync(bytes, flush: true);
       files.raw?.writeAsBytesSync(originalBytes!, flush: true);
       return files.file.path;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       for (final file in files.reserved) {
         file.deleteSync();
       }
@@ -36,7 +39,8 @@ abstract final class ImageFileStore {
         await raw.writeAsBytes(originalBytes!, flush: true);
       }
       return files.file.path;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       for (final file in files.reserved) {
         try {
           await file.delete();
@@ -59,9 +63,23 @@ abstract final class ImageFileStore {
         p.posix.isAbsolute(relativePath)) {
       throw FileSystemException('图片路径必须位于保存目录内', relativePath);
     }
-    final directory = Directory(root)..createSync(recursive: true);
+    final Directory directory;
+    try {
+      directory = Directory(root)..createSync(recursive: true);
+    } on FileSystemException catch (error) {
+      throw FileSystemException(
+        'mkdir:$root:${error.message}',
+        root,
+        error.osError,
+      );
+    }
     // 用户选定的根目录允许是链接；其下模板生成的目录不允许链接/目录联接。
-    final canonicalRoot = directory.resolveSymbolicLinksSync();
+    String canonicalRoot;
+    try {
+      canonicalRoot = directory.resolveSymbolicLinksSync();
+    } on FileSystemException {
+      canonicalRoot = directory.path;
+    }
     var parent = directory.path;
     for (final part in parts.take(parts.length - 1)) {
       parent = p.join(parent, part);
@@ -90,7 +108,16 @@ abstract final class ImageFileStore {
       final reserved = <File>[];
       try {
         for (final target in targets) {
-          target.createSync(exclusive: true);
+          try {
+            // 独占创建：目标已存在时失败 (交给上面的冲突重试)，绝不截断已有图片。
+            target.createSync(exclusive: true);
+          } on FileSystemException catch (error) {
+            throw FileSystemException(
+              'create:${target.path}:${error.message}',
+              target.path,
+              error.osError,
+            );
+          }
           reserved.add(target);
         }
       } on FileSystemException {

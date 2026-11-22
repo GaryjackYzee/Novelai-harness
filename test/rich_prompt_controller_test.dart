@@ -134,4 +134,33 @@ void main() {
       expect(span.style?.backgroundColor, isNull);
     }
   });
+
+  testWidgets('overlapping and trailing colons do not throw RangeError', (
+    tester,
+  ) async {
+    for (final sample in const [
+      '0.54::',
+      '0.54:::',
+      '0.54::::',
+      '0.54:::::',
+      '0.54::  ::',
+      '-1.2:::',
+      '1girl, 0.54:::',
+    ]) {
+      final controller = RichPromptTextController(text: sample);
+      final span = await buildSpan(tester, controller);
+      expect(span.toPlainText(), sample);
+    }
+  });
+
+  testWidgets('overlapping and trailing colons do not throw RangeError', (tester) async {
+    for (final sample in const [
+      '0.54::', '0.54:::', '0.54::::', '0.54:::::', '0.54::  ::', '-1.2:::',
+      '1girl, 0.54:::',
+    ]) {
+      final controller = RichPromptTextController(text: sample);
+      final span = await buildSpan(tester, controller);
+      expect(span.toPlainText(), sample);
+    }
+  });
 }

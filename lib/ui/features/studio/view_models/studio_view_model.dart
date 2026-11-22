@@ -1,10 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show Color, Locale, Offset, Rect;
 import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import '../../../../core/harness/agent_harness.dart';
 import '../../../../core/harness/context_memory.dart';
 import '../../../../core/harness/tools/context_memory_tool.dart';
+import '../../../../core/harness/tools/reflection_tools.dart';
+import '../../../../core/harness/tools/wd14_tag_tool.dart';
+import '../../../../core/harness/tools/character_tag_tool.dart';
+import '../../../../core/harness/tools/grep_tool.dart';
+import '../../../../core/harness/tools/memory_tool.dart';
 import '../../../../core/harness/presets/agent_preset.dart';
 import '../../../../core/harness/providers/openai_provider.dart';
 import '../../../../core/harness/skills/skills.dart';
@@ -18,6 +25,7 @@ import '../../../core/theme/ui_zoom_controller.dart';
 import '../../../../core/harness/tools/annotation_tools.dart';
 import '../../../../core/harness/tools/anysearch_tools.dart';
 import '../../../../core/harness/tools/ask_user_tool.dart';
+import '../../../../core/harness/tools/library_tools.dart';
 import '../../../../core/harness/tools/canvas_view_tool.dart';
 import '../../../../core/harness/tools/character_prompt_tools.dart';
 import '../../../../core/harness/tools/danbooru_search_tools.dart';
@@ -26,14 +34,30 @@ import '../../../../core/harness/tools/novelai_inpaint_tool.dart';
 import '../../../../core/harness/tools/novelai_tools.dart';
 import '../../../../core/harness/tools/prompt_library_tools.dart';
 import '../../../../core/harness/tools/studio_params_tool.dart';
+import '../../../../core/harness/tools/tool_path_guard.dart';
 import '../../../../core/harness/types.dart';
 import '../../../../data/models/novelai_models.dart';
+import '../../../../data/models/reflection_entry.dart';
+import '../../../../data/models/nai_account_pool.dart';
 import '../../../../data/models/comfyui_models.dart';
 import '../../../../data/models/prompt_library_models.dart';
 import '../../../../data/models/skill_package.dart';
 import '../../../../data/repositories/novelai_repository.dart';
 import '../../../../data/services/anlas_calculator.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+
 import '../../../../data/services/config_service.dart';
+import '../../../../data/services/network_proxy_service.dart';
+import '../../../../data/services/novelai_service.dart';
+import '../../../../data/services/image_edit_service.dart';
+import '../../../../data/services/library_service.dart';
+import '../../../../data/services/account_store.dart';
+import '../../../../data/services/chat_queue_store.dart';
+import '../../../../data/services/image_privacy_settings.dart';
+import '../../../../data/models/style_preset.dart';
+import '../../../../data/services/wd14_online_service.dart';
+import '../../../../data/services/reflection_store.dart';
 import '../../../../data/services/comfyui_service.dart';
 import '../../../../data/services/image_file_store.dart';
 import '../../../../data/services/image_metadata_service.dart';
@@ -68,7 +92,7 @@ part 'studio_vm_library.dart';
 part 'studio_vm_sessions.dart';
 part 'studio_vm_slash.dart';
 
-enum StudioSidebarTab { parameters, prompts, inpaint, library }
+enum StudioSidebarTab { parameters, prompts, inpaint, library, sources }
 
 /// 核心状态 Mixin：集中声明全部状态字段、Getters 与跨分部共享的读写入口。
 ///
@@ -124,6 +148,24 @@ mixin _StudioCore on ChangeNotifier {
   NaiAccountInfo? _accountInfo;
   bool _isLoadingAccount = false;
   bool _isGenerating = false;
+
+  /// 当前生图是否已转入后台：请求与流式进度继续，但画布/历史侧栏隐藏占位卡，
+  /// 由生成坞/画布空态/历史侧栏的「查看生成」恢复到前台。
+  /// 仅在 [_isGenerating] 为 true 时生效，abort/完成/失败时复位。
+  bool _generationBackgrounded = false;
+
+  /// 从进入 generateImage/upscale 到真正设置 _isGenerating 之间的同步占位，
+  /// 防止双击、/nai 或 Agent 在上一个 await 窗口内重复发起付费请求。
+  bool _isStartingGeneration = false;
+
+  /// 批量生图设置与进度（1 = 单张）。
+  int _batchCount = 1;
+  int _batchTotal = 0;
+  int _batchCurrent = 0;
+  bool _batchAborted = false;
+
+  /// 当前流式生图的完成信号；abort 时主动 complete，避免 await 永久挂起。
+  Completer<void>? _generationCompleter;
   bool _isRtxUpscaling = false;
   bool _rtxDisposed = false;
   Future<void>? _rtxOperation;
@@ -143,6 +185,31 @@ mixin _StudioCore on ChangeNotifier {
   /// 思考块全局展开开关 (Ctrl+O 切换，默认折叠只显示单行预览)
   bool _isThinkingExpanded = false;
   NaiGeneratedImage? _selectedImage;
+  final Set<String> _favoriteImageIds = <String>{};
+  final LibraryService _libraryService = LibraryService();
+  String _libraryDir = '';
+  List<LibraryFile> _libraryFiles = const <LibraryFile>[];
+  bool _libraryLoading = false;
+  String? _libraryError;
+  final Set<String> _favoriteSourceIds = <String>{};
+  bool _stripStealth = false;
+  String _libraryFallbackDir = '';
+  final Wd14OnlineService _wd14Service = Wd14OnlineService();
+  String _wd14Endpoint = Wd14OnlineService.defaultEndpoint;
+  String _wd14Token = '';
+  double _wd14Threshold = 0.35;
+  List<Wd14Tag> _lastWd14Tags = const <Wd14Tag>[];
+  final List<QueuedChatMessage> _chatQueue = <QueuedChatMessage>[];
+  bool _chatQueuePaused = false;
+  bool _suppressQueueDrain = false;
+  final List<StylePreset> _stylePresets = <StylePreset>[];
+  String _activeStylePresetId = '';
+  List<NaiAccount> _accounts = const <NaiAccount>[];
+  String _activeAccountId = '';
+  String _accountMode = 'fixed';
+  String _defaultAccountId = '';
+  final List<String> _memoryEntries = <String>[];
+  final List<ReflectionEntry> _reflections = <ReflectionEntry>[];
   bool _hasUnseenLatest = false;
 
   /// 自适应取色：最近一次已提取主色的图片 id (去重，避免重复 Isolate 提取)
@@ -294,6 +361,18 @@ mixin _StudioCore on ChangeNotifier {
         );
   bool get isLoadingAccount => _isLoadingAccount;
   bool get isGenerating => _isGenerating;
+
+  int get batchCount => _batchCount;
+
+  bool get isBatchRunning => _batchTotal > 0;
+
+  int get batchCurrent => _batchCurrent;
+
+  int get batchTotal => _batchTotal;
+
+  /// 生成中且已转入后台：画布与历史侧栏不展示生成占位卡，
+  /// 生成坞/画布空态/历史侧栏改为「查看生成」恢复入口。
+  bool get generationBackgrounded => _isGenerating && _generationBackgrounded;
   bool get isChatStreaming => _isChatStreaming;
 
   /// 流式对话瞬态文本控制器 (视图局部监听用)
@@ -405,11 +484,25 @@ mixin _StudioCore on ChangeNotifier {
   // ------------------------- 共享参数入口 -------------------------
 
   /// 更新侧边栏参数 (统一入口：UI 与 Agent 工具共用，含防抖持久化)
+  /// 只要存在选中的画风组，就把附加段强制写回参数。
+  /// 复用提示词 / 恢复快照 / agent 改参数后，避免只显示灰色文本却不参与生成。
+  NaiGenerationParams _withActiveStyle(NaiGenerationParams params) {
+    final preset = activeStylePreset;
+    if (preset == null) return params;
+    // 画风组勾选去除时，元数据里也不再写入画风串 tag（保留其他 tag）。
+    final stripStyle = preset.stripMetadata || preset.stripStealth;
+    return params.copyWith(
+      stylePositive: preset.positive,
+      styleNegative: preset.negative,
+      styleTagsInMetadata: preset.styleInMetadata && !stripStyle,
+    );
+  }
+
   void updateParams(NaiGenerationParams newParams) {
     if (newParams.characterAiPosition && _isEditingCharacterPositions) {
       _isEditingCharacterPositions = false;
     }
-    _params = newParams;
+    _params = _withActiveStyle(newParams);
     notifyListeners();
 
     _scheduleParameterSave();
@@ -452,6 +545,741 @@ mixin _StudioCore on ChangeNotifier {
     updateParams(_params.copyWith(negativePrompt: negativePrompt));
   }
 
+  // ------------------------- 擦除 tag 输入历史 -------------------------
+
+  /// 读取擦除 tag 输入历史 (最新在前，最多 10 条；true = 负面 tag)。
+  Future<List<String>> loadStripTagHistory({bool negative = false}) =>
+      _configService.loadStripTagHistory(negative: negative);
+
+  /// 记录一次擦除 tag 输入，返回去重后的最新历史。
+  Future<List<String>> recordStripTagHistory(
+    String value, {
+    bool negative = false,
+  }) => _configService.recordStripTagHistory(value, negative: negative);
+
+  /// 清空擦除 tag 输入历史 (true = 负面 tag)。
+  Future<void> clearStripTagHistory({bool negative = false}) =>
+      _configService.clearStripTagHistory(negative: negative);
+
+  /// 收藏的图片 ID 集合。
+  Set<String> get favoriteImageIds =>
+      Set<String>.unmodifiable(_favoriteImageIds);
+
+  bool isFavoriteImage(String id) => _favoriteImageIds.contains(id);
+
+  /// 已收藏的历史图片。
+  List<NaiGeneratedImage> get favoriteImages => gallery
+      .where((image) => _favoriteImageIds.contains(image.id))
+      .toList(growable: false);
+
+  /// 外部图源收藏 (AITag / 法典)。
+  bool isFavoriteSource(String scope, String id) =>
+      _favoriteSourceIds.contains('$scope:$id');
+
+  Future<void> toggleFavoriteSource(String scope, String id) async {
+    final key = '$scope:$id';
+    if (!_favoriteSourceIds.remove(key)) {
+      _favoriteSourceIds.add(key);
+    }
+    notifyListeners();
+    await _configService.saveFavoriteSourceIds(
+      _favoriteSourceIds.toList(growable: false),
+    );
+  }
+
+  List<StylePreset> get stylePresets =>
+      List<StylePreset>.unmodifiable(_stylePresets);
+  String get activeStylePresetId => _activeStylePresetId;
+  StylePreset? get activeStylePreset => _stylePresets
+      .where((preset) => preset.id == _activeStylePresetId)
+      .firstOrNull;
+
+  /// 清理 7 天前的内部缓存图片，避免失败回退积累孤儿文件。
+  Future<void> _cleanupStaleCache() async {
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final dirs = <Directory>[
+        Directory('${docs.path}/NovelAI_Harness/cache'),
+        Directory('${Directory.systemTemp.path}/NovelAI_Harness/cache'),
+      ];
+      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+      for (final dir in dirs) {
+        if (!await dir.exists()) continue;
+        await for (final entity in dir.list()) {
+          if (entity is! File) continue;
+          try {
+            final stat = await entity.stat();
+            if (stat.modified.isBefore(cutoff)) {
+              await entity.delete();
+            }
+          } on Object {
+            // 单个文件失败不影响其他
+          }
+        }
+      }
+    } on Object {
+      // 目录不可用时忽略
+    }
+  }
+
+  Future<void> _applyPresetPrivacy(bool strip) async {
+    // 画风组只决定「导出元数据是否包含画风串 tag」，不清其他元数据/隐写。
+    updateParams(_params.copyWith(styleTagsInMetadata: !strip));
+    notifyListeners();
+  }
+
+  Future<void> _persistStylePresets() async {
+    await _configService.saveStylePresets(
+      _stylePresets.map((preset) => preset.encode()).toList(growable: false),
+    );
+    notifyListeners();
+  }
+
+  Future<void> addStylePreset({
+    required String name,
+    required String positive,
+    required String negative,
+    bool stripMetadata = false,
+    bool stripStealth = false,
+    bool styleInMetadata = true,
+  }) async {
+    final preset = StylePreset(
+      id: 'style_${DateTime.now().millisecondsSinceEpoch}',
+      name: name.trim().isEmpty ? '画风' : name.trim(),
+      positive: positive.trim(),
+      negative: negative.trim(),
+      stripMetadata: stripMetadata,
+      stripStealth: stripStealth,
+      styleInMetadata: styleInMetadata,
+    );
+    _stylePresets.add(preset);
+    await _persistStylePresets();
+  }
+
+  Future<void> updateStylePreset(StylePreset preset) async {
+    final index = _stylePresets.indexWhere((item) => item.id == preset.id);
+    if (index < 0) return;
+    _stylePresets[index] = preset;
+    if (_activeStylePresetId == preset.id) {
+      updateParams(_params.copyWith(
+        stylePositive: preset.positive,
+        styleNegative: preset.negative,
+        styleTagsInMetadata: preset.styleInMetadata,
+      ));
+      await _applyPresetPrivacy(
+        preset.stripMetadata || preset.stripStealth,
+      );
+    }
+    await _persistStylePresets();
+  }
+
+  Future<void> removeStylePreset(String id) async {
+    _stylePresets.removeWhere((item) => item.id == id);
+    if (_activeStylePresetId == id) {
+      _activeStylePresetId = '';
+      updateParams(_params.copyWith(
+        stylePositive: '',
+        styleNegative: '',
+        styleTagsInMetadata: true,
+      ));
+    }
+    await _configService.saveStylePresetId(_activeStylePresetId);
+    await _persistStylePresets();
+  }
+
+  /// 选择画风组：立即把该组正/负 tag 追加到工作台，并同步脱敏开关。
+  Future<void> selectStylePreset(String id) async {
+    final preset = _stylePresets.where((item) => item.id == id).firstOrNull;
+    if (preset == null) return;
+    _activeStylePresetId = id;
+    await _configService.saveStylePresetId(id);
+    // 画风串不写进可编辑文本框，而是作为只读附加段参与生成与元数据。
+    updateParams(_params.copyWith(
+      stylePositive: preset.positive,
+      styleNegative: preset.negative,
+      styleTagsInMetadata: preset.styleInMetadata,
+    ));
+    // 选中组的脱敏开关直接作用于本次出图（元数据 + 隐写一并处理）。
+    await _applyPresetPrivacy(preset.stripMetadata || preset.stripStealth);
+    notifyListeners();
+  }
+
+  Future<void> clearStylePreset() async {
+    _activeStylePresetId = '';
+    await _configService.saveStylePresetId('');
+    updateParams(_params.copyWith(
+      stylePositive: '',
+      styleNegative: '',
+      styleTagsInMetadata: true,
+    ));
+    notifyListeners();
+  }
+
+
+  List<QueuedChatMessage> get queuedChatMessages =>
+      List<QueuedChatMessage>.unmodifiable(_chatQueue);
+  bool get chatQueuePaused => _chatQueuePaused;
+
+  /// 流式期间把消息加入持久化队列，本轮结束后自动发送。
+  Future<void> queueChatMessage(
+    String text, {
+    List<AgentMessageImage>? images,
+  }) async {
+    final trimmed = text.trim();
+    final attachments = images ?? const <AgentMessageImage>[];
+    if (trimmed.isEmpty && attachments.isEmpty) return;
+    final message = QueuedChatMessage(content: trimmed, images: attachments);
+    _chatQueue.add(message);
+    try {
+      await ChatQueueStore.instance.add(message);
+    } on Object {
+      // 存储失败仍保留内存队列
+    }
+    _harness.addInfoMessage('已加入队列（${_chatQueue.length} 条），本轮结束后自动发送');
+    notifyListeners();
+  }
+
+  Future<void> setBatchCount(int value) async {
+    _batchCount = value.clamp(1, 20);
+    await _configService.saveBatchCount(_batchCount);
+    notifyListeners();
+  }
+
+  Future<void> toggleChatQueuePaused() async {
+    _chatQueuePaused = !_chatQueuePaused;
+    await _configService.saveChatQueuePaused(_chatQueuePaused);
+    _harness.addInfoMessage(_chatQueuePaused ? '已暂停发送队列' : '已恢复发送队列');
+    notifyListeners();
+  }
+
+  Future<void> moveQueuedMessage(int from, int to) async {
+    if (from < 0 || from >= _chatQueue.length) return;
+    var target = to;
+    if (target < 0) target = 0;
+    if (target >= _chatQueue.length) target = _chatQueue.length - 1;
+    if (from == target) return;
+    final message = _chatQueue.removeAt(from);
+    _chatQueue.insert(target, message);
+    await _persistChatQueue();
+  }
+
+  Future<void> _persistChatQueue() async {
+    try {
+      await ChatQueueStore.instance.replaceAll(_chatQueue);
+    } on Object {
+      // 忽略存储失败
+    }
+    notifyListeners();
+  }
+
+  /// 编辑队列中的一条消息。
+  Future<void> editQueuedMessage(int index, String text) async {
+    if (index < 0 || index >= _chatQueue.length) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    _chatQueue[index] = QueuedChatMessage(
+      content: trimmed,
+      images: _chatQueue[index].images,
+    );
+    await _persistChatQueue();
+  }
+
+  /// 删除队列中的一条消息。
+  Future<void> removeQueuedMessage(int index) async {
+    if (index < 0 || index >= _chatQueue.length) return;
+    _chatQueue.removeAt(index);
+    await _persistChatQueue();
+  }
+
+  /// 立即发送队列中的一条消息。
+  Future<void> sendQueuedMessageNow(int index) async {
+    if (index < 0 || index >= _chatQueue.length) return;
+    final message = _chatQueue.removeAt(index);
+    await _persistChatQueue();
+    if (_isChatStreaming) {
+      // 立即发送 = 中断当前输出并马上发这条，而不是等本轮结束。
+      _suppressQueueDrain = true;
+      try {
+        await abortChat();
+        // abortChat 只保证完成信号，等 finally 真正把流式状态复位。
+        for (var attempt = 0; attempt < 100; attempt += 1) {
+          if (!_isChatStreaming) break;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      } finally {
+        _suppressQueueDrain = false;
+      }
+    }
+    await sendChatMessage(message.content, images: message.images);
+  }
+
+  String get wd14Endpoint => _wd14Endpoint;
+  String get wd14Token => _wd14Token;
+  double get wd14Threshold => _wd14Threshold;
+  List<Wd14Tag> get lastWd14Tags => List<Wd14Tag>.unmodifiable(_lastWd14Tags);
+
+  Future<void> setWd14Endpoint(String value) async {
+    _wd14Endpoint = value.trim().isEmpty
+        ? Wd14OnlineService.defaultEndpoint
+        : value.trim();
+    await _configService.saveWd14Endpoint(_wd14Endpoint);
+    notifyListeners();
+  }
+
+  Future<void> setWd14Token(String value) async {
+    _wd14Token = value.trim();
+    await _configService.saveWd14Token(_wd14Token);
+    notifyListeners();
+  }
+
+  Future<void> setWd14Threshold(double value) async {
+    _wd14Threshold = value.clamp(0.05, 0.95).toDouble();
+    await _configService.saveWd14Threshold(_wd14Threshold);
+    notifyListeners();
+  }
+
+  /// 对任意图片字节执行在线 WD14 反推。
+  Future<List<Wd14Tag>> tagImageBytesWithWd14(
+    List<int> bytes, {
+    double? threshold,
+  }) async {
+    if (bytes.isEmpty) throw Wd14Exception('图片为空');
+    // WD14 只需要小图；大图先缩到 1024，减少上传体积与耗时。
+    var payload = bytes;
+    try {
+      final decoded = img.decodeImage(Uint8List.fromList(bytes));
+      if (decoded != null &&
+          (decoded.width > 1024 || decoded.height > 1024)) {
+        final resized = decoded.width >= decoded.height
+            ? img.copyResize(decoded, width: 1024)
+            : img.copyResize(decoded, height: 1024);
+        payload = img.encodePng(resized);
+      }
+    } on Object {
+      // 解码失败时按原图上传
+    }
+    final tags = await _wd14Service.tag(
+      imageBytes: payload,
+      endpoint: _wd14Endpoint,
+      token: _wd14Token,
+      threshold: threshold ?? _wd14Threshold,
+    );
+    _lastWd14Tags = tags;
+    notifyListeners();
+    return tags;
+  }
+
+  /// 在线 WD14 反推当前画布图片。
+  Future<List<Wd14Tag>> tagCurrentCanvasWithWd14({double? threshold}) async {
+    final image = _selectedImage ?? (gallery.isEmpty ? null : gallery.first);
+    if (image == null) {
+      throw Wd14Exception('画布还没有图片可反推');
+    }
+    final bytes = await getExportImageBytes(image, raw: true);
+    return tagImageBytesWithWd14(bytes, threshold: threshold);
+  }
+
+  /// 反推聊天里最近一条用户附图。
+  Future<List<Wd14Tag>> tagLastChatImageWithWd14({double? threshold}) async {
+    final messages = _harness.messages;
+    for (var i = messages.length - 1; i >= 0; i -= 1) {
+      final message = messages[i];
+      if (message.role != AgentRole.user || message.images.isEmpty) continue;
+      return tagImageBytesWithWd14(message.images.first.bytes,
+          threshold: threshold);
+    }
+    throw Wd14Exception('聊天里没有找到可反推的图片');
+  }
+
+  Future<void> applyWd14Tags(List<Wd14Tag> tags) async {
+    if (tags.isEmpty) return;
+    final existing = _params.prompt.trim();
+    final additions = tags
+        .map((tag) => tag.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+    final merged = existing.isEmpty
+        ? additions.join(', ')
+        : '$existing, ${additions.join(', ')}';
+    updateParams(_params.copyWith(prompt: merged));
+  }
+
+  bool get effectiveStripMetadata => _config.stripMetadata;
+
+  bool get effectiveStripStealth => _stripStealth;
+
+  /// 单开关：是否清除全部数据（元数据 + 隐写）。
+  bool get effectiveStripAll =>
+      effectiveStripMetadata && effectiveStripStealth;
+
+  Future<void> setStripAll(bool strip) async {
+    _config = _config.copyWith(stripMetadata: strip);
+    _stripStealth = strip;
+    ImagePrivacySettings.stripMetadata = strip;
+    ImagePrivacySettings.stripStealth = strip;
+    await _configService.saveConfig(_config);
+    await _configService.saveStripStealth(strip);
+    notifyListeners();
+  }
+
+  String get accountMode => _accountMode;
+
+  Future<void> setAccountMode(String mode) async {
+    if (mode != 'fixed' && mode != 'rotate') return;
+    _accountMode = mode;
+    await _persistAccounts();
+    notifyListeners();
+  }
+
+  /// 轮换模式：生图前切到下一个账号；固定模式保持当前账号。
+  Future<void> rotateAccountForGeneration() async {
+    if (_accountMode != 'rotate' || _accounts.length < 2) return;
+    final index = _accounts.indexWhere((item) => item.id == _activeAccountId);
+    final next = _accounts[(index + 1) % _accounts.length];
+    _activeAccountId = next.id;
+    _config = _config.copyWith(novelAiKey: next.apiKey);
+    await _persistAccounts();
+    await _saveConfigForAccounts();
+    notifyListeners();
+  }
+
+  Future<void> _persistAccounts() async {
+    try {
+      await AccountStore.instance.save(
+        accounts: _accounts,
+        activeId: _activeAccountId,
+        mode: _accountMode,
+        defaultId: _defaultAccountId,
+      );
+    } on AccountStoreException catch (error) {
+      // 存储不可用时保持内存状态，至少本次会话可继续使用账号。
+      debugPrint('账号池保存失败: $error');
+    }
+  }
+
+  /// 账号切换后立即把工作台 Key 落盘。
+  /// Agent 工具通过 configService.loadConfig() 读取当前 Key；若只改内存，
+  /// 同会话内 Agent 生图会继续使用上一个账号，导致计费到错误账号。
+  Future<void> _saveConfigForAccounts() async {
+    try {
+      await _configService.saveConfig(_config);
+    } on Object catch (error) {
+      debugPrint('账号切换后保存配置失败: $error');
+    }
+  }
+
+  /// 把工作台账号信息同步回账号池当前条目。
+  Future<void> _syncActiveAccountInfo() async {
+    final info = _accountInfo;
+    if (info == null) return;
+    final index = _accounts.indexWhere((item) => item.id == _activeAccountId);
+    if (index < 0) return;
+    final updated = _accounts[index].copyWith(
+      tierName: info.tierName,
+      anlas: info.totalAnlas,
+      v5Energy: info.staminaPercent.round(),
+      updatedAt: DateTime.now(),
+    );
+    _accounts = List<NaiAccount>.from(_accounts)..[index] = updated;
+    await _persistAccounts();
+  }
+
+  String get defaultAccountId => _defaultAccountId;
+
+  Future<void> setDefaultAccount(String id) async {
+    if (_accounts.every((item) => item.id != id)) return;
+    _defaultAccountId = id;
+    await _persistAccounts();
+    notifyListeners();
+  }
+
+  List<NaiAccount> get accounts => List<NaiAccount>.unmodifiable(_accounts);
+  String get activeAccountId => _activeAccountId;
+  NaiAccount? get activeAccount =>
+      _accounts.where((item) => item.id == _activeAccountId).firstOrNull;
+
+  Future<void> addAccount({
+    required String label,
+    required String apiKey,
+  }) async {
+    final account = NaiAccount(
+      id: 'a${DateTime.now().millisecondsSinceEpoch}',
+      label: label.trim().isEmpty ? '账号' : label.trim(),
+      apiKey: apiKey.trim(),
+    );
+    _accounts = <NaiAccount>[..._accounts, account];
+    if (_defaultAccountId.isEmpty) _defaultAccountId = account.id;
+    _activeAccountId = account.id;
+    _config = _config.copyWith(novelAiKey: account.apiKey);
+    await _persistAccounts();
+    await _saveConfigForAccounts();
+    notifyListeners();
+  }
+
+  Future<void> removeAccount(String id) async {
+    _accounts = _accounts.where((item) => item.id != id).toList();
+    if (_defaultAccountId == id) {
+      _defaultAccountId = _accounts.isEmpty ? '' : _accounts.first.id;
+    }
+    if (_activeAccountId == id) {
+      if (_accounts.isEmpty) {
+        _activeAccountId = '';
+        _config = _config.copyWith(novelAiKey: '');
+      } else {
+        _activeAccountId = _accounts.first.id;
+        _config = _config.copyWith(novelAiKey: _accounts.first.apiKey);
+      }
+    }
+    await _persistAccounts();
+    await _saveConfigForAccounts();
+    notifyListeners();
+  }
+
+  Future<void> selectAccount(String id) async {
+    final account = _accounts.where((item) => item.id == id).firstOrNull;
+    if (account == null) return;
+    _activeAccountId = id;
+    _config = _config.copyWith(novelAiKey: account.apiKey);
+    await _persistAccounts();
+    await _saveConfigForAccounts();
+    notifyListeners();
+    await refreshAccountInfo();
+  }
+
+  /// 逐个刷新账号池的档位/点数/体力。
+  Future<void> refreshAccounts() async {
+    for (var index = 0; index < _accounts.length; index += 1) {
+      final account = _accounts[index];
+      if (account.apiKey.trim().isEmpty) continue;
+      try {
+        final info = await _repository.fetchAccountInfo(apiKey: account.apiKey);
+        _accounts[index] = account.copyWith(
+          tierName: info.tierName,
+          anlas: info.totalAnlas,
+          v5Energy: info.staminaPercent.round(),
+          updatedAt: DateTime.now(),
+        );
+      } on Object {
+        // 单个账号失败不影响其他
+      }
+    }
+    await _persistAccounts();
+    notifyListeners();
+  }
+
+  bool get stripStealth => _stripStealth;
+
+  /// 按开关清除已保存图片的 Alpha LSB 隐写（保留文本元数据）。
+  Future<void> stripStealthFromFile(String? path) async {
+    if (!_stripStealth || path == null || path.isEmpty) return;
+    try {
+      final file = File(path);
+      if (!await file.exists()) return;
+      final bytes = await file.readAsBytes();
+      final stripped = await ImageMetadataService.stripPngStealthAsync(bytes);
+      if (!identical(stripped, bytes)) {
+        // 原子替换：缩略图/画板可能正在读缓存文件，直接 writeAsBytes
+        // 会留下半截 PNG 或与读取方发生 Windows 共享冲突。
+        final temp = File(
+          '$path.strip-${DateTime.now().microsecondsSinceEpoch}.tmp',
+        );
+        await temp.writeAsBytes(stripped, flush: true);
+        try {
+          await temp.rename(path);
+        } finally {
+          if (await temp.exists()) await temp.delete();
+        }
+      }
+    } on Object {
+      // 隐写清除失败不影响主流程
+    }
+  }
+
+  Future<void> setStripStealth(bool value) async {
+    // 先同步全局设置，即使值没变也要保证导出管道拿到最新开关。
+    ImagePrivacySettings.stripStealth = value;
+    if (_stripStealth == value) {
+      notifyListeners();
+      return;
+    }
+    _stripStealth = value;
+    notifyListeners();
+    await _configService.saveStripStealth(value);
+  }
+
+  /// 梳理串（复盘/梦境记录）。
+  List<ReflectionEntry> get reflections =>
+      List<ReflectionEntry>.unmodifiable(_reflections);
+
+  Future<ReflectionEntry> addReflection({
+    required String title,
+    required String summary,
+    List<String> lessons = const <String>[],
+    String source = 'reflect',
+  }) async {
+    final entry = ReflectionEntry(
+      id: 'r-${DateTime.now().millisecondsSinceEpoch}',
+      title: title.trim().isEmpty ? '未命名复盘' : title.trim(),
+      source: source,
+      summary: summary.trim(),
+      lessons: lessons
+          .where((item) => item.trim().isNotEmpty)
+          .map((item) => item.trim())
+          .toList(growable: false),
+      createdAt: DateTime.now(),
+    );
+    _reflections.insert(0, entry);
+    if (_reflections.length > 200) _reflections.removeLast();
+    notifyListeners();
+    await ReflectionStore.instance.upsert(entry);
+    return entry;
+  }
+
+  Future<void> removeReflection(String id) async {
+    _reflections.removeWhere((item) => item.id == id);
+    notifyListeners();
+    await ReflectionStore.instance.remove(id);
+  }
+
+  /// 跨会话长期记忆。
+  List<String> get memoryEntries => List<String>.unmodifiable(_memoryEntries);
+
+  Future<void> addMemoryEntry(String text) async {
+    final value = text.trim();
+    if (value.isEmpty) return;
+    _memoryEntries.insert(
+      0,
+      value.length > 500 ? value.substring(0, 500) : value,
+    );
+    if (_memoryEntries.length > 100) _memoryEntries.removeLast();
+    notifyListeners();
+    await _configService.saveMemoryEntries(_memoryEntries);
+  }
+
+  Future<void> removeMemoryEntry(int index) async {
+    if (index < 0 || index >= _memoryEntries.length) return;
+    _memoryEntries.removeAt(index);
+    notifyListeners();
+    await _configService.saveMemoryEntries(_memoryEntries);
+  }
+
+  /// 资料库目录与文件状态。
+  String get libraryDir => libraryEffectiveDir;
+
+  /// Agent 只允许读取这些目录内的本地图片（保存目录 + 资料库）。
+  List<String> get _agentReadableRoots => <String>[
+    if (_config.saveDirectory.trim().isNotEmpty) _config.saveDirectory,
+    if (libraryEffectiveDir.trim().isNotEmpty) libraryEffectiveDir,
+  ];
+  List<LibraryFile> get libraryFiles => _libraryFiles;
+  bool get libraryLoading => _libraryLoading;
+  String? get libraryError => _libraryError;
+
+  /// 选择资料库文件夹并立即刷新。
+  Future<void> pickLibraryDirectory() async {
+    final path = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: '选择资料库文件夹',
+    );
+    if (path == null || path.trim().isEmpty) return;
+    _libraryDir = path;
+    await _configService.saveLibraryDir(path);
+    await refreshLibrary();
+  }
+
+  /// 恢复为内部默认目录（清除用户配置的路径）。
+  Future<void> resetLibraryDirectory() async {
+    _libraryDir = '';
+    await _configService.saveLibraryDir('');
+    await refreshLibrary();
+  }
+
+  /// 重新列出资料库文件。
+  Future<void> refreshLibrary() async {
+    await ensureLibraryDir();
+    _libraryLoading = true;
+    _libraryError = null;
+    notifyListeners();
+    try {
+      _libraryFiles = await _libraryService.list(libraryEffectiveDir);
+    } on Object catch (error) {
+      _libraryError = '$error';
+      _libraryFiles = const <LibraryFile>[];
+    } finally {
+      _libraryLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// 确保资料库目录存在；未配置时默认为「文档/NovelAI_Library」。
+  /// 资料库实际目录：用户配置过就用配置的绝对路径，否则用内部默认目录。
+  String get libraryEffectiveDir =>
+      _libraryDir.trim().isEmpty ? _libraryFallbackDir : _libraryDir;
+
+  Future<void> ensureLibraryDir() async {
+    try {
+      if (_libraryDir.trim().isEmpty) {
+        if (_libraryFallbackDir.isEmpty) {
+          final docs = await getApplicationDocumentsDirectory();
+          // 内部默认目录，不写进配置；只有用户手动选择时才保存绝对路径。
+          _libraryFallbackDir = '${docs.path}/NovelAI_Library';
+        }
+      }
+      await _libraryService.ensureDir(libraryEffectiveDir);
+    } on Object {
+      // 测试或受限环境下没有可写目录：保持空库，不影响其他功能。
+    }
+  }
+
+  /// 从系统文件选择器导入文档到资料库。
+  Future<int> importLibraryDocuments() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.any,
+    );
+    if (result == null) return 0;
+    final paths = result.files
+        .map((file) => file.path)
+        .whereType<String>()
+        .toList(growable: false);
+    if (paths.isEmpty) return 0;
+    final imported = await _libraryService.importFiles(
+      libraryEffectiveDir,
+      paths,
+    );
+    await refreshLibrary();
+    return imported.length;
+  }
+
+  Future<void> deleteLibraryFile(LibraryFile file) async {
+    await _libraryService.deleteFile(libraryEffectiveDir, file.path);
+    await refreshLibrary();
+  }
+
+  /// 分页读取一个资料库文件。
+  Future<LibraryRead> readLibraryFile(
+    LibraryFile file, {
+    int offset = 0,
+    int limit = 6000,
+  }) {
+    return _libraryService.read(file.path, offset: offset, limit: limit);
+  }
+
+  /// 在资料库中搜索关键词。
+  Future<List<LibraryMatch>> searchLibrary(String query) {
+    return _libraryService.search(libraryEffectiveDir, query);
+  }
+
+  /// 切换图片收藏状态并持久化。
+  Future<void> toggleFavoriteImage(String id) async {
+    if (!_favoriteImageIds.remove(id)) {
+      _favoriteImageIds.add(id);
+    }
+    notifyListeners();
+    await _configService.saveFavoriteImageIds(
+      _favoriteImageIds.toList(growable: false),
+    );
+  }
+
   /// 便捷设置种子模式
   void setSeedMode(NaiSeedMode mode) {
     updateParams(_params.copyWith(seedMode: mode));
@@ -466,6 +1294,12 @@ mixin _StudioCore on ChangeNotifier {
 
   /// 应用并持久化新配置 (类体实现；各分部可调用)
   Future<void> updateConfig(AppConfig newConfig);
+
+  // 图生图 / Vibe 参考 (studio_vm_generation.dart 实现)
+  Future<bool> useSelectedImageAsImg2imgSource();
+  void setImg2imgSource(Uint8List? bytes);
+  Future<bool> useSelectedImageAsReference();
+  void clearReferenceImages();
 
   /// 装配 Harness、注册全部工具并配置 LLM Provider
   void _setupHarnessAndTools();
@@ -574,6 +1408,8 @@ mixin _StudioCore on ChangeNotifier {
     required int estimatedCost,
   });
 
+  Future<bool> _confirmCharacterTagChange(String summary);
+
   /// 付费超分确认
   Future<bool> _confirmPaidUpscale({
     required int estimatedCost,
@@ -674,7 +1510,20 @@ class StudioViewModel extends ChangeNotifier
   }) {
     // Mixin 的 late final 字段无法进初始化列表，统一在构造体内注入
     _configService = configService ?? ConfigService();
-    _repository = repository ?? NovelAiRepository();
+    _repository =
+        repository ??
+        NovelAiRepository(
+          service: NovelAiService(
+            httpClient: NetworkProxyService.instance.createClient(
+              NetworkFeature.novelAi,
+            ),
+          ),
+          imageEditService: ImageEditService(
+            client: NetworkProxyService.instance.createClient(
+              NetworkFeature.novelAi,
+            ),
+          ),
+        );
     _promptLibraryService =
         promptLibraryService ?? PromptLibraryService.instance;
     _skillPackageService = skillPackageService ?? SkillPackageService();
@@ -684,7 +1533,7 @@ class StudioViewModel extends ChangeNotifier
       tools: _toolRegistry,
       skillRegistry: _skillRegistry,
       recorder: _sessionLog,
-      initialPreset: BuiltinPresets.v5Architect,
+      initialPreset: BuiltinPresets.v5FullExpert,
     );
     _harness.onContextChanged = () {
       _sessionLog.saveContextState(_harness.exportContextState());
@@ -746,6 +1595,119 @@ class StudioViewModel extends ChangeNotifier
   /// 初始化 Studio
   Future<void> init() async {
     _config = await _configService.loadConfig();
+    NetworkProxyService.instance.configureFromConfig(_config);
+    _favoriteImageIds
+      ..clear()
+      ..addAll(await _configService.loadFavoriteImageIds());
+    _libraryDir = await _configService.loadLibraryDir();
+    await ensureLibraryDir();
+    _favoriteSourceIds
+      ..clear()
+      ..addAll(await _configService.loadFavoriteSourceIds());
+    _stripStealth = await _configService.loadStripStealth();
+    unawaited(_cleanupStaleCache());
+    ImagePrivacySettings.stripStealth = _stripStealth;
+    ImagePrivacySettings.stripMetadata = _config.stripMetadata;
+    var accountsLoadFailed = false;
+    try {
+      _accounts = await AccountStore.instance.loadAccounts();
+    } on AccountStoreException catch (error) {
+      // 读取失败绝不能被当成“空账号池”：保留原文件，等用户修复/确认。
+      accountsLoadFailed = true;
+      _accounts = const <NaiAccount>[];
+      if (!error.unavailable) {
+        _errorMessage = '账号池读取失败（已保留原文件，未覆盖）：${error.message}';
+      }
+      debugPrint('账号池读取失败: $error');
+    }
+    _activeAccountId = await AccountStore.instance.loadActiveId();
+    _accountMode = await AccountStore.instance.loadMode();
+    final savedWd14Endpoint = await _configService.loadWd14Endpoint();
+    if (savedWd14Endpoint.trim().isNotEmpty) _wd14Endpoint = savedWd14Endpoint;
+    _wd14Token = await _configService.loadWd14Token();
+    _wd14Threshold = await _configService.loadWd14Threshold();
+    _chatQueuePaused = await _configService.loadChatQueuePaused();
+    _batchCount = await _configService.loadBatchCount();
+    _activeStylePresetId = await _configService.loadStylePresetId();
+    _stylePresets
+      ..clear()
+      ..addAll(
+        (await _configService.loadStylePresets())
+            .map(StylePreset.decode)
+            .toList(growable: false),
+      );
+    // 重启后按已选画风组重新写入附加段，避免只显示灰色文本但不参与生成。
+    final restoredStyle = activeStylePreset;
+    if (restoredStyle != null) {
+      _params = _params.copyWith(
+        stylePositive: restoredStyle.positive,
+        styleNegative: restoredStyle.negative,
+        styleTagsInMetadata: restoredStyle.styleInMetadata,
+      );
+    }
+    try {
+      _chatQueue
+        ..clear()
+        ..addAll(await ChatQueueStore.instance.load());
+    } on Object {
+      // 数据库不可用时忽略（测试环境没有 path_provider）
+    }
+    _defaultAccountId = await AccountStore.instance.loadDefaultId();
+    if (_accounts.isEmpty && !accountsLoadFailed) {
+      if (_config.novelAiKey.trim().isNotEmpty) {
+        _accounts = <NaiAccount>[
+          NaiAccount(id: 'default', label: '默认账号', apiKey: _config.novelAiKey),
+        ];
+        _activeAccountId = 'default';
+        await _persistAccounts();
+      }
+    } else if (!accountsLoadFailed) {
+      final active = _accounts
+          .where((item) => item.id == _activeAccountId)
+          .firstOrNull;
+      final fallback =
+          _accounts.where((item) => item.id == _defaultAccountId).firstOrNull ??
+          _accounts.first;
+      final effective = active ?? fallback;
+      _activeAccountId = effective.id;
+      if (effective.apiKey.trim().isNotEmpty &&
+          effective.apiKey != _config.novelAiKey) {
+        _config = _config.copyWith(novelAiKey: effective.apiKey);
+      } else if (effective.apiKey.trim().isEmpty &&
+          _config.novelAiKey.trim().isNotEmpty) {
+        // 旧数据没有存下密钥时，用工作台当前密钥回填账号池。
+        final index = _accounts.indexWhere((item) => item.id == effective.id);
+        if (index >= 0) {
+          _accounts = List<NaiAccount>.from(_accounts)
+            ..[index] = _accounts[index].copyWith(apiKey: _config.novelAiKey);
+          await _persistAccounts();
+        }
+      }
+    }
+    _memoryEntries
+      ..clear()
+      ..addAll(await _configService.loadMemoryEntries());
+    _reflections.clear();
+    try {
+      _reflections.addAll(await ReflectionStore.instance.list());
+    } on Object {
+      // 数据库不可用时回退为空（测试环境没有 path_provider）。
+    }
+    if (_reflections.isEmpty) {
+      final legacy = await _configService.loadReflectionEntries();
+      for (final raw in legacy) {
+        try {
+          final entry = ReflectionEntry.decode(raw);
+          await ReflectionStore.instance.upsert(entry);
+          _reflections.add(entry);
+        } on Object {
+          // 跳过无法迁移的旧条目
+        }
+      }
+      if (legacy.isNotEmpty) {
+        await _configService.saveReflectionEntries(const <String>[]);
+      }
+    }
     _syncVmLocale();
     _syncGalleryExportHook();
     final lastPrompt = await _configService.loadLastPrompt();
@@ -761,6 +1723,7 @@ class StudioViewModel extends ChangeNotifier
       'prompts' => StudioSidebarTab.prompts,
       'inpaint' => StudioSidebarTab.inpaint,
       'library' => StudioSidebarTab.library,
+      'sources' => StudioSidebarTab.sources,
       _ => StudioSidebarTab.parameters,
     };
 
@@ -809,7 +1772,7 @@ class StudioViewModel extends ChangeNotifier
       seedTiming: await _configService.loadSeedTiming(),
     );
     final savedParams = await _configService.loadStudioParameters(legacyParams);
-    _params = savedParams.generation;
+    _params = _withActiveStyle(savedParams.generation);
     _inpaintParams = savedParams.inpaint;
     _hasRestoredParameterState = true;
     // 恢复模型后再预载，避免启动时错误加载出厂模型的分词器。
@@ -824,6 +1787,9 @@ class StudioViewModel extends ChangeNotifier
     _setupHarnessAndTools();
 
     // 初始化会话日志并续接上次对话 (Pi --continue 语义)
+    _sessionLog
+      ..maxSessions = _config.sessionMaxCount
+      ..retentionDays = _config.sessionRetentionDays;
     await _sessionLog.init(baseDir: _sessionLogBaseDir);
     await _usageLedger.init(baseDir: _sessionLog.baseDirPath);
     final snapshot = await _sessionLog.loadLatestSessionAsync();
@@ -840,6 +1806,7 @@ class StudioViewModel extends ChangeNotifier
       _config.activeLlmProvider.activeModel.id,
     );
     _sessionLog.recordThinkingLevelChange(_currentThinkingEffort.id);
+
     await refreshSessions();
 
     // 加载持久化的图像历史
@@ -914,6 +1881,9 @@ class StudioViewModel extends ChangeNotifier
   /// 保存全局配置
   @override
   Future<void> updateConfig(AppConfig newConfig) async {
+    _sessionLog
+      ..maxSessions = newConfig.sessionMaxCount
+      ..retentionDays = newConfig.sessionRetentionDays;
     final oldConfig = _config;
     if (newConfig.saveDirectory != oldConfig.saveDirectory) {
       newConfig = newConfig.copyWith(
@@ -924,6 +1894,7 @@ class StudioViewModel extends ChangeNotifier
     }
     _config = newConfig;
     _syncGalleryExportHook();
+    NetworkProxyService.instance.configureFromConfig(newConfig);
     // 主题模式即时生效：MaterialApp 根节点监听全局控制器局部刷新，
     // 200ms 平滑切色，不走 notifyListeners 全局重绘
     AppThemeModeController.instance.syncFromConfig(newConfig);
@@ -1141,7 +2112,8 @@ class StudioViewModel extends ChangeNotifier
     final target = model ?? _params.model;
     try {
       await PromptTokenCounterService.instance.precache(target);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       // 词表资产缺失时不阻断启动，计数保持启发式估算
       return;
     }
@@ -1195,7 +2167,8 @@ class StudioViewModel extends ChangeNotifier
         if (palette == null) return;
         if (_selectedImage?.id != image.id) return;
         AppAccentController.instance.applyAdaptiveSeed(Color(palette.seed));
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         // 取色失败静默降级：保持当前主题不变
       }
     }());
@@ -1303,6 +2276,7 @@ class StudioViewModel extends ChangeNotifier
   }
 
   void setStripMetadata(bool value) {
+    ImagePrivacySettings.stripMetadata = value;
     if (_config.stripMetadata == value) return;
     _config = _config.copyWith(stripMetadata: value);
     notifyListeners();
@@ -1351,7 +2325,8 @@ class StudioViewModel extends ChangeNotifier
       );
       updateWatermarkConfig(config.copyWith(posX: posX, posY: posY));
       return true;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return false;
     }
   }
@@ -1386,21 +2361,24 @@ class StudioViewModel extends ChangeNotifier
     if (metadata.model != null && metadata.model!.isNotEmpty) {
       try {
         resolvedModel = NaiModel.fromId(metadata.model!);
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     NaiSampler? resolvedSampler;
     if (metadata.sampler != null && metadata.sampler!.isNotEmpty) {
       try {
         resolvedSampler = NaiSampler.fromId(metadata.sampler!);
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     NoiseSchedule? resolvedSchedule;
     if (metadata.noiseSchedule != null && metadata.noiseSchedule!.isNotEmpty) {
       try {
         resolvedSchedule = NoiseSchedule.fromId(metadata.noiseSchedule!);
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     // 转换角色提示词
@@ -1510,6 +2488,14 @@ class StudioViewModel extends ChangeNotifier
   void setChatStreamingForTesting(bool streaming) {
     _isChatStreaming = streaming;
     notifyListeners();
+  }
+
+  @override
+  void notifyListeners() {
+    // 大量异步尾部（账号刷新、生图收尾、资料库扫描）可能在 dispose 后返回；
+    // 统一在这里拦截，避免 debug 断言崩溃与 release 下的无效重建。
+    if (_disposed) return;
+    super.notifyListeners();
   }
 
   @override

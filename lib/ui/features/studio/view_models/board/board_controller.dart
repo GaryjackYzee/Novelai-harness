@@ -1001,7 +1001,8 @@ class BoardController extends ChangeNotifier {
             mimeType: payload.mimeType,
           ),
         );
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         final payload = await compressVisionImage(mainBytes);
         messageImages.add(
           AgentMessageImage(

@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import '../../../data/models/novelai_models.dart';
@@ -480,7 +481,8 @@ class SetPromptLibraryPreviewTool extends AgentTool {
     if (loader != null) {
       try {
         bytes = await loader(image);
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         bytes = null;
       }
     }
@@ -608,7 +610,8 @@ Future<Uint8List> downscalePreviewBytes(
     final data = await rendered.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) return bytes;
     return data.buffer.asUint8List();
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     return bytes;
   }
 }

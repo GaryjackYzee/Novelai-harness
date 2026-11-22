@@ -27,6 +27,12 @@ class GeneralSettingsDraft {
       anySearchKeyController = TextEditingController(
         text: config.anySearchApiKey,
       ),
+      proxyHostController = TextEditingController(text: config.proxyHost),
+      proxyPortController = TextEditingController(text: '${config.proxyPort}'),
+      proxyEnabled = config.proxyEnabled,
+      proxyUseNovelAi = config.proxyUseNovelAi,
+      proxyUseAgent = config.proxyUseAgent,
+      proxyUseGallery = config.proxyUseGallery,
       saveDirController = TextEditingController(text: config.saveDirectory),
       saveTemplateController = TextEditingController(
         text: config.imageSaveTemplate,
@@ -82,6 +88,14 @@ class GeneralSettingsDraft {
 
   /// AnySearch 网络搜索 API Key (可选，空 = 匿名访问)
   final TextEditingController anySearchKeyController;
+
+  /// 全局 HTTP 代理；保存后对新建客户端生效，旧连接需重启应用。
+  final TextEditingController proxyHostController;
+  final TextEditingController proxyPortController;
+  bool proxyEnabled;
+  bool proxyUseNovelAi;
+  bool proxyUseAgent;
+  bool proxyUseGallery;
   final TextEditingController saveDirController;
   final TextEditingController saveTemplateController;
   final ImageSaveContext _savePreviewContext;
@@ -154,6 +168,8 @@ class GeneralSettingsDraft {
   void dispose() {
     naiKeyController.dispose();
     anySearchKeyController.dispose();
+    proxyHostController.dispose();
+    proxyPortController.dispose();
     saveDirController.dispose();
     saveTemplateController.dispose();
     comfyBaseUrlController.dispose();
@@ -209,7 +225,8 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
         _draft.androidExportFolderName = info?.name ?? '';
         if (info == null) _draft.androidExportTreeUri = '';
       });
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       // 校验失败不阻塞设置页；写入时原生侧会再火报错并回退默认图库
     }
   }

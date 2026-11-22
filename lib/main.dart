@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'data/services/config_service.dart';
+import 'data/services/network_proxy_service.dart';
 import 'data/services/tag_dictionary_service.dart';
 import 'data/services/window_state_service.dart';
 import 'l10n/app_localizations.dart';
@@ -87,6 +88,7 @@ Future<bool> _syncControllersFromBootConfig() async {
   try {
     final configService = ConfigService();
     final bootConfig = await configService.loadConfig();
+    NetworkProxyService.instance.configureFromConfig(bootConfig);
     AppThemeModeController.instance.syncFromConfig(bootConfig);
     AppAccentController.instance.syncFromConfig(bootConfig);
     AppLocaleController.instance.syncFromConfig(bootConfig);

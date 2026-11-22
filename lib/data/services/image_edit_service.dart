@@ -1,8 +1,9 @@
 library;
 
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -182,7 +183,8 @@ class ImageEditService {
             serverMessage = decoded['message'] as String;
           }
         }
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
       throw Exception(
         serverMessage != null
             ? '服务端响应错误 (HTTP ${response.statusCode}): $serverMessage'
@@ -207,11 +209,13 @@ class ImageEditService {
       );
     }
 
+    final endpointUri = Uri.parse(endpoint);
     for (final candidate in candidates) {
       final bytes = await _resolveCandidate(
         candidate,
         headers: headers,
         timeout: timeout,
+        providerUri: endpointUri,
       );
       if (bytes != null) {
         return ImageEditResult(
@@ -224,29 +228,84 @@ class ImageEditService {
     throw Exception('绘图模型返回的图片数据无法解析或下载。');
   }
 
-  /// 下载或解码单个图片候选 (data URL 解码 / http 链接下载)，失败返回 null
+  /// 单张图片下载上限 (防止恶意/异常响应把内存打满)
+  static const int maxDownloadBytes = 32 * 1024 * 1024;
+
+  /// 是否为回环/内网/元数据地址。跨域下载时禁止访问，避免 SSRF。
+  static bool isPrivateHost(String host) {
+    final h = host.trim().toLowerCase();
+    if (h.isEmpty) return true;
+    if (h == 'localhost' || h.endsWith('.localhost')) return true;
+    if (h == 'metadata.google.internal') return true;
+    if (h == '::1' || h == '[::1]' || h == '0.0.0.0') return true;
+    final parts = h.split('.');
+    if (parts.length != 4) return false;
+    final nums = <int>[];
+    for (final part in parts) {
+      final n = int.tryParse(part);
+      if (n == null || n < 0 || n > 255) return false;
+      nums.add(n);
+    }
+    if (nums[0] == 10 || nums[0] == 127 || nums[0] == 0) return true;
+    if (nums[0] == 169 && nums[1] == 254) return true;
+    if (nums[0] == 172 && nums[1] >= 16 && nums[1] <= 31) return true;
+    if (nums[0] == 192 && nums[1] == 168) return true;
+    return false;
+  }
+
+  /// 下载候选图片。**只允许向与配置端点同源的主机发送鉴权头**；
+  /// 跨域链接只做无凭据的匿名下载，且禁止内网/回环/非 https 目标。
   Future<Uint8List?> _resolveCandidate(
     String candidate, {
     required Map<String, String> headers,
     required Duration timeout,
+    required Uri providerUri,
   }) async {
     if (candidate.startsWith('data:')) {
+      // data URL 先做长度上限，避免超长 base64 在 base64Decode 前就把内存打满。
+      if (candidate.length > maxDownloadBytes * 4 ~/ 3 + 1024) return null;
       final commaIdx = candidate.indexOf(',');
       if (commaIdx < 0) return null;
       final bytes = base64TryDecode(candidate.substring(commaIdx + 1));
-      if (bytes == null || !looksLikeImage(bytes)) return null;
+      if (bytes == null ||
+          bytes.length > maxDownloadBytes ||
+          !looksLikeImage(bytes)) {
+        return null;
+      }
       return bytes;
     }
     if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
       try {
+        final uri = Uri.parse(candidate);
+        final sameOrigin =
+            uri.host.toLowerCase() == providerUri.host.toLowerCase() &&
+            uri.port == providerUri.port;
+        if (!sameOrigin) {
+          if (uri.scheme != 'https') return null;
+          if (isPrivateHost(uri.host)) return null;
+        }
+        final downloadHeaders = <String, String>{'Accept': 'image/*'};
+        if (sameOrigin) {
+          // 仅复制鉴权相关头；不要把 JSON 的 Content-Type 带到图片 GET 上。
+          for (final entry in headers.entries) {
+            final key = entry.key.toLowerCase();
+            if (key == 'authorization' ||
+                key == 'x-api-key' ||
+                key == 'x-goog-api-key') {
+              downloadHeaders[entry.key] = entry.value;
+            }
+          }
+        }
         final resp = await _client
-            .get(Uri.parse(candidate), headers: headers)
+            .get(uri, headers: downloadHeaders)
             .timeout(timeout);
         if (resp.statusCode != 200) return null;
-        final bytes = resp.bodyBytes;
-        if (!looksLikeImage(bytes)) return null;
-        return bytes;
-      } catch (_) {
+        final body = resp.bodyBytes;
+        if (body.length > maxDownloadBytes) return null;
+        if (!looksLikeImage(body)) return null;
+        return body;
+      } catch (error) {
+    debugPrint('[ignored] $error');
         return null;
       }
     }
@@ -379,7 +438,8 @@ class ImageEditService {
   static Uint8List? base64TryDecode(String input) {
     try {
       return base64Decode(input.trim());
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }

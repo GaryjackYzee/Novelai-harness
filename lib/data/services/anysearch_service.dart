@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/anysearch_models.dart';
+import 'network_proxy_service.dart';
 
 /// AnySearch 官方 REST 服务 (https://api.anysearch.com)
 ///
@@ -18,7 +19,8 @@ import '../models/anysearch_models.dart';
 class AnySearchService {
   static final AnySearchService instance = AnySearchService._();
 
-  AnySearchService._() : _client = http.Client();
+  AnySearchService._()
+    : _client = NetworkProxyService.instance.createClient(NetworkFeature.agent);
 
   /// 测试或自定义部署用构造
   AnySearchService.forTesting({http.Client? client, String? baseUrl})

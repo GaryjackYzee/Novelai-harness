@@ -1,3 +1,4 @@
+
 part of 'studio_view_model.dart';
 
 /// Agent Harness 装配 / LLM 与思考强度切换 / 预设技能工具 CRUD
@@ -27,10 +28,23 @@ mixin _StudioHarnessMixin on _StudioCore {
         getCurrentParams: () => _params,
         onBeforeGenerate: () {
           agentWasViewingLatest = isViewingLatest;
+          ImagePrivacySettings.stripMetadata = effectiveStripMetadata;
+          ImagePrivacySettings.stripStealth = effectiveStripStealth;
+          // 立即点亮生成中状态：非流式请求在完成前没有任何进度回调。
+          _isStartingGeneration = false;
+          _isGenerating = true;
+          notifyListeners();
           if (_params.seedTiming == NaiSeedTiming.before) {
             _applySeedMutationBefore();
             notifyListeners();
           }
+        },
+        stripMetadataOverride: () => effectiveStripMetadata,
+        onFinished: () {
+          _isStartingGeneration = false;
+          _isGenerating = false;
+          _liveProgressController.clear();
+          notifyListeners();
         },
         onProgress: (progress) {
           if (progress.isFinal) {
@@ -52,6 +66,7 @@ mixin _StudioHarnessMixin on _StudioCore {
         },
         onGenerated: (image) {
           _isGenerating = false;
+          _isStartingGeneration = false;
           _liveProgressController.clear();
           _applyGeneratedImage(
             image,
@@ -66,6 +81,7 @@ mixin _StudioHarnessMixin on _StudioCore {
         },
         onConfirmPaidGeneration: _confirmPaidGeneration,
         getAccountInfo: () => _accountInfo,
+        isBusy: () => _isGenerating || _isStartingGeneration,
       ),
     );
     _toolRegistry.register(
@@ -78,6 +94,8 @@ mixin _StudioHarnessMixin on _StudioCore {
         },
         getAccountInfo: () => _accountInfo,
         onConfirmPaidUpscale: _confirmPaidUpscale,
+        isBusy: () => _isGenerating || _isStartingGeneration,
+        getAllowedRoots: () => _agentReadableRoots,
       ),
     );
     _toolRegistry.register(
@@ -86,6 +104,8 @@ mixin _StudioHarnessMixin on _StudioCore {
         configService: _configService,
         getCurrentParams: () => _params,
         onBeforeGenerate: () => agentWasViewingLatest = isViewingLatest,
+        isBusy: () => _isGenerating || _isStartingGeneration,
+        getAllowedRoots: () => _agentReadableRoots,
         onProgress: (progress) {
           if (progress.isFinal) {
             _liveProgressController.complete();
@@ -133,6 +153,7 @@ mixin _StudioHarnessMixin on _StudioCore {
           );
           notifyListeners();
         },
+        getAllowedRoots: () => _agentReadableRoots,
       ),
     );
     _toolRegistry.register(
@@ -163,10 +184,80 @@ mixin _StudioHarnessMixin on _StudioCore {
     );
     _toolRegistry.register(AskUserTool(onAsk: _presentQuestionsToUser));
     _toolRegistry.register(
+      LibraryQueryTool(getLibraryDir: () => libraryEffectiveDir),
+    );
+    _toolRegistry.register(
+      CharacterTagTool(confirmChange: _confirmCharacterTagChange),
+    );
+    _toolRegistry.register(
+      GrepTool(
+        listFiles: () => _libraryService.list(libraryEffectiveDir),
+        readFile: (file) async =>
+            (await _libraryService.read(file.path)).text,
+      ),
+    );
+    _toolRegistry.register(
+      Wd14TagTool(
+        tagImage: ({required String source, double? threshold}) =>
+            source == 'chat'
+                ? tagLastChatImageWithWd14(threshold: threshold)
+                : tagCurrentCanvasWithWd14(threshold: threshold),
+        applyTags: applyWd14Tags,
+      ),
+    );
+    _toolRegistry.register(
+      ReflectionTool(
+        listEntries: () => reflections,
+        addEntry:
+            ({
+              required String title,
+              required String summary,
+              required List<String> lessons,
+              required String source,
+            }) => addReflection(
+              title: title,
+              summary: summary,
+              lessons: lessons,
+              source: source,
+            ),
+        removeEntry: removeReflection,
+      ),
+    );
+    _toolRegistry.register(
+      MemoryTool(
+        getEntries: () => memoryEntries,
+        addEntry: addMemoryEntry,
+        removeEntry: removeMemoryEntry,
+      ),
+    );
+    _toolRegistry.register(
       NovelAiGetStudioParamsTool(
         getCurrentParams: () => _params,
         resolveEffectivePrompts: (params) =>
             resolveStudioEffectivePrompts(params, isComfyUi: isComfyUiMode),
+        getAuxReport: () {
+          final buffer = StringBuffer();
+          final preset = activeStylePreset;
+          if (stylePresets.isEmpty) {
+            buffer.write('\n\n画风串固定选项: (未配置)');
+          } else {
+            buffer.writeln('\n\n画风串固定选项:');
+            buffer.writeln(
+              '当前选择: ${preset?.name ?? '未选择'}',
+            );
+            for (final item in stylePresets) {
+              buffer.writeln(
+                '- ${item.name}${item.id == activeStylePresetId ? ' [已选]' : ''}',
+              );
+              buffer.writeln('  正面: ${item.positive}');
+              buffer.writeln('  负面: ${item.negative}');
+              buffer.writeln(
+                '  出图后去除元数据/隐写: ${item.stripMetadata || item.stripStealth ? '是' : '否'}',
+              );
+            }
+          }
+          return buffer.toString();
+        },
       ),
     );
     _toolRegistry.register(
@@ -175,12 +266,17 @@ mixin _StudioHarnessMixin on _StudioCore {
         onUpdateParams: updateParams,
         permissionChecker: (key) =>
             _harness.currentPreset.isParamModifiable(key),
+        useCanvasAsImg2img: useSelectedImageAsImg2imgSource,
+        clearImg2img: () => setImg2imgSource(null),
+        addCanvasAsReference: useSelectedImageAsReference,
+        clearReferenceImages: clearReferenceImages,
       ),
     );
     _toolRegistry.register(
       NovelAiListCharacterPromptsTool(
         getCharacterPrompts: () => _params.characterPrompts,
         getAiPosition: () => _params.characterAiPosition,
+        sanitizeText: (text) => _params.textForAgent(text),
       ),
     );
     _toolRegistry.register(
@@ -267,7 +363,11 @@ mixin _StudioHarnessMixin on _StudioCore {
         // 内存缺失时从磁盘缓存回载大图字节，避免刚重启后的空字节
         loadImageBytes: ensureImageLoaded,
         savePreviewBytes: savePromptPreviewFromBytes,
-        copyPreviewFromPath: savePromptPreviewFromPath,
+        copyPreviewFromPath: (path) async {
+          // 模型只能从应用管理目录内取预览图，不能借预览复制任意本地文件。
+          if (!isPathInsideRoots(path, _agentReadableRoots)) return null;
+          return savePromptPreviewFromPath(path);
+        },
       ),
     );
     _toolRegistry.register(
@@ -315,6 +415,7 @@ mixin _StudioHarnessMixin on _StudioCore {
         baseUrl: activeLlm.fullEndpointUrl,
         apiKey: activeLlm.apiKey,
         model: activeModel.id,
+        client: NetworkProxyService.instance.createClient(NetworkFeature.agent),
         reasoning: isReasoningActive,
         // 思考等级始终透传 (含 off)：Qwen/DeepSeek/Z.ai 等格式的端点
         // 关闭思考也需要显式发送 disabled 参数，不能靠省略字段
@@ -337,10 +438,12 @@ mixin _StudioHarnessMixin on _StudioCore {
         (p) => p.id == _harness.currentPreset.id,
         orElse: () => _config.presets.isNotEmpty
             ? _config.presets.first
-            : BuiltinPresets.v5Architect,
+            : BuiltinPresets.v5FullExpert,
       ),
     );
     _harness.setPreset(activePreset);
+    // 长期记忆摘要注入：Harness 只通过回调读取，避免 core 层反向依赖 UI/ViewModel。
+    _harness.memoryEntriesProvider = () => memoryEntries;
 
     // 长程配置：单次对话最大工具轮数 (设置页 Defaults 可调)
     _harness.maxTurns = _config.agentMaxTurns;
@@ -348,6 +451,7 @@ mixin _StudioHarnessMixin on _StudioCore {
     _harness.contextWindowTokens = activeModel.contextWindow;
     _harness.compactionEnabled = _config.agentCompactionEnabled;
     _harness.backgroundCompactionEnabled = _config.agentBackgroundCompaction;
+    _harness.persistentImages = _config.agentPersistentImages;
     _harness.compactionProvider = null;
     _harness.compactionModelWindowTokens = activeModel.contextWindow;
     final summaryProvider = _config.llmProviders
@@ -368,6 +472,7 @@ mixin _StudioHarnessMixin on _StudioCore {
         baseUrl: summaryProvider.fullEndpointUrl,
         apiKey: summaryProvider.apiKey,
         model: summaryModel.id,
+        client: NetworkProxyService.instance.createClient(NetworkFeature.agent),
         reasoning:
             compactionEffort != null && compactionEffort != ThinkingEffort.none,
         thinkingEffort: compactionEffort?.id,
@@ -522,7 +627,8 @@ mixin _StudioHarnessMixin on _StudioCore {
         try {
           await _saveSkill(installed, requireNew: true);
           return installed;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           await _discardSkillPackage(installed);
           rethrow;
         }
@@ -586,7 +692,8 @@ mixin _StudioHarnessMixin on _StudioCore {
     _config = next;
     try {
       await _configService.saveConfig(next);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       if (identical(_config, next)) _config = previous;
       rethrow;
     }

@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/danbooru_search_models.dart';
 import '../models/tag_models.dart';
+import 'network_proxy_service.dart';
 
 /// DanbooruSearch 在线语义检索服务 (SAkizuki/DanbooruSearch HF Space 公开 API)
 ///
@@ -18,7 +21,8 @@ import '../models/tag_models.dart';
 class DanbooruSearchService {
   static final DanbooruSearchService instance = DanbooruSearchService._();
 
-  DanbooruSearchService._() : _client = http.Client();
+  DanbooruSearchService._()
+    : _client = NetworkProxyService.instance.createClient(NetworkFeature.agent);
 
   /// 测试或自定义部署用构造
   DanbooruSearchService.forTesting({http.Client? client, String? baseUrl})
@@ -201,7 +205,8 @@ class DanbooruSearchService {
       if (resp.statusCode != 200) return false;
       final j = jsonDecode(utf8.decode(resp.bodyBytes));
       return j is Map && j['loaded'] == true;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return false;
     }
   }

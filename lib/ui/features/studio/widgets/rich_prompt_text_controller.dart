@@ -1,11 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../../../data/services/prompt_ast_engine.dart';
 import '../../../../data/services/tag_dictionary_service.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 
-/// 数值权重染色区域：从 `N::` 头标记延伸到下一个 `::`
-/// (无论它是闭合尾标记还是下一个权重的头标记)，跨逗号生效；
-/// 若后续再无 `::` 则延伸到文本末尾
+/// 跨逗号权重染色区域：
+/// - 数值权重 `N::`：从 `N::` 头标记延伸到下一个 `::` (闭合尾标记或
+///   下一个权重的头标记)，若后续再无 `::` 则延伸到文本末尾
+/// - 括号权重 `{}` / `[]`：最外层配对括号的整个区间
 @immutable
 class _WeightRegion {
   final int start;
@@ -24,8 +27,20 @@ class _WeightRegion {
       rangeStart < end && rangeEnd > start;
 }
 
-/// 扫描整段文本的跨逗号数值权重区域
+/// 扫描整段文本的跨逗号权重区域
+///
+/// 包含两类：
+/// - 数值权重 `N::`：头标记延伸到下一个 `::` (头尾标记均可) 或文本末尾
+/// - 括号权重 `{}` / `[]`：最外层配对括号整体作为区域，跨逗号连续染色
 List<_WeightRegion> _scanWeightRegions(String text) {
+  return [
+    ..._scanNumericWeightRegions(text),
+    ..._scanBracketWeightRegions(text),
+  ];
+}
+
+/// 扫描整段文本的跨逗号数值权重区域 `N::`
+List<_WeightRegion> _scanNumericWeightRegions(String text) {
   final regions = <_WeightRegion>[];
   final headPattern = RegExp(r'(-?\d+(?:\.\d+)?)::');
   var consumed = 0;
@@ -57,11 +72,88 @@ List<_WeightRegion> _scanWeightRegions(String text) {
   return regions;
 }
 
+/// 扫描跨逗号的括号权重区域 `{...}` / `[...]`
+///
+/// 只保留最外层括号配对：嵌套括号由外层区域一并覆盖，避免同一段文本被
+/// 重复叠加；倍率按 [PromptAstEngine] 剥离外层括号的规则计算净档数，
+/// 例如 `{{tag1,tag2}}` 为 +2 档、`[[tag1,tag2]]` 为 -2 档，
+/// 净档数为 0 的混合权重 (如 `[{tag}]`) 不产生区域，保持原有未染色行为。
+List<_WeightRegion> _scanBracketWeightRegions(String text) {
+  final regions = <_WeightRegion>[];
+  final openStack = <(int, String)>[];
+
+  for (var i = 0; i < text.length; i++) {
+    final char = text[i];
+    if (char == '{' || char == '[') {
+      openStack.add((i, char));
+      continue;
+    }
+    if (char != '}' && char != ']') continue;
+    if (openStack.isEmpty) continue;
+
+    final (openIndex, openChar) = openStack.last;
+    final matchesOpen =
+        (char == '}' && openChar == '{') || (char == ']' && openChar == '[');
+    if (!matchesOpen) continue;
+
+    openStack.removeLast();
+    // 内层配对由更外层的括号区域覆盖，等最外层闭合时再记录
+    if (openStack.isNotEmpty) continue;
+
+    final level = _bracketWeightLevel(text, openIndex, i + 1);
+    if (level == 0) continue;
+    // 整段被 ~...~ 禁用包裹时不施加权重底纹，保持禁用标签的淡灰观感
+    final disabledWrap =
+        openIndex > 0 &&
+        text[openIndex - 1] == '~' &&
+        i + 1 < text.length &&
+        text[i + 1] == '~';
+    if (disabledWrap) continue;
+    regions.add(
+      _WeightRegion(
+        start: openIndex,
+        end: i + 1,
+        multiplier: math.pow(1.05, level).toDouble(),
+      ),
+    );
+  }
+  return regions;
+}
+
+/// 计算括号区域的净档数 (与 PromptAstEngine 剥离外层括号的规则一致)
+int _bracketWeightLevel(String text, int start, int end) {
+  bool isSpace(String c) => c == ' ' || c == '\t' || c == '\n' || c == '\r';
+
+  var level = 0;
+  var a = start;
+  var b = end;
+
+  while (b - a >= 2) {
+    if (text[a] == '{' && text[b - 1] == '}') {
+      level++;
+    } else if (text[a] == '[' && text[b - 1] == ']') {
+      level--;
+    } else {
+      break;
+    }
+    a++;
+    b--;
+    while (a < b && isSpace(text[a])) {
+      a++;
+    }
+    while (b > a && isSpace(text[b - 1])) {
+      b--;
+    }
+  }
+  return level;
+}
+
 /// NovelAI 富文本提示词语法高亮控制器
 ///
 /// 特性：
 /// - 实时解析 NovelAI 权重语法 (`{}` / `[]` / `N::tag::`) 并施加柔和微调底色/文字染色
 /// - 未闭合的 `N::` 权重跨逗号染色，直到下一个 `::` (头尾标记均可) 或文本末尾
+/// - `{}` / `[]` 括号权重可跨逗号连续染色，支持嵌套括号
 /// - 语法记号 (`::`, `{}`, `[]`, `~`) 采用 45% 透明度淡显
 /// - 禁用标签 `~tag~` 自动添加中划线 (strikethrough) 与淡灰色彩
 /// - 标签分类着色 (画师紫色、角色绿色、作品粉色、元标签橙色、通用默认)

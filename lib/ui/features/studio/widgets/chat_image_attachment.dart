@@ -50,7 +50,8 @@ Future<AgentMessageImage?> processImageAttachment(Uint8List rawBytes) async {
     target.dispose();
     if (imageBytes == null || imageBytes.isEmpty) return null;
     return AgentMessageImage.fromBytes(bytes: imageBytes);
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     return null;
   }
 }

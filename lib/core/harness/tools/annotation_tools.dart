@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
@@ -432,7 +432,8 @@ class ViewImageAnnotationsTool extends AgentTool {
           );
           finalImageBytes = rendered.bytes;
           overlayApplied = true;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           finalImageBytes = imageBytes;
         }
       } else {

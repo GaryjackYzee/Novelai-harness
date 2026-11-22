@@ -52,6 +52,8 @@ const List<SlashCommandDef> kSlashCommands = [
   SlashCommandDef('/tag', '<关键词>', '查询 Danbooru 官方标签联想'),
   SlashCommandDef('/account', '', '查询账号等级与 V5 专属体力池'),
   SlashCommandDef('/compact', '', '手动压缩对话上下文 (摘要替换更早消息，原始消息仍保留)'),
+  SlashCommandDef('/dream', '', '梦境整理：回顾会话与长期记忆，合并偏好并写回记忆'),
+  SlashCommandDef('/reflect', '', '自迭代复盘：总结错误与有效做法，写回记忆并给出技能补丁建议'),
   SlashCommandDef('/new', '<标题>', '新建一个空白会话 (可附带标题)'),
   SlashCommandDef('/undo', '', '撤回上一条用户消息到输入框 (不自动发送，回复与参数修改一并回滚)'),
   SlashCommandDef('/rename', '<标题>', '重命名当前会话'),

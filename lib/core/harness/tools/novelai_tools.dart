@@ -1,4 +1,6 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../types.dart';
 import '../../../data/models/novelai_models.dart';
@@ -6,6 +8,7 @@ import '../../../data/repositories/novelai_repository.dart';
 import '../../../data/services/anlas_calculator.dart';
 import '../../../data/services/config_service.dart';
 import 'agent_tool.dart';
+import 'tool_path_guard.dart';
 
 /// 回调类型，用于生图成功后通知 UI 刷新画板
 typedef OnImageGeneratedCallback = void Function(NaiGeneratedImage image);
@@ -67,6 +70,15 @@ class NovelAiGenerateTool extends AgentTool {
   final CurrentAccountInfoGetter? getAccountInfo;
   final OnBeforeGenerateCallback? onBeforeGenerate;
 
+  /// 生成时是否去除元数据（画风组勾选优先于设置页开关）。
+  final bool Function()? stripMetadataOverride;
+
+  /// 工具结束（成功/失败/取消）时回调，用于复位 UI 的生成中状态。
+  final void Function()? onFinished;
+
+  /// 工作台是否正在生图/超分；用于阻止 Agent 与手动操作并发扣费。
+  final bool Function()? isBusy;
+
   NovelAiGenerateTool({
     required this.repository,
     required this.configService,
@@ -76,6 +88,9 @@ class NovelAiGenerateTool extends AgentTool {
     this.onConfirmPaidGeneration,
     this.getAccountInfo,
     this.onBeforeGenerate,
+    this.onFinished,
+    this.stripMetadataOverride,
+    this.isBusy,
   }) : super(
          name: 'novelai_generate',
          label: '图像生成',
@@ -90,6 +105,13 @@ class NovelAiGenerateTool extends AgentTool {
     Map<String, dynamic> args,
   ) async {
     try {
+      if (isBusy?.call() ?? false) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: '错误：工作台正在生成/放大图片，本次工具调用已拒绝，请等待完成后再试。',
+          isError: true,
+        );
+      }
       final config = await configService.loadConfig();
       if (config.novelAiKey.trim().isEmpty) {
         return ToolResult(
@@ -108,15 +130,17 @@ class NovelAiGenerateTool extends AgentTool {
         );
       }
 
-      // 预计消耗闸门: 账号信息未加载且参数超出免费区间时先在线拉取，避免误判
+      // 预计消耗闸门：免费判定必须来自真实账号权益。参数在免费区间
+      // 不等于账号是 Opus；拿不到账号信息时按“无法估算”处理并要求确认。
       var account = getAccountInfo?.call();
-      if (account == null && !params.isOpusFree) {
+      if (account == null) {
         try {
           account = await repository.fetchAccountInfo(
             apiKey: config.novelAiKey,
           );
-        } catch (_) {
-          // 拉取失败时按保守策略继续 (走参数区间判定)
+        } catch (error) {
+    debugPrint('[ignored] $error');
+          // 拉取失败时保持 account == null，走保守的“需确认”分支
         }
       }
       final estimatedCost = account != null
@@ -125,7 +149,7 @@ class NovelAiGenerateTool extends AgentTool {
               isOpus: account.isOpus,
               opusQuotaExhausted: account.v5QuotaExhausted,
             )
-          : (params.isOpusFree ? 0 : AnlasCalculator.invalidCost);
+          : AnlasCalculator.invalidCost;
 
       // 检查是否需要扣费: 预计消耗非零时向用户申请确认
       if (estimatedCost != 0) {
@@ -169,7 +193,7 @@ class NovelAiGenerateTool extends AgentTool {
           maxImages: config.maxPersistentImages,
           autoSave: config.autoSaveImages,
           imageSaveTemplate: config.imageSaveTemplate,
-          stripMetadata: config.stripMetadata,
+          stripMetadata: stripMetadataOverride?.call() ?? config.stripMetadata,
           enableWatermark: config.enableWatermark,
           keepOriginalImage: config.keepOriginalImage,
           watermarkConfig: config.watermarkConfig,
@@ -180,6 +204,8 @@ class NovelAiGenerateTool extends AgentTool {
           onProgress?.call(p);
           if (p.isFinal && p.generatedImage != null) {
             resultImage = p.generatedImage;
+            // 拿到最终图就结束，不再等待流关闭（否则可能被空闲超时误判失败）。
+            break;
           }
         }
       } else {
@@ -191,7 +217,7 @@ class NovelAiGenerateTool extends AgentTool {
           maxImages: config.maxPersistentImages,
           autoSave: config.autoSaveImages,
           imageSaveTemplate: config.imageSaveTemplate,
-          stripMetadata: config.stripMetadata,
+          stripMetadata: stripMetadataOverride?.call() ?? config.stripMetadata,
           enableWatermark: config.enableWatermark,
           keepOriginalImage: config.keepOriginalImage,
           watermarkConfig: config.watermarkConfig,
@@ -246,6 +272,8 @@ class NovelAiGenerateTool extends AgentTool {
         content: '生图失败: $e',
         isError: true,
       );
+    } finally {
+      onFinished?.call();
     }
   }
 }
@@ -258,12 +286,20 @@ class NovelAiUpscaleTool extends AgentTool {
   final CurrentAccountInfoGetter? getAccountInfo;
   final OnConfirmPaidUpscaleCallback? onConfirmPaidUpscale;
 
+  /// 工作台是否正在生图/超分；用于阻止 Agent 与手动操作并发扣费。
+  final bool Function()? isBusy;
+
+  /// 允许读取的本地目录（保存目录/资料库）。为空时拒绝 image_path。
+  final List<String> Function()? getAllowedRoots;
+
   NovelAiUpscaleTool({
     required this._repository,
     required this._configService,
     this._onUpscaled,
     this.getAccountInfo,
     this.onConfirmPaidUpscale,
+    this.isBusy,
+    this.getAllowedRoots,
   }) : super(
          name: 'novelai_upscale',
          label: 'NovelAI 图像超分放大',
@@ -287,6 +323,13 @@ class NovelAiUpscaleTool extends AgentTool {
     Map<String, dynamic> args,
   ) async {
     try {
+      if (isBusy?.call() ?? false) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: '错误：工作台正在生成/放大图片，本次工具调用已拒绝，请等待完成后再试。',
+          isError: true,
+        );
+      }
       final config = await _configService.loadConfig();
       if (config.novelAiKey.trim().isEmpty) {
         return ToolResult(
@@ -300,19 +343,26 @@ class NovelAiUpscaleTool extends AgentTool {
 
       NaiGeneratedImage? targetImage;
       if (imagePath != null && imagePath.isNotEmpty) {
-        final file = File(imagePath);
-        if (file.existsSync()) {
-          final bytes = await file.readAsBytes();
-          targetImage = NaiGeneratedImage(
-            id: 'file_${DateTime.now().millisecondsSinceEpoch}',
-            bytes: bytes,
-            localFilePath: imagePath,
-            params: const NaiGenerationParams(prompt: 'Upscaled Image'),
-            createdAt: DateTime.now(),
-            seed: 0,
-            isOpusFree: false,
+        final read = await readAgentImagePath(
+          imagePath,
+          getAllowedRoots?.call() ?? const <String>[],
+        );
+        if (read.error != null) {
+          return ToolResult(
+            toolCallId: toolCallId,
+            content: '错误：${read.error}',
+            isError: true,
           );
         }
+        targetImage = NaiGeneratedImage(
+          id: 'file_${DateTime.now().millisecondsSinceEpoch}',
+          bytes: read.bytes!,
+          localFilePath: imagePath,
+          params: const NaiGenerationParams(prompt: 'Upscaled Image'),
+          createdAt: DateTime.now(),
+          seed: 0,
+          isOpusFree: false,
+        );
       }
 
       if (targetImage == null && _repository.history.isNotEmpty) {
@@ -337,27 +387,40 @@ class NovelAiUpscaleTool extends AgentTool {
       final dims = await AnlasCalculator.decodeImageDimensions(
         targetImage.bytes,
       );
+      if (dims == null) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: '错误：无法读取待放大图片的尺寸，已取消超分（不能确认计费）。',
+          isError: true,
+        );
+      }
       var account = getAccountInfo?.call();
       if (account == null) {
         try {
           account = await _repository.fetchAccountInfo(
             apiKey: config.novelAiKey,
           );
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           // 拉取失败时按非 Opus 保守估算
         }
       }
-      final upscaleCost = dims == null
-          ? AnlasCalculator.invalidCost
-          : AnlasCalculator.estimateUpscaleCost(
-              inputWidth: dims.width,
-              inputHeight: dims.height,
-              isOpus: account?.isOpus ?? false,
-            );
+      final upscaleCost = AnlasCalculator.estimateUpscaleCost(
+        inputWidth: dims.width,
+        inputHeight: dims.height,
+        isOpus: account?.isOpus ?? false,
+      );
+      if (upscaleCost == AnlasCalculator.invalidCost) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: '错误：输入尺寸 ${dims.width}x${dims.height} 超出官方超分计费上限，已取消。',
+          isError: true,
+        );
+      }
       if (upscaleCost > 0 && onConfirmPaidUpscale != null) {
         final confirmed = await onConfirmPaidUpscale!(
           estimatedCost: upscaleCost,
-          inputWidth: dims!.width,
+          inputWidth: dims.width,
           inputHeight: dims.height,
         );
         if (!confirmed) {
@@ -388,9 +451,7 @@ class NovelAiUpscaleTool extends AgentTool {
 
       _onUpscaled?.call(upscaled);
 
-      final costSuffix = dims == null
-          ? ''
-          : '\n点数消耗: ${AnlasCalculator.describeCost(upscaleCost)}';
+      final costSuffix = '\n点数消耗: ${AnlasCalculator.describeCost(upscaleCost)}';
       final saveSuffix = upscaled.isUnsaved
           ? '\n状态: 未保存 (已进入缓存，可在画板右下角手动保存)'
           : '\n保存路径: ${upscaled.localFilePath ?? '内存中'}';

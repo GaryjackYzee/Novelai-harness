@@ -293,7 +293,8 @@ class TagDictionaryUpdateService {
       try {
         final dir = await _baseDir();
         await _touchLastCheck(dir, await loadMeta());
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
   }
 
@@ -411,7 +412,8 @@ class TagDictionaryUpdateService {
       // 清理 sqlite 临时文件
       try {
         if (await sqliteTemp.exists()) await sqliteTemp.delete();
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
   }
 

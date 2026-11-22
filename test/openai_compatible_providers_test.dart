@@ -686,36 +686,36 @@ void main() {
     });
   });
 
-  test('Gemini 4 Argon defaults and Google Interactions endpoint resolution', () {
-    final google = _provider('google');
-    final argon = google.models.firstWhere((m) => m.id == 'gemini-4-argon');
-    expect(argon.reasoning, isTrue);
-    expect(argon.supportsThinkingOff, isFalse);
-    expect(
-      argon.supportedThinkingLevels,
-      equals(const [
-        ThinkingEffort.low,
-        ThinkingEffort.medium,
-        ThinkingEffort.high,
-      ]),
-    );
+  test(
+    'Gemini 4 Argon defaults and Google Interactions endpoint resolution',
+    () {
+      final google = _provider('google');
+      final argon = google.models.firstWhere((m) => m.id == 'gemini-4-argon');
+      expect(argon.reasoning, isTrue);
+      expect(argon.supportsThinkingOff, isFalse);
+      expect(
+        argon.supportedThinkingLevels,
+        equals(const [
+          ThinkingEffort.low,
+          ThinkingEffort.medium,
+          ThinkingEffort.high,
+        ]),
+      );
 
-    final interactionsGoogle = google.copyWith(
-      protocol: LlmProtocol.googleInteractions,
-    );
-    expect(
-      interactionsGoogle.fullEndpointUrl,
-      'https://generativelanguage.googleapis.com/v1beta/interactions',
-    );
-    expect(
-      LlmModelFetcher.calculateModelsEndpoint(
-        interactionsGoogle.baseUrl,
-        LlmProtocol.googleInteractions,
-      ),
-      'https://generativelanguage.googleapis.com/v1beta/models',
-    );
-  });
+      final interactionsGoogle = google.copyWith(
+        protocol: LlmProtocol.googleInteractions,
+      );
+      expect(
+        interactionsGoogle.fullEndpointUrl,
+        'https://generativelanguage.googleapis.com/v1beta/interactions',
+      );
+      expect(
+        LlmModelFetcher.calculateModelsEndpoint(
+          interactionsGoogle.baseUrl,
+          LlmProtocol.googleInteractions,
+        ),
+        'https://generativelanguage.googleapis.com/v1beta/models',
+      );
+    },
+  );
 }
-
-
-

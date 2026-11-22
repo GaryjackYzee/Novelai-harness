@@ -13,10 +13,12 @@ import '../../../core/widgets/app_async_icon_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_icon_button.dart';
+import '../../../core/widgets/stable_edge_selection.dart';
 import 'chat_context_status.dart';
 import 'chat_image_attachment.dart';
 import 'slash_command_overlay.dart';
 import '../view_models/studio_view_model.dart';
+import 'chat_queue_dialog.dart';
 
 /// Agent 对话卡底部控制与输入区:
 /// 模型/思考强度一体化胶囊卡片 + 消息输入框与发送按钮
@@ -47,6 +49,7 @@ class _PendingAttachment {
 
 class _AgentChatInputBarState extends State<AgentChatInputBar> {
   final TextEditingController _inputController = TextEditingController();
+  final ScrollController _inputScrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
   final GlobalKey _inputFieldKey = GlobalKey();
   final LayerLink _layerLink = LayerLink();
@@ -64,6 +67,39 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
 
   /// 按 Esc 后记录当前输入，避免同类补全立即重新弹出
   String _dismissedToken = '';
+
+  Widget _buildQueueBar() {
+    final queue = widget.viewModel.queuedChatMessages;
+    if (queue.isEmpty) return const SizedBox.shrink();
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: () => ChatQueueDialog.show(context, widget.viewModel),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: colors.mutedBackground,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.queue, size: 14, color: colors.textSecondary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  context.l10n.queueBarLabel(queue.length),
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 14, color: colors.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   /// 手机端辅助抽屉（思考档位 / 上下文用量）是否展开，默认折叠隐藏
   bool _auxDrawerExpanded = false;
@@ -164,6 +200,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     _inputController.removeListener(_updateSlashSuggestions);
     _inputFocusNode.removeListener(_handleInputFocusChanged);
     _inputController.dispose();
+    _inputScrollController.dispose();
     _inputFocusNode.dispose();
     super.dispose();
   }
@@ -204,17 +241,28 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     }
     // 生成中 Enter 仍表示发送，但不把草稿发出去，也不当成停止。
     // 停止用原发送键位置上的停止按钮，或 Esc。
-    if (widget.viewModel.isChatStreaming) {
-      return KeyEventResult.handled;
-    }
     _handleSend();
     return KeyEventResult.handled;
   }
 
   void _handleSend() {
     if (_isComposing) return;
-    // 流式生成中不重复发送，避免双监听把同一缓冲写出重复文本
-    if (widget.viewModel.isChatStreaming) return;
+    if (widget.viewModel.isChatStreaming) {
+      final queued = _inputController.text.trim();
+      final attachments = List<_PendingAttachment>.of(_pendingAttachments);
+      if (queued.isEmpty && attachments.isEmpty) return;
+      _inputController.clear();
+      widget.viewModel.updateChatDraft('');
+      setState(() => _pendingAttachments.clear());
+      widget.viewModel.queueChatMessage(
+        queued,
+        images: attachments.isEmpty
+            ? null
+            : [for (final a in attachments) a.image],
+      );
+      _showNotice(context.l10n.queueQueuedToast);
+      return;
+    }
     final text = _inputController.text.trim();
     final attachments = List<_PendingAttachment>.of(_pendingAttachments);
     if (text.isEmpty && attachments.isEmpty) return;
@@ -566,6 +614,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
 
           // 待发送图片附件缩略图栏 (粘贴/选择文件后显示)
           _buildAttachmentPreview(),
+          _buildQueueBar(),
 
           _buildMessageComposer(),
         ],
@@ -745,11 +794,16 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
         // 焦点冒泡先处理补全，避免 Enter 被外层发送快捷键抢走。
         child: Focus(
           onKeyEvent: _handleSlashKey,
-          child: TextField(
-            key: _inputFieldKey,
-            controller: _inputController,
-            focusNode: _inputFocusNode,
-            minLines: 1,
+          child: StableEdgeSelection(
+            controller: _inputScrollController,
+            child: TextField(
+              key: _inputFieldKey,
+              controller: _inputController,
+              focusNode: _inputFocusNode,
+              scrollController: _inputScrollController,
+              scrollPhysics: const StableSelectionScrollPhysics(),
+              scrollPadding: EdgeInsets.zero,
+              minLines: 1,
             maxLines: widget.compact ? 3 : 6,
             style: TextStyle(
               fontSize: widget.compact ? 15 : 14,
@@ -771,6 +825,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
+            ),
             ),
           ),
         ),

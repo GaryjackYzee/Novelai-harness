@@ -20,6 +20,9 @@ class _InlineAgentQuestionCardState extends State<InlineAgentQuestionCard> {
   late final List<Set<int>> _selectedIndices;
   late final List<TextEditingController> _customControllers;
 
+  /// 用户改写的选项文本：qIndex -> optIdx -> label。
+  final Map<int, Map<int, String>> _editedLabels = {};
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +55,29 @@ class _InlineAgentQuestionCardState extends State<InlineAgentQuestionCard> {
     return true;
   }
 
+  String _labelFor(int qIndex, int optIdx, AgentQuestionOption option) =>
+      _editedLabels[qIndex]?[optIdx] ?? option.label;
+
+  Future<void> _editOptionLabel(
+    int qIndex,
+    int optIdx,
+    AgentQuestionOption option,
+  ) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => _EditOptionDialog(
+        title: context.l10n.askCardEditOption,
+        initialValue: _labelFor(qIndex, optIdx, option),
+        hintText: option.label,
+        cancelLabel: context.l10n.askCardCancel,
+        saveLabel: context.l10n.askCardSubmit,
+      ),
+    );
+    final label = result?.trim();
+    if (label == null || label.isEmpty) return;
+    setState(() => (_editedLabels[qIndex] ??= {})[optIdx] = label);
+  }
+
   void _submit() {
     if (!_isAllAnswered) return;
     final answers = <String>[];
@@ -64,7 +90,9 @@ class _InlineAgentQuestionCardState extends State<InlineAgentQuestionCard> {
         answers.add(custom);
       } else {
         final labels =
-            _selectedIndices[i].map((idx) => q.options[idx].label).toList()
+            _selectedIndices[i]
+                .map((idx) => _labelFor(i, idx, q.options[idx]))
+                .toList()
               ..sort();
         answers.add(labels.join('、'));
       }
@@ -409,7 +437,7 @@ class _InlineAgentQuestionCardState extends State<InlineAgentQuestionCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    option.label,
+                    _labelFor(qIndex, optIdx, option),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isSelected
@@ -427,9 +455,79 @@ class _InlineAgentQuestionCardState extends State<InlineAgentQuestionCard> {
                 ],
               ),
             ),
+            IconButton(
+              tooltip: context.l10n.askCardEditOption,
+              onPressed: () => _editOptionLabel(qIndex, optIdx, option),
+              icon: const Icon(Icons.edit_outlined, size: 14),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+              color: colors.textMuted,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _EditOptionDialog extends StatefulWidget {
+  final String title;
+  final String initialValue;
+  final String hintText;
+  final String cancelLabel;
+  final String saveLabel;
+
+  const _EditOptionDialog({
+    required this.title,
+    required this.initialValue,
+    required this.hintText,
+    required this.cancelLabel,
+    required this.saveLabel,
+  });
+
+  @override
+  State<_EditOptionDialog> createState() => _EditOptionDialogState();
+}
+
+class _EditOptionDialogState extends State<_EditOptionDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          border: const OutlineInputBorder(),
+        ),
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(widget.cancelLabel),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(widget.saveLabel),
+        ),
+      ],
     );
   }
 }

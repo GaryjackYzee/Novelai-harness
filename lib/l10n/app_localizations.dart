@@ -6805,6 +6805,1434 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'工具'**
   String get toolFallbackName;
+
+  /// No description provided for @type.
+  ///
+  /// In zh, this message translates to:
+  /// **'String'**
+  String get type;
+
+  /// No description provided for @tabSources.
+  ///
+  /// In zh, this message translates to:
+  /// **'图源'**
+  String get tabSources;
+
+  /// No description provided for @sourcesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'图源画廊'**
+  String get sourcesTitle;
+
+  /// No description provided for @sourcesAitag.
+  ///
+  /// In zh, this message translates to:
+  /// **'AITag'**
+  String get sourcesAitag;
+
+  /// No description provided for @sourcesCodex.
+  ///
+  /// In zh, this message translates to:
+  /// **'法典'**
+  String get sourcesCodex;
+
+  /// No description provided for @sourcesSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索作品或提示词…'**
+  String get sourcesSearchHint;
+
+  /// No description provided for @sourcesApply.
+  ///
+  /// In zh, this message translates to:
+  /// **'套用到工作台'**
+  String get sourcesApply;
+
+  /// No description provided for @sourcesCategoryAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get sourcesCategoryAll;
+
+  /// No description provided for @sourcesCodexPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {page} / {pages} 页 · {total} 条'**
+  String sourcesCodexPage(Object page, Object pages, Object total);
+
+  /// No description provided for @sourcesEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有结果'**
+  String get sourcesEmpty;
+
+  /// No description provided for @sourcesLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载失败：{message}'**
+  String sourcesLoadFailed(Object message);
+
+  /// No description provided for @sourcesLoadMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加载…'**
+  String get sourcesLoadMore;
+
+  /// No description provided for @sourcesPickCodex.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择法典'**
+  String get sourcesPickCodex;
+
+  /// No description provided for @sourcesDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期'**
+  String get sourcesDate;
+
+  /// No description provided for @sourcesSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'尺寸'**
+  String get sourcesSize;
+
+  /// No description provided for @sourcesSteps.
+  ///
+  /// In zh, this message translates to:
+  /// **'步数'**
+  String get sourcesSteps;
+
+  /// No description provided for @sourcesSampler.
+  ///
+  /// In zh, this message translates to:
+  /// **'采样器'**
+  String get sourcesSampler;
+
+  /// No description provided for @sourcesSeed.
+  ///
+  /// In zh, this message translates to:
+  /// **'种子'**
+  String get sourcesSeed;
+
+  /// No description provided for @sourcesPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'提示词'**
+  String get sourcesPrompt;
+
+  /// No description provided for @sourcesNegative.
+  ///
+  /// In zh, this message translates to:
+  /// **'负面提示词'**
+  String get sourcesNegative;
+
+  /// No description provided for @sourcesRating.
+  ///
+  /// In zh, this message translates to:
+  /// **'分级'**
+  String get sourcesRating;
+
+  /// No description provided for @sourcesRatingGeneral.
+  ///
+  /// In zh, this message translates to:
+  /// **'全年龄'**
+  String get sourcesRatingGeneral;
+
+  /// No description provided for @sourcesRatingQuestionable.
+  ///
+  /// In zh, this message translates to:
+  /// **'模糊'**
+  String get sourcesRatingQuestionable;
+
+  /// No description provided for @sourcesRatingExplicit.
+  ///
+  /// In zh, this message translates to:
+  /// **'限制级'**
+  String get sourcesRatingExplicit;
+
+  /// No description provided for @sourcesRatingAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get sourcesRatingAll;
+
+  /// No description provided for @sourcesDanbooruSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载尺寸'**
+  String get sourcesDanbooruSize;
+
+  /// No description provided for @sourcesSizeThumb.
+  ///
+  /// In zh, this message translates to:
+  /// **'缩略'**
+  String get sourcesSizeThumb;
+
+  /// No description provided for @sourcesSizeLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'高清'**
+  String get sourcesSizeLarge;
+
+  /// No description provided for @sourcesSizeOrig.
+  ///
+  /// In zh, this message translates to:
+  /// **'原图'**
+  String get sourcesSizeOrig;
+
+  /// No description provided for @sourcesMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get sourcesMoreActions;
+
+  /// No description provided for @sourcesCopyTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制标签'**
+  String get sourcesCopyTags;
+
+  /// No description provided for @sourcesUseTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'套用标签'**
+  String get sourcesUseTags;
+
+  /// No description provided for @sourcesUseAsSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'作为图生图源图'**
+  String get sourcesUseAsSource;
+
+  /// No description provided for @sourcesUseAsReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'作为 Vibe 参考图'**
+  String get sourcesUseAsReference;
+
+  /// No description provided for @sourcesActionDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制'**
+  String get sourcesActionDone;
+
+  /// No description provided for @sourcesActionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作失败：{message}'**
+  String sourcesActionFailed(Object message);
+
+  /// No description provided for @sourcesNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注'**
+  String get sourcesNote;
+
+  /// No description provided for @sourcesLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地'**
+  String get sourcesLocal;
+
+  /// No description provided for @sourcesFavoritesOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'只看收藏'**
+  String get sourcesFavoritesOnly;
+
+  /// No description provided for @sourcesDanbooru.
+  ///
+  /// In zh, this message translates to:
+  /// **'Danbooru'**
+  String get sourcesDanbooru;
+
+  /// No description provided for @sourcesDanbooruHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索标签，如 1girl solo（默认仅全年龄，加 rating:explicit 查看 R-18）'**
+  String get sourcesDanbooruHint;
+
+  /// No description provided for @sourcesDanbooruEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'Danbooru 没有结果'**
+  String get sourcesDanbooruEmpty;
+
+  /// No description provided for @sourcesDanbooruFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏到本地'**
+  String get sourcesDanbooruFavorite;
+
+  /// No description provided for @sourcesDanbooruFavoriteSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已收藏到本地'**
+  String get sourcesDanbooruFavoriteSaved;
+
+  /// No description provided for @sourcesFavoriteSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已收藏到本地'**
+  String get sourcesFavoriteSaved;
+
+  /// No description provided for @sourcesFavoriteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏失败：{message}'**
+  String sourcesFavoriteFailed(Object message);
+
+  /// No description provided for @sourcesDanbooruFavoriteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏失败：{message}'**
+  String sourcesDanbooruFavoriteFailed(Object message);
+
+  /// No description provided for @sourcesSendToAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到 Agent 对话框'**
+  String get sourcesSendToAgent;
+
+  /// No description provided for @sourcesSentToAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已放入 Agent 对话框'**
+  String get sourcesSentToAgent;
+
+  /// No description provided for @sourcesSendToAgentFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送失败：{message}'**
+  String sourcesSendToAgentFailed(Object message);
+
+  /// No description provided for @sourcesFavoritesTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏'**
+  String get sourcesFavoritesTab;
+
+  /// No description provided for @sourcesFavoritesEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有本地收藏'**
+  String get sourcesFavoritesEmpty;
+
+  /// No description provided for @sourcesUnfavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消收藏'**
+  String get sourcesUnfavorite;
+
+  /// No description provided for @sourcesFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏到本地'**
+  String get sourcesFavorite;
+
+  /// No description provided for @sourcesSendToChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到聊天框'**
+  String get sourcesSendToChat;
+
+  /// No description provided for @sourcesSentToChat.
+  ///
+  /// In zh, this message translates to:
+  /// **'已填入聊天输入框，尚未发送'**
+  String get sourcesSentToChat;
+
+  /// No description provided for @sourcesSendToChatFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送失败：{message}'**
+  String sourcesSendToChatFailed(Object message);
+
+  /// No description provided for @sourcesNothingToSend.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可发送的提示词或图片'**
+  String get sourcesNothingToSend;
+
+  /// No description provided for @sourcesDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'详情'**
+  String get sourcesDetails;
+
+  /// No description provided for @sourcesScore.
+  ///
+  /// In zh, this message translates to:
+  /// **'评分'**
+  String get sourcesScore;
+
+  /// No description provided for @sourcesTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签'**
+  String get sourcesTags;
+
+  /// No description provided for @sourcesSourceUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'来源'**
+  String get sourcesSourceUrl;
+
+  /// No description provided for @sourcesNoMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有更多了'**
+  String get sourcesNoMore;
+
+  /// No description provided for @sourcesLibrary.
+  ///
+  /// In zh, this message translates to:
+  /// **'资料库'**
+  String get sourcesLibrary;
+
+  /// No description provided for @sourcesLibraryPick.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择文件夹'**
+  String get sourcesLibraryPick;
+
+  /// No description provided for @sourcesLibraryRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get sourcesLibraryRefresh;
+
+  /// No description provided for @sourcesLibraryNotSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有设置资料库目录'**
+  String get sourcesLibraryNotSet;
+
+  /// No description provided for @sourcesLibraryEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个目录里没有可读文档'**
+  String get sourcesLibraryEmpty;
+
+  /// No description provided for @sourcesLibrarySearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索文档内容'**
+  String get sourcesLibrarySearchHint;
+
+  /// No description provided for @sourcesReflections.
+  ///
+  /// In zh, this message translates to:
+  /// **'梳理'**
+  String get sourcesReflections;
+
+  /// No description provided for @sourcesReflectionEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有梳理记录，试试 /reflect 或 /dream'**
+  String get sourcesReflectionEmpty;
+
+  /// No description provided for @sourcesImportDocs.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入文档'**
+  String get sourcesImportDocs;
+
+  /// No description provided for @sourcesImportDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导入 {count} 个文档'**
+  String sourcesImportDone(Object count);
+
+  /// No description provided for @sourcesResetDefaults.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get sourcesResetDefaults;
+
+  /// No description provided for @sourcesDeleteFileTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除资料库文件'**
+  String get sourcesDeleteFileTitle;
+
+  /// No description provided for @sourcesDeleteFileMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」？此操作不可恢复。'**
+  String sourcesDeleteFileMessage(Object name);
+
+  /// No description provided for @sourcesReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取资料库文件失败：{message}'**
+  String sourcesReadFailed(Object message);
+
+  /// No description provided for @sourcesMorePending.
+  ///
+  /// In zh, this message translates to:
+  /// **'（还有更多）'**
+  String get sourcesMorePending;
+
+  /// No description provided for @accountPoolTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅账号池'**
+  String get accountPoolTitle;
+
+  /// No description provided for @accountPoolSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 只保存在本机；切换账号会同步更新工作台密钥。'**
+  String get accountPoolSubtitle;
+
+  /// No description provided for @accountPoolFixed.
+  ///
+  /// In zh, this message translates to:
+  /// **'固定'**
+  String get accountPoolFixed;
+
+  /// No description provided for @accountPoolRotate.
+  ///
+  /// In zh, this message translates to:
+  /// **'轮换'**
+  String get accountPoolRotate;
+
+  /// No description provided for @accountPoolEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有账号，先在下面添加一个。'**
+  String get accountPoolEmpty;
+
+  /// No description provided for @accountPoolDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get accountPoolDefault;
+
+  /// No description provided for @accountPoolTierUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'档位未知'**
+  String get accountPoolTierUnknown;
+
+  /// No description provided for @accountPoolSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{tier} · {anlas} Anlas · V5 {energy}%'**
+  String accountPoolSummary(Object anlas, Object energy, Object tier);
+
+  /// No description provided for @accountPoolSetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认'**
+  String get accountPoolSetDefault;
+
+  /// No description provided for @accountPoolDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除账号'**
+  String get accountPoolDeleteTitle;
+
+  /// No description provided for @accountPoolDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{label}」？其 API Key 将一并移除，无法恢复。'**
+  String accountPoolDeleteMessage(Object label);
+
+  /// No description provided for @accountPoolRemark.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注'**
+  String get accountPoolRemark;
+
+  /// No description provided for @accountPoolAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get accountPoolAdd;
+
+  /// No description provided for @accountPoolRefreshAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新全部'**
+  String get accountPoolRefreshAll;
+
+  /// No description provided for @promptsImg2imgSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'图生图 / 氛围转移'**
+  String get promptsImg2imgSection;
+
+  /// No description provided for @promptsPreciseReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'角色 / 画风参考'**
+  String get promptsPreciseReference;
+
+  /// No description provided for @preciseRefHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'NovelAI Precise Reference：可只参考角色、只参考画风或两者兼顾；与 Vibe 参考互斥，且仅 V4.5 模型支持。'**
+  String get preciseRefHint;
+
+  /// No description provided for @preciseRefUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前模型不支持角色/画风参考。请切换到 NAI Diffusion V4.5 Full 或 Curated。'**
+  String get preciseRefUnsupported;
+
+  /// No description provided for @preciseRefAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择参考图'**
+  String get preciseRefAdd;
+
+  /// No description provided for @preciseRefEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有角色/画风参考图。'**
+  String get preciseRefEmpty;
+
+  /// No description provided for @preciseRefAddFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取所选图片。'**
+  String get preciseRefAddFailed;
+
+  /// No description provided for @preciseRefCharacter.
+  ///
+  /// In zh, this message translates to:
+  /// **'角色'**
+  String get preciseRefCharacter;
+
+  /// No description provided for @preciseRefStyle.
+  ///
+  /// In zh, this message translates to:
+  /// **'画风'**
+  String get preciseRefStyle;
+
+  /// No description provided for @preciseRefBoth.
+  ///
+  /// In zh, this message translates to:
+  /// **'角色+画风'**
+  String get preciseRefBoth;
+
+  /// No description provided for @preciseRefStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'参考强度'**
+  String get preciseRefStrength;
+
+  /// No description provided for @preciseRefFidelity.
+  ///
+  /// In zh, this message translates to:
+  /// **'保真度'**
+  String get preciseRefFidelity;
+
+  /// No description provided for @dockAccountPool.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号池'**
+  String get dockAccountPool;
+
+  /// No description provided for @chatImageBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已阻止加载外部图片'**
+  String get chatImageBlocked;
+
+  /// No description provided for @paramsSectionImg2img.
+  ///
+  /// In zh, this message translates to:
+  /// **'图生图'**
+  String get paramsSectionImg2img;
+
+  /// No description provided for @paramsImg2imgStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'源图强度'**
+  String get paramsImg2imgStrength;
+
+  /// No description provided for @paramsSelectFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择文件'**
+  String get paramsSelectFile;
+
+  /// No description provided for @paramsImg2imgNoise.
+  ///
+  /// In zh, this message translates to:
+  /// **'附加噪声'**
+  String get paramsImg2imgNoise;
+
+  /// No description provided for @paramsImg2imgUseCanvas.
+  ///
+  /// In zh, this message translates to:
+  /// **'用画板当前图'**
+  String get paramsImg2imgUseCanvas;
+
+  /// No description provided for @paramsImg2imgClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除源图'**
+  String get paramsImg2imgClear;
+
+  /// No description provided for @paramsVibeReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'Vibe 参考'**
+  String get paramsVibeReference;
+
+  /// No description provided for @paramsVibeAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加参考'**
+  String get paramsVibeAdd;
+
+  /// No description provided for @paramsVibeClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空参考'**
+  String get paramsVibeClear;
+
+  /// No description provided for @paramsVibeStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'参考强度'**
+  String get paramsVibeStrength;
+
+  /// No description provided for @paramsVibeInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'提取信息量'**
+  String get paramsVibeInfo;
+
+  /// No description provided for @paramsImg2imgEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置源图'**
+  String get paramsImg2imgEmpty;
+
+  /// No description provided for @paramsVibeEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'未添加参考图'**
+  String get paramsVibeEmpty;
+
+  /// No description provided for @paramsCanvasEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'画板还没有可用的图片'**
+  String get paramsCanvasEmpty;
+
+  /// No description provided for @settingsSectionNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络代理'**
+  String get settingsSectionNetwork;
+
+  /// No description provided for @settingsProxyEnabledTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 HTTP 代理'**
+  String get settingsProxyEnabledTitle;
+
+  /// No description provided for @settingsProxyEnabledSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'影响 Danbooru、图源、NovelAI 与 Agent 请求；可分别关闭各功能代理。保存后建议重启应用。'**
+  String get settingsProxyEnabledSubtitle;
+
+  /// No description provided for @settingsProxyHostTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理地址'**
+  String get settingsProxyHostTitle;
+
+  /// No description provided for @settingsProxyHostHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'主机名或 IP，例如 127.0.0.1'**
+  String get settingsProxyHostHint;
+
+  /// No description provided for @settingsProxyPortTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理端口'**
+  String get settingsProxyPortTitle;
+
+  /// No description provided for @settingsProxyRestartHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅支持 HTTP 代理；保存后新建请求生效，已建立连接需重启应用。'**
+  String get settingsProxyRestartHint;
+
+  /// No description provided for @settingsProxyInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理地址或端口无效'**
+  String get settingsProxyInvalid;
+
+  /// No description provided for @settingsProxyUseNovelAiTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'生图走代理'**
+  String get settingsProxyUseNovelAiTitle;
+
+  /// No description provided for @settingsProxyUseNovelAiSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后 NovelAI 生图、超分与 AI 编辑请求直连。'**
+  String get settingsProxyUseNovelAiSubtitle;
+
+  /// No description provided for @settingsProxyUseAgentTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'Agent 走代理'**
+  String get settingsProxyUseAgentTitle;
+
+  /// No description provided for @settingsProxyUseAgentSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后 Agent 大模型 API 与联网工具直连。'**
+  String get settingsProxyUseAgentSubtitle;
+
+  /// No description provided for @settingsProxyUseGalleryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'图源走代理'**
+  String get settingsProxyUseGalleryTitle;
+
+  /// No description provided for @settingsProxyUseGallerySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后 Danbooru、AITag、法典及其图片直连。'**
+  String get settingsProxyUseGallerySubtitle;
+
+  /// No description provided for @promptOutputTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'输出'**
+  String get promptOutputTitle;
+
+  /// No description provided for @promptKeepMetadata.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留元数据（取消勾选则清除）'**
+  String get promptKeepMetadata;
+
+  /// No description provided for @promptKeepStealth.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留隐写（取消勾选则清除）'**
+  String get promptKeepStealth;
+
+  /// No description provided for @promptStripTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'正面 tag（出图后从元数据/隐写中去除）'**
+  String get promptStripTags;
+
+  /// No description provided for @promptStripNegativeTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'负面 tag（出图后从元数据/隐写中去除）'**
+  String get promptStripNegativeTags;
+
+  /// No description provided for @canvasGeneratingDiscard.
+  ///
+  /// In zh, this message translates to:
+  /// **'丢弃'**
+  String get canvasGeneratingDiscard;
+
+  /// No description provided for @canvasGeneratingDiscardTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'终止并丢弃本次生成'**
+  String get canvasGeneratingDiscardTooltip;
+
+  /// No description provided for @canvasGeneratingBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'转后台'**
+  String get canvasGeneratingBackground;
+
+  /// No description provided for @canvasGeneratingBackgroundTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续生成，但从画布隐藏'**
+  String get canvasGeneratingBackgroundTooltip;
+
+  /// No description provided for @canvasGeneratingInBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片正在后台生成'**
+  String get canvasGeneratingInBackground;
+
+  /// No description provided for @canvasGeneratingInBackgroundDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时预览已隐藏，完成后会自动加入历史。'**
+  String get canvasGeneratingInBackgroundDescription;
+
+  /// No description provided for @viewGeneration.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看生成'**
+  String get viewGeneration;
+
+  /// No description provided for @vmGenCacheFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片已生成，但原图缓存写入失败；请检查保存目录，或换一个目录后手动保存。'**
+  String get vmGenCacheFailed;
+
+  /// No description provided for @vmGenMovedToBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成已转入后台，完成后会自动加入历史。'**
+  String get vmGenMovedToBackground;
+
+  /// No description provided for @slashDreamEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有可整理的会话，先聊几句再来做梦。'**
+  String get slashDreamEmpty;
+
+  /// No description provided for @slashDreamPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'现在进入「梦境整理」。请先调用 memory 工具列出长期记忆，然后完成：\n1. 合并重复/冲突的偏好与设定；\n2. 提炼可复用的经验（有效的提示词结构、参数偏好、失败教训）；\n3. 用 memory 工具 add/remove，只保留最有价值的条目；\n4. 用 reflection 工具 add 写入一条梳理串（source=dream，title/summary/lessons）；\n5. 用 3-5 行总结这次梦境整理。'**
+  String get slashDreamPrompt;
+
+  /// No description provided for @slashReflectPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'现在做一次「自迭代复盘」。请完成：\n1. 回顾本次会话里理解错误、被用户纠正、或效果特别好的地方；\n2. 提炼 1-3 条可执行经验，用 memory 工具写入；\n3. 如果同类问题反复出现，给出一份 SKILL.md 补丁建议（不要直接修改技能或预设，除非用户确认）；\n4. 用 reflection 工具 add 写入一条梳理串（source=reflect，title/summary/lessons）；\n5. 用简短清单汇报。'**
+  String get slashReflectPrompt;
+
+  /// No description provided for @settingsTabNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络'**
+  String get settingsTabNetwork;
+
+  /// No description provided for @settingsProxyIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里配置 HTTP 代理。开启后，下面的功能开关决定哪些请求走代理。'**
+  String get settingsProxyIntro;
+
+  /// No description provided for @settingsProxyPerFeatureTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'功能代理选择'**
+  String get settingsProxyPerFeatureTitle;
+
+  /// No description provided for @settingsProxyPerFeatureHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭某个开关 = 该功能直连，不经过代理。'**
+  String get settingsProxyPerFeatureHint;
+
+  /// No description provided for @settingsProxyDisabledHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'先启用上方代理，再选择各功能是否走代理。'**
+  String get settingsProxyDisabledHint;
+
+  /// No description provided for @proxyFeatureNovelAi.
+  ///
+  /// In zh, this message translates to:
+  /// **'生图代理'**
+  String get proxyFeatureNovelAi;
+
+  /// No description provided for @proxyFeatureAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'Agent 代理'**
+  String get proxyFeatureAgent;
+
+  /// No description provided for @proxyFeatureGallery.
+  ///
+  /// In zh, this message translates to:
+  /// **'图源代理'**
+  String get proxyFeatureGallery;
+
+  /// No description provided for @proxyFeatureOnHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}当前走代理，点击改为直连'**
+  String proxyFeatureOnHint(Object label);
+
+  /// No description provided for @proxyFeatureOffHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}当前直连，点击改为走代理'**
+  String proxyFeatureOffHint(Object label);
+
+  /// No description provided for @proxyEnableFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先在 设置 → 网络 启用全局代理'**
+  String get proxyEnableFirst;
+
+  /// No description provided for @queueTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息队列'**
+  String get queueTitle;
+
+  /// No description provided for @queuePause.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停发送队列'**
+  String get queuePause;
+
+  /// No description provided for @queueResume.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复发送队列'**
+  String get queueResume;
+
+  /// No description provided for @queueHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成结束后按顺序自动发送；可拖动排序、编辑或立即发送。'**
+  String get queueHint;
+
+  /// No description provided for @queueEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'队列为空'**
+  String get queueEmpty;
+
+  /// No description provided for @queueEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑排队消息'**
+  String get queueEditTitle;
+
+  /// No description provided for @queueOnlyImages.
+  ///
+  /// In zh, this message translates to:
+  /// **'（仅图片）'**
+  String get queueOnlyImages;
+
+  /// No description provided for @queueImagesCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 张图片'**
+  String queueImagesCount(int count);
+
+  /// No description provided for @queueBarLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'队列 {count} 条 · 点击管理'**
+  String queueBarLabel(int count);
+
+  /// No description provided for @queueQueuedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成中，已加入队列'**
+  String get queueQueuedToast;
+
+  /// No description provided for @commonSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get commonSave;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get commonCancel;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get commonClose;
+
+  /// No description provided for @commonAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get commonAdd;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get commonEdit;
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get commonDelete;
+
+  /// No description provided for @styleCardTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'画风串固定选项'**
+  String get styleCardTitle;
+
+  /// No description provided for @styleSelectHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择画风组'**
+  String get styleSelectHint;
+
+  /// No description provided for @styleNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'不使用画风串'**
+  String get styleNone;
+
+  /// No description provided for @styleAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加画风串'**
+  String get styleAddTitle;
+
+  /// No description provided for @styleEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑画风串'**
+  String get styleEditTitle;
+
+  /// No description provided for @styleName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get styleName;
+
+  /// No description provided for @stylePositive.
+  ///
+  /// In zh, this message translates to:
+  /// **'正面 tag'**
+  String get stylePositive;
+
+  /// No description provided for @styleNegative.
+  ///
+  /// In zh, this message translates to:
+  /// **'负面 tag'**
+  String get styleNegative;
+
+  /// No description provided for @styleStripAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'出图后从元数据中去除画风组 tag（保留其他 tag）'**
+  String get styleStripAll;
+
+  /// No description provided for @styleInMetadata.
+  ///
+  /// In zh, this message translates to:
+  /// **'画风串写入导出元数据'**
+  String get styleInMetadata;
+
+  /// No description provided for @styleTagLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'画风串'**
+  String get styleTagLabel;
+
+  /// No description provided for @wd14Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'在线 WD14 反推'**
+  String get wd14Title;
+
+  /// No description provided for @wd14Run.
+  ///
+  /// In zh, this message translates to:
+  /// **'反推当前图片'**
+  String get wd14Run;
+
+  /// No description provided for @wd14Running.
+  ///
+  /// In zh, this message translates to:
+  /// **'反推中…'**
+  String get wd14Running;
+
+  /// No description provided for @wd14Pick.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择图片反推'**
+  String get wd14Pick;
+
+  /// No description provided for @wd14Apply.
+  ///
+  /// In zh, this message translates to:
+  /// **'写入正面提示词'**
+  String get wd14Apply;
+
+  /// No description provided for @wd14Applied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已写入正面提示词'**
+  String get wd14Applied;
+
+  /// No description provided for @wd14Settings.
+  ///
+  /// In zh, this message translates to:
+  /// **'端点与阈值'**
+  String get wd14Settings;
+
+  /// No description provided for @wd14Endpoint.
+  ///
+  /// In zh, this message translates to:
+  /// **'WD14 端点'**
+  String get wd14Endpoint;
+
+  /// No description provided for @wd14Token.
+  ///
+  /// In zh, this message translates to:
+  /// **'Token（可空）'**
+  String get wd14Token;
+
+  /// No description provided for @wd14Threshold.
+  ///
+  /// In zh, this message translates to:
+  /// **'阈值 {value}'**
+  String wd14Threshold(String value);
+
+  /// No description provided for @queueSendNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即发送'**
+  String get queueSendNow;
+
+  /// No description provided for @acctTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅账号池'**
+  String get acctTitle;
+
+  /// No description provided for @acctHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 只保存在本机；切换账号会同步更新工作台密钥。'**
+  String get acctHint;
+
+  /// No description provided for @acctFixed.
+  ///
+  /// In zh, this message translates to:
+  /// **'固定'**
+  String get acctFixed;
+
+  /// No description provided for @acctRotate.
+  ///
+  /// In zh, this message translates to:
+  /// **'轮换'**
+  String get acctRotate;
+
+  /// No description provided for @acctDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get acctDefault;
+
+  /// No description provided for @acctSetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认'**
+  String get acctSetDefault;
+
+  /// No description provided for @acctLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注'**
+  String get acctLabel;
+
+  /// No description provided for @acctKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key'**
+  String get acctKey;
+
+  /// No description provided for @acctEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有账号，先在下面添加一个。'**
+  String get acctEmpty;
+
+  /// No description provided for @acctUnknownTier.
+  ///
+  /// In zh, this message translates to:
+  /// **'档位未知'**
+  String get acctUnknownTier;
+
+  /// No description provided for @acctRefreshAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新全部'**
+  String get acctRefreshAll;
+
+  /// No description provided for @acctTierAnlasEnergy.
+  ///
+  /// In zh, this message translates to:
+  /// **'{tier} · {anlas} Anlas · V5 {energy}%'**
+  String acctTierAnlasEnergy(String tier, int anlas, int energy);
+
+  /// No description provided for @libImport.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入文档'**
+  String get libImport;
+
+  /// No description provided for @libResetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get libResetDefault;
+
+  /// No description provided for @accountPoolApiKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key'**
+  String get accountPoolApiKey;
+
+  /// No description provided for @libImportedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导入 {count} 个文档'**
+  String libImportedCount(int count);
+
+  /// No description provided for @settingsTabExtensions.
+  ///
+  /// In zh, this message translates to:
+  /// **'扩展'**
+  String get settingsTabExtensions;
+
+  /// No description provided for @settingsExtAccounts.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号池管理'**
+  String get settingsExtAccounts;
+
+  /// No description provided for @settingsExtQueue.
+  ///
+  /// In zh, this message translates to:
+  /// **'消息队列'**
+  String get settingsExtQueue;
+
+  /// No description provided for @settingsExtHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'WD14 反推与画风串在「提示词」页使用。'**
+  String get settingsExtHint;
+
+  /// No description provided for @bannedWordsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'对 Agent 隐藏屏蔽词'**
+  String get bannedWordsTitle;
+
+  /// No description provided for @bannedWordsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'只影响返回给 Agent 的参数文本；编辑框与生成请求保持原文。'**
+  String get bannedWordsSubtitle;
+
+  /// No description provided for @bannedWordsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'每行一个，或用逗号分隔'**
+  String get bannedWordsHint;
+
+  /// No description provided for @settingsAgentPersistentImages.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片持久发送'**
+  String get settingsAgentPersistentImages;
+
+  /// No description provided for @settingsAgentPersistentImagesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。'**
+  String get settingsAgentPersistentImagesHint;
+
+  /// No description provided for @settingsSessionMaxCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话保留数量'**
+  String get settingsSessionMaxCount;
+
+  /// No description provided for @settingsSessionMaxCountHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'最多保留多少个会话文件，超出时删除最旧的（至少保留 1 个）。'**
+  String get settingsSessionMaxCountHint;
+
+  /// No description provided for @settingsSessionRetentionDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话保留天数'**
+  String get settingsSessionRetentionDays;
+
+  /// No description provided for @settingsSessionRetentionDaysHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'超过该天数的会话会被清理；最新会话始终保留。'**
+  String get settingsSessionRetentionDaysHint;
+
+  /// No description provided for @promptStripAllTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除全部数据（元数据 + 隐写）'**
+  String get promptStripAllTitle;
+
+  /// No description provided for @dockBatchCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量'**
+  String get dockBatchCount;
+
+  /// No description provided for @askCardEditOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改选项文本'**
+  String get askCardEditOption;
+
+  /// No description provided for @settingsProxyTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试代理'**
+  String get settingsProxyTest;
+
+  /// No description provided for @settingsProxyTestRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试中…'**
+  String get settingsProxyTestRunning;
+
+  /// No description provided for @settingsProxyTestResult.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理测试结果：'**
+  String get settingsProxyTestResult;
+
+  /// No description provided for @vmCharTagConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认人物 tag 修改'**
+  String get vmCharTagConfirmTitle;
+
+  /// No description provided for @vmCharTagConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认写入'**
+  String get vmCharTagConfirm;
+
+  /// No description provided for @vmCharTagCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get vmCharTagCancel;
 }
 
 class _AppLocalizationsDelegate

@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
@@ -39,7 +40,8 @@ abstract final class ImageThumbnailService {
       } finally {
         frame.image.dispose();
       }
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     } finally {
       codec?.dispose();

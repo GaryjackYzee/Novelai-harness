@@ -10,17 +10,29 @@
   "chatContextEstimate": "上下文 ≈{tokens} / {window}",
   "@chatContextEstimate": {
     "placeholders": {
-      "tokens": {"type": "int"},
-      "window": {"type": "int"}
+      "tokens": {
+        "type": "int"
+      },
+      "window": {
+        "type": "int"
+      }
     }
   },
   "chatContextShort": "上下文 {percent}%",
   "@chatContextShort": {
-    "placeholders": {"percent": {"type": "int"}}
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
   },
   "chatContextNotes": "笔记 {count}",
   "@chatContextNotes": {
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "chatContextCompacting": "后台压缩中",
   "chatContextFailed": "压缩失败",
@@ -152,7 +164,9 @@
   "settingsImageCount": "{count} 张",
   "@settingsImageCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "settingsSectionTagAutocomplete": "Danbooru 标签补全",
@@ -169,14 +183,20 @@
   "dictOnlineInfo": "在线词库 {count} 条 · 更新于 {date}",
   "@dictOnlineInfo": {
     "placeholders": {
-      "count": { "type": "int" },
-      "date": { "type": "String" }
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
     }
   },
   "dictBuiltinInfo": "内置词库 {count} 条",
   "@dictBuiltinInfo": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dictBuiltinLoading": "内置词库 (加载中)",
@@ -186,7 +206,9 @@
   "dictUpdateFailed": "更新失败: {error}",
   "@dictUpdateFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "settingsModelSettings": "模型设置",
@@ -197,7 +219,9 @@
   "settingsModelBadgeContext": "{tokens} 上下文",
   "@settingsModelBadgeContext": {
     "placeholders": {
-      "tokens": { "type": "String" }
+      "tokens": {
+        "type": "String"
+      }
     }
   },
   "settingsAddModel": "添加模型",
@@ -218,28 +242,38 @@
   "settingsNewProviderDefaultName": "新供应商 {index}",
   "@settingsNewProviderDefaultName": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "settingsFetchModelsEnterBaseUrl": "请先填写有效的 API 基础 URL",
   "settingsFetchModelsSuccess": "成功拉取 {count} 个模型",
   "@settingsFetchModelsSuccess": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "settingsFetchModelsSuccessWithEnriched": "成功拉取 {count} 个模型，{enrichedCount} 个已匹配 models.dev 元数据",
   "@settingsFetchModelsSuccessWithEnriched": {
     "placeholders": {
-      "count": { "type": "int" },
-      "enrichedCount": { "type": "int" }
+      "count": {
+        "type": "int"
+      },
+      "enrichedCount": {
+        "type": "int"
+      }
     }
   },
   "settingsEndpointUrlNotConfigured": "未配置 URL",
   "settingsFullEndpoint": "完整接口地址: {endpoint}",
   "@settingsFullEndpoint": {
     "placeholders": {
-      "endpoint": { "type": "String" }
+      "endpoint": {
+        "type": "String"
+      }
     }
   },
   "settingsSectionProviderSelection": "服务商选择",
@@ -270,7 +304,9 @@
   "settingsImageEditUnrecognizedModel": "{modelId} (未识别为绘图模型)",
   "@settingsImageEditUnrecognizedModel": {
     "placeholders": {
-      "modelId": { "type": "String" }
+      "modelId": {
+        "type": "String"
+      }
     }
   },
   "settingsImageEditTip": "整图编辑不消耗 Anlas 点数，计费走绘图模型供应商；未识别到能力的模型可在模型设置中手动开启「图像输出」",
@@ -283,8 +319,12 @@
   "settingsModelCount": "{current} / {total} 个模型",
   "@settingsModelCount": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "settingsNoModelsInProvider": "当前供应商暂无模型",
@@ -292,7 +332,9 @@
   "settingsNoMatchingModels": "没有匹配 \"{query}\" 的模型",
   "@settingsNoMatchingModels": {
     "placeholders": {
-      "query": { "type": "String" }
+      "query": {
+        "type": "String"
+      }
     }
   },
   "settingsBadgeBuiltin": "内置",
@@ -312,7 +354,9 @@
   "presetNewName": "新预设 {index}",
   "@presetNewName": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "presetNewDescription": "自定义 Agent 预设描述",
@@ -320,13 +364,17 @@
   "presetDuplicateName": "{name} (副本)",
   "@presetDuplicateName": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "presetExportSkillSuccess": "已导出技能包 {name}",
   "@presetExportSkillSuccess": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "presetBuiltinNotice": "内置预设为出厂定义，每次启动以代码为准自动刷新，不支持直接修改。需要定制请先点击「复制」生成副本。",
@@ -361,7 +409,9 @@
   "skillDialogEditTitle": "编辑 Skill ({name})",
   "@skillDialogEditTitle": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "skillEditorTabStructured": "结构化编辑",
@@ -417,14 +467,18 @@
   "toolDialogSchemaTitle": "工具 Schema ({label})",
   "@toolDialogSchemaTitle": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "toolDialogNewTitle": "新建自定义工具",
   "toolDialogEditTitle": "编辑自定义工具 ({label})",
   "@toolDialogEditTitle": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "toolFieldId": "标识",
@@ -440,7 +494,9 @@
   "toolFieldOutputTemplateHint": "如：已成功执行并构建结果：{placeholder}",
   "@toolFieldOutputTemplateHint": {
     "placeholders": {
-      "placeholder": { "type": "String" }
+      "placeholder": {
+        "type": "String"
+      }
     }
   },
   "toolSave": "保存工具",
@@ -448,7 +504,9 @@
   "toolSchemaParseError": "Schema JSON 解析失败: {error}",
   "@toolSchemaParseError": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "settingsSaveButton": "保存设置",
@@ -471,7 +529,9 @@
   "settingsDefaultScaleSubtitle": "提示词引导强度 (当前: {scale})",
   "@settingsDefaultScaleSubtitle": {
     "placeholders": {
-      "scale": { "type": "String" }
+      "scale": {
+        "type": "String"
+      }
     }
   },
   "settingsSectionAgentLoop": "助手循环",
@@ -485,8 +545,12 @@
   "billSummaryRequestsAndTokens": "{requests} 次请求 · 总计 {tokens} tokens",
   "@billSummaryRequestsAndTokens": {
     "placeholders": {
-      "requests": { "type": "int" },
-      "tokens": { "type": "String" }
+      "requests": {
+        "type": "int"
+      },
+      "tokens": {
+        "type": "String"
+      }
     }
   },
   "billEmptyRecords": "该周期内暂无用量记录",
@@ -513,8 +577,12 @@
   "paramsSeedTooltip": "种子设置 ({mode} · {timing})",
   "@paramsSeedTooltip": {
     "placeholders": {
-      "mode": { "type": "String" },
-      "timing": { "type": "String" }
+      "mode": {
+        "type": "String"
+      },
+      "timing": {
+        "type": "String"
+      }
     }
   },
   "paramsSeedModeRandomShort": "随机",
@@ -551,7 +619,9 @@
   "watermarkPickImageFailed": "选择图片失败: {error}",
   "@watermarkPickImageFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "watermarkPositionTopLeft": "左上",
@@ -567,7 +637,9 @@
   "watermarkPositionPillLabel": "位置: {position}",
   "@watermarkPositionPillLabel": {
     "placeholders": {
-      "position": { "type": "String" }
+      "position": {
+        "type": "String"
+      }
     }
   },
   "watermarkAutoPosition": "自动选位",
@@ -590,14 +662,20 @@
   "watermarkOverlayScale": "缩放: {scale}%",
   "@watermarkOverlayScale": {
     "placeholders": {
-      "scale": { "type": "String" }
+      "scale": {
+        "type": "String"
+      }
     }
   },
   "watermarkOverlayPosition": "位置: {x}%, {y}%",
   "@watermarkOverlayPosition": {
     "placeholders": {
-      "x": { "type": "int" },
-      "y": { "type": "int" }
+      "x": {
+        "type": "int"
+      },
+      "y": {
+        "type": "int"
+      }
     }
   },
   "promptsPageTitle": "提示词管理",
@@ -639,7 +717,9 @@
   "charPromptDefaultName": "角色 {index}",
   "@charPromptDefaultName": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "charPromptNameHint": "角色名称 (可选)",
@@ -702,13 +782,17 @@
   "inpaintSupersample": "{scale}x 超采样",
   "@inpaintSupersample": {
     "placeholders": {
-      "scale": { "type": "String" }
+      "scale": {
+        "type": "String"
+      }
     }
   },
   "inpaintReusedLabel": "已复用 {label}",
   "@inpaintReusedLabel": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "inpaintReusedPromptEmpty": "（内容为空，可至提示词管理页配置）",
@@ -716,7 +800,9 @@
   "inpaintOverlayContextCrop": "上下文外延 +{padding}px",
   "@inpaintOverlayContextCrop": {
     "placeholders": {
-      "padding": { "type": "int" }
+      "padding": {
+        "type": "int"
+      }
     }
   },
   "inpaintOverlayInProgress": "局部修复中...",
@@ -728,7 +814,9 @@
   "canvasImportedReference": "已导入参考图: {fileName}",
   "@canvasImportedReference": {
     "placeholders": {
-      "fileName": { "type": "String" }
+      "fileName": {
+        "type": "String"
+      }
     }
   },
   "canvasDropTargetTitle": "松开鼠标导入图片 (自动识别生成元数据)",
@@ -739,7 +827,9 @@
   "canvasActionViewAnnotation": "查看批注 ({count})",
   "@canvasActionViewAnnotation": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasActionSendToInpaint": "发送到修复",
@@ -776,13 +866,17 @@
   "canvasClearHistoryAutoSaveMessage": "确定要清空画板历史中的 {count} 张图片吗？仅清空界面记录，本地已保存的图片文件会保留，此操作无法撤销。",
   "@canvasClearHistoryAutoSaveMessage": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasClearHistoryManualSaveMessage": "确定要清空历史中的 {count} 张图片吗？缓存中未保存的图片会被删除，已手动保存到存储目录的文件会保留，此操作无法撤销。",
   "@canvasClearHistoryManualSaveMessage": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasHistoryEmpty": "暂无历史",
@@ -793,14 +887,18 @@
   "canvasAnnotateWithCount": "批注 ({count})",
   "@canvasAnnotateWithCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasSaveButtonTooltip": "保存当前图片到本地存储目录 (按导出设置处理元数据与水印)",
   "canvasSavedImage": "已保存: {path}",
   "@canvasSavedImage": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "canvasSaveFailed": "保存失败，请检查存储目录设置",
@@ -824,8 +922,12 @@
   "metadataDimensions": "尺寸: {width} x {height}",
   "@metadataDimensions": {
     "placeholders": {
-      "width": { "type": "String" },
-      "height": { "type": "String" }
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
     }
   },
   "metadataModelUnknown": "未知模型",
@@ -833,27 +935,37 @@
   "metadataModelAndSampler": "模型: {model}  ·  采样: {sampler}",
   "@metadataModelAndSampler": {
     "placeholders": {
-      "model": { "type": "String" },
-      "sampler": { "type": "String" }
+      "model": {
+        "type": "String"
+      },
+      "sampler": {
+        "type": "String"
+      }
     }
   },
   "metadataSeedLabel": "种子: {seed}",
   "@metadataSeedLabel": {
     "placeholders": {
-      "seed": { "type": "String" }
+      "seed": {
+        "type": "String"
+      }
     }
   },
   "metadataCharacterPromptsTitle": "多角色提示词 (Character Prompts)",
   "metadataCharacterIndex": "角色 {index}",
   "@metadataCharacterIndex": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "metadataNegativePrefix": "负向: {negative}",
   "@metadataNegativePrefix": {
     "placeholders": {
-      "negative": { "type": "String" }
+      "negative": {
+        "type": "String"
+      }
     }
   },
   "metadataParametersTitle": "生成参数",
@@ -884,14 +996,20 @@
   "dockAbortWithSteps": "终止生成 ({current}/{total})",
   "@dockAbortWithSteps": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dockGenerateWithCost": "生成图片 ({cost} Anlas)",
   "@dockGenerateWithCost": {
     "placeholders": {
-      "cost": { "type": "int" }
+      "cost": {
+        "type": "int"
+      }
     }
   },
   "dockGenerateNeedPoints": "生成图片 (需点数)",
@@ -909,7 +1027,9 @@
   "boardImportedReferenceNamed": "已导入参考图: {name}",
   "@boardImportedReferenceNamed": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "boardAddedHistoryImage": "已将历史图片添加为大画布参考图",
@@ -929,8 +1049,12 @@
   "boardImageCardRefTitle": "参考图 ({width}x{height})",
   "@boardImageCardRefTitle": {
     "placeholders": {
-      "width": { "type": "int" },
-      "height": { "type": "int" }
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
     }
   },
   "boardImageCardRemoveTooltip": "移除参考图卡片",
@@ -950,8 +1074,12 @@
   "charPosCanvasTempBoard": "临时画板 · {width} × {height}",
   "@charPosCanvasTempBoard": {
     "placeholders": {
-      "width": { "type": "int" },
-      "height": { "type": "int" }
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
     }
   },
   "posControlsDoneEditing": "完成编辑",
@@ -966,7 +1094,9 @@
   "libraryEntriesCount": "{count} 条",
   "@libraryEntriesCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "libraryCategoryAll": "全部",
@@ -974,7 +1104,9 @@
   "libraryExportFailed": "导出失败: {error}",
   "@libraryExportFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryImportDialogTitle": "导入词库 JSON",
@@ -982,37 +1114,49 @@
   "libraryImportSuccess": "成功导入 {count} 个新词组合条目",
   "@libraryImportSuccess": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "libraryImportFailed": "导入失败，请检查 JSON 格式: {error}",
   "@libraryImportFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyAsCharacter": "已添加角色卡片: {title}",
   "@libraryApplyAsCharacter": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyReplace": "已替换工作台提示词: {title}",
   "@libraryApplyReplace": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyAppendBoth": "已追加正负提示词: {title}",
   "@libraryApplyAppendBoth": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyAppendPrompt": "已追加主提示词: {title}",
   "@libraryApplyAppendPrompt": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryReturnToWorkbench": "返回工作台",
@@ -1020,13 +1164,17 @@
   "libraryDeleteDialogMessage": "确定要删除词组合「{title}」吗？此操作无法撤销。",
   "@libraryDeleteDialogMessage": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryDeletedCombo": "已删除词组合: {title}",
   "@libraryDeletedCombo": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryEmptyTitle": "词库暂无条目",
@@ -1037,7 +1185,9 @@
   "libraryCardCopiedPrompt": "已复制「{title}」提示词到剪贴板",
   "@libraryCardCopiedPrompt": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryMenuAppendToPrompt": "追加到工作台提示词",
@@ -1053,7 +1203,9 @@
   "libraryEditPickImageFailed": "选择图片失败: {error}",
   "@libraryEditPickImageFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryEditAdoptedCanvasImage": "已采用当前画板图像作为预览图",
@@ -1065,19 +1217,25 @@
   "libraryEditUpdatedSuccess": "已更新词组合: {title}",
   "@libraryEditUpdatedSuccess": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryEditCreatedSuccess": "已添加词组合: {title}",
   "@libraryEditCreatedSuccess": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryEditSaveFailed": "保存失败: {error}",
   "@libraryEditSaveFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryEditDialogTitleEdit": "编辑词组合",
@@ -1104,7 +1262,9 @@
   "tagAcAlias": "别名: {alias}",
   "@tagAcAlias": {
     "placeholders": {
-      "alias": { "type": "String" }
+      "alias": {
+        "type": "String"
+      }
     }
   },
   "tagBrowserTitle": "Danbooru 标签灵感库",
@@ -1112,14 +1272,20 @@
   "tagBrowserAddedTag": "已添加标签: {tag}",
   "@tagBrowserAddedTag": {
     "placeholders": {
-      "tag": { "type": "String" }
+      "tag": {
+        "type": "String"
+      }
     }
   },
   "tagBrowserAddedTagWithZh": "已添加标签: {tag} ({zh})",
   "@tagBrowserAddedTagWithZh": {
     "placeholders": {
-      "tag": { "type": "String" },
-      "zh": { "type": "String" }
+      "tag": {
+        "type": "String"
+      },
+      "zh": {
+        "type": "String"
+      }
     }
   },
   "tagBrowserNoMatchingTitle": "未找到匹配标签",
@@ -1129,7 +1295,9 @@
   "chatMaxAttachmentsNotice": "一次最多附带 {count} 张图片",
   "@chatMaxAttachmentsNotice": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "chatImageParseFailedNotice": "图片解析失败，请换一张图片重试",
@@ -1149,30 +1317,46 @@
   "chatSessionUsageDetail": "输入 {input} · 输出 {output} · 总计 {total}",
   "@chatSessionUsageDetail": {
     "placeholders": {
-      "input": { "type": "String" },
-      "output": { "type": "String" },
-      "total": { "type": "String" }
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
     }
   },
   "chatSessionUsageCacheRead": " · 缓存读 {cacheRead}",
   "@chatSessionUsageCacheRead": {
     "placeholders": {
-      "cacheRead": { "type": "String" }
+      "cacheRead": {
+        "type": "String"
+      }
     }
   },
   "chatSessionUsageCacheReadWithRate": " · 缓存读 {cacheRead} ({rate}%)",
   "@chatSessionUsageCacheReadWithRate": {
     "placeholders": {
-      "cacheRead": { "type": "String" },
-      "rate": { "type": "String" }
+      "cacheRead": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      }
     }
   },
   "chatToolNoOutput": "(无输出)",
   "chatToolResultSummary": "{count} 行 · {firstLine}",
   "@chatToolResultSummary": {
     "placeholders": {
-      "count": { "type": "int" },
-      "firstLine": { "type": "String" }
+      "count": {
+        "type": "int"
+      },
+      "firstLine": {
+        "type": "String"
+      }
     }
   },
   "chatThinkingProgress": "正在思考...",
@@ -1189,7 +1373,9 @@
   "rewindSelectedTurn": "已选择第 #{index} 轮对话",
   "@rewindSelectedTurn": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "rewindSelectPrompt": "请在上方列表中选择要回退的轮次",
@@ -1203,16 +1389,24 @@
   "sessionDeleteConfirm": "确定要永久删除会话 \"{title}\" 吗？此操作无法撤销。",
   "@sessionDeleteConfirm": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "sessionDeleteConfirmButton": "删除",
   "sessionDateFormat": "{month}月{day}日 {time}",
   "@sessionDateFormat": {
     "placeholders": {
-      "month": { "type": "int" },
-      "day": { "type": "int" },
-      "time": { "type": "String" }
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
     }
   },
   "sessionBackTooltip": "返回对话",
@@ -1227,7 +1421,9 @@
   "sessionMessageCount": "{count} 条",
   "@sessionMessageCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "askCardDefaultHeader": "向用户提问",
@@ -1236,7 +1432,6 @@
   "askCardSubmit": "提交回答",
   "askCardCustomInputHint": "输入自定义回答...",
   "chatThinkingProcess": "思考过程",
-
   "canvasBadgeUnsaved": "未保存",
   "canvasBadgeUpscale": "放大",
   "canvasBadgeInpaint": "修复",
@@ -1269,42 +1464,144 @@
   "libraryCatCustom": "自定义...",
   "vmGenDoneUnsaved": "生图完成 (未保存，可点击画板右下角保存)",
   "vmGenDoneSavedTo": "生图完成，已保存在 {path}",
-  "@vmGenDoneSavedTo": {"placeholders": {"path": {"type": "String"}}},
+  "@vmGenDoneSavedTo": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "vmGenLocalPath": "本地",
   "vmGenNoSaveDir": "未设置本地存储目录，请先在设置中配置保存路径。",
   "vmGenSaveFailedNoTarget": "保存图片失败：未找到图片或存储目录不可写。",
   "vmGenSavedTo": "已保存到 {path}",
-  "@vmGenSavedTo": {"placeholders": {"path": {"type": "String"}}},
+  "@vmGenSavedTo": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "vmGenSaveFailed": "保存图片失败: {error}",
-  "@vmGenSaveFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmGenSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmGenAborted": "已终止生成",
   "vmGenEmptyPrompt": "提示词不能为空，请先在左侧或对话框中输入描述。",
   "vmGenNoApiKey": "未配置 NovelAI API Key，请点击右上角设置。",
   "vmGenRequesting": "正在请求 NovelAI 生图 ({width}x{height}, {steps}步)...",
-  "@vmGenRequesting": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}, "steps": {"type": "int"}}},
+  "@vmGenRequesting": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "steps": {
+        "type": "int"
+      }
+    }
+  },
   "vmGenFailed": "生图失败: {error}",
-  "@vmGenFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmGenFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmUpscaleNoImage": "当前画板中无图片可供放大。",
   "vmUpscaleNoApiKey": "未配置 NovelAI API Key。",
   "vmUpscaleRunning": "正在执行图像超分放大...",
   "vmUpscaleDoneUnsaved": "放大完成 ({width}x{height}，未保存)",
-  "@vmUpscaleDoneUnsaved": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}}},
+  "@vmUpscaleDoneUnsaved": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
   "vmUpscaleDone": "放大完成 ({width}x{height})",
-  "@vmUpscaleDone": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}}},
+  "@vmUpscaleDone": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
   "vmUpscaleFailed": "放大失败: {error}",
-  "@vmUpscaleFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmUpscaleFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatSlashNoImage": "斜杠指令不支持附带图片，请直接发送对话消息",
   "vmChatSlashFailed": "指令执行失败: {error}",
-  "@vmChatSlashFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmChatSlashFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatRetryNotice": "请求失败自动重试 ({attempt}/{max}): {reason} · {retry}",
-  "@vmChatRetryNotice": {"placeholders": {"attempt": {"type": "int"}, "max": {"type": "int"}, "reason": {"type": "String"}, "retry": {"type": "String"}}},
+  "@vmChatRetryNotice": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      },
+      "retry": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatRetryDelayed": "{seconds} 秒后重试",
-  "@vmChatRetryDelayed": {"placeholders": {"seconds": {"type": "int"}}},
+  "@vmChatRetryDelayed": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "vmChatRetrySoon": "即将重试",
   "vmChatCompacted": "上下文已自动压缩 ({before} → {after} tokens)，更早消息已摘要替换",
-  "@vmChatCompacted": {"placeholders": {"before": {"type": "int"}, "after": {"type": "int"}}},
+  "@vmChatCompacted": {
+    "placeholders": {
+      "before": {
+        "type": "int"
+      },
+      "after": {
+        "type": "int"
+      }
+    }
+  },
   "vmChatError": "对话异常: {error}",
-  "@vmChatError": {"placeholders": {"error": {"type": "String"}}},
+  "@vmChatError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatProviderNotConfigured": "未配置 LLM 提供商，请在设置中添加提供商和 API Key。",
   "vmChatApiKeyMissing": "当前 LLM 提供商未填写 API Key，请在设置中添加。",
   "vmChatContextWindowInsufficient": "压缩后上下文仍超过模型的安全窗口。请释放旧回复、手动压缩，或切换到更大上下文窗口的模型。",
@@ -1312,42 +1609,99 @@
   "vmChatForceAborted": "已强制终止当前生成",
   "vmCostNoOpusQuota": "当前账号无 Opus 免费额度",
   "vmCostEstimate": "预计消耗 {cost} Anlas 点数",
-  "@vmCostEstimate": {"placeholders": {"cost": {"type": "int"}}},
+  "@vmCostEstimate": {
+    "placeholders": {
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
   "vmCostWillCost": "将消耗 Anlas 点数",
   "vmCostTitle": "点数消耗申请",
   "vmCostGenQuestion": "本次生图参数（{reasons}）{cost}。是否确认生成？",
-  "@vmCostGenQuestion": {"placeholders": {"reasons": {"type": "String"}, "cost": {"type": "String"}}},
+  "@vmCostGenQuestion": {
+    "placeholders": {
+      "reasons": {
+        "type": "String"
+      },
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
   "vmCostGenConfirm": "确认生成",
   "vmCostGenConfirmDesc": "使用当前参数直接生图并扣除点数",
   "vmCostGenCancel": "取消生图",
   "vmCostGenCancelDesc": "取消本次生成，调整参数至免费区间",
   "vmCostUpscaleQuestion": "将输入尺寸 {width}x{height} 的图片执行官方超分放大，预计消耗 {cost} Anlas 点数。是否确认放大？",
-  "@vmCostUpscaleQuestion": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}, "cost": {"type": "int"}}},
+  "@vmCostUpscaleQuestion": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
   "vmCostUpscaleConfirm": "确认放大",
   "vmCostUpscaleConfirmDesc": "执行官方超分并扣除点数",
   "vmCostUpscaleCancel": "取消放大",
   "vmCostUpscaleCancelDesc": "取消本次超分操作",
   "vmInpaintConverted": "已将批注转换为修复选区",
   "vmInpaintSentToBoard": "已发送到修复画板: {path}",
-  "@vmInpaintSentToBoard": {"placeholders": {"path": {"type": "String"}}},
+  "@vmInpaintSentToBoard": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "vmInpaintNoImage": "未找到可供修复的底图，请先选择或生成图片。",
   "vmInpaintNoMask": "请先在修复画板框选或用画笔绘制待修复区域。",
   "vmInpaintNoApiKey": "未配置 NovelAI API Key，请在设置中输入 Token。",
   "vmInpaintRunning": "正在执行局部修复...",
   "vmInpaintDone": "局部修复完成",
   "vmInpaintFailed": "修复失败: {error}",
-  "@vmInpaintFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmInpaintFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmAiEditNoImage": "未找到可供编辑的底图，请先选择或生成图片。",
   "vmAiEditNoModel": "未配置 AI 整图编辑的绘图模型，请在设置 → Models 页选择绘图模型供应商与模型。",
   "vmAiEditNoKey": "绘图模型供应商「{provider}」未配置 API Key，请先在设置中填写。",
-  "@vmAiEditNoKey": {"placeholders": {"provider": {"type": "String"}}},
+  "@vmAiEditNoKey": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
   "vmAiEditEmptyPrompt": "请先输入 AI 整图编辑的修改指令 (修复页提示词设置，或关闭「复用主工作台正向词」后填写)。",
   "vmAiEditRunning": "AI 整图编辑中 (绘图模型处理中，通常需要数十秒)...",
   "vmAiEditDone": "AI 整图编辑完成",
   "vmAiEditFailed": "AI 整图编辑失败: {error}",
-  "@vmAiEditFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmAiEditFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmSessionSwitched": "已切换会话: {title}",
-  "@vmSessionSwitched": {"placeholders": {"title": {"type": "String"}}},
+  "@vmSessionSwitched": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "vmSessionCreated": "已创建新会话",
   "vmSessionDeleted": "会话已删除",
   "vmRewindChatAndParams": "已回到历史时刻，后续对话与参数修改已撤回",
@@ -1358,9 +1712,24 @@
   "vmHistoryCleared": "已清空历史记录",
   "vmMetadataApplied": "已应用图片元数据至工作台",
   "vmPresetSwitched": "已切换为预设: 【{name}】\n{description}",
-  "@vmPresetSwitched": {"placeholders": {"name": {"type": "String"}, "description": {"type": "String"}}},
+  "@vmPresetSwitched": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      }
+    }
+  },
   "vmCharacterDefaultName": "角色 {index}",
-  "@vmCharacterDefaultName": {"placeholders": {"index": {"type": "int"}}},
+  "@vmCharacterDefaultName": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
   "vmNewCharacterName": "新角色",
   "slashHelpHeader": "快捷指令说明：",
   "slashDescHelp": "查看指令帮助列表",
@@ -1384,56 +1753,182 @@
   "slashPresetListIntro": "可用预设列表：",
   "slashPresetUsage": "用法: /preset <预设名称或ID>",
   "slashPresetNotFound": "未找到预设 \"{query}\"，输入 /preset 查看可用预设。",
-  "@slashPresetNotFound": {"placeholders": {"query": {"type": "String"}}},
+  "@slashPresetNotFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "slashSkillListIntro": "可用技能列表：",
   "slashSkillUsage": "用法: /skill <技能名称或ID>",
   "slashSkillLoaded": "【Skill 已载入】{name}\n{description}\n\n{systemPrompt}",
-  "@slashSkillLoaded": {"placeholders": {"name": {"type": "String"}, "description": {"type": "String"}, "systemPrompt": {"type": "String"}}},
+  "@slashSkillLoaded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      },
+      "systemPrompt": {
+        "type": "String"
+      }
+    }
+  },
   "slashSkillNotFound": "未找到技能 \"{query}\"，输入 /skill 查看可用技能。",
-  "@slashSkillNotFound": {"placeholders": {"query": {"type": "String"}}},
+  "@slashSkillNotFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "slashCompactNoProvider": "未配置 LLM 提供商，无法压缩上下文。",
   "slashCompactEmpty": "当前对话为空，无需压缩上下文。",
   "slashCompactRunning": "正在压缩对话上下文...",
   "slashCompactNothing": "上下文没有可压缩的内容 (需要至少两轮对话)，或摘要生成失败。",
   "slashCompactDone": "上下文压缩完成 ({before} → {after} tokens)。更早的消息已替换为以下摘要，原始消息仍保留在对话流与会话记录中：\n\n{summary}",
-  "@slashCompactDone": {"placeholders": {"before": {"type": "int"}, "after": {"type": "int"}, "summary": {"type": "String"}}},
+  "@slashCompactDone": {
+    "placeholders": {
+      "before": {
+        "type": "int"
+      },
+      "after": {
+        "type": "int"
+      },
+      "summary": {
+        "type": "String"
+      }
+    }
+  },
   "slashNewNoTitle": "已创建新会话，开始新的对话吧。",
   "slashNewWithTitle": "已创建新会话: {title}",
-  "@slashNewWithTitle": {"placeholders": {"title": {"type": "String"}}},
+  "@slashNewWithTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "slashUndoNothing": "没有可撤回的用户消息。",
   "slashRenameUsage": "用法: /rename <新标题>",
   "slashRenameNoSession": "当前没有活跃会话，无法重命名。",
   "slashRenamed": "会话已重命名为 \"{title}\"",
-  "@slashRenamed": {"placeholders": {"title": {"type": "String"}}},
+  "@slashRenamed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "slashSessionsEmpty": "暂无已保存的会话。",
   "slashSessionsHeader": "已保存的会话 (共 {count} 个，按最近使用排序)：",
-  "@slashSessionsHeader": {"placeholders": {"count": {"type": "int"}}},
+  "@slashSessionsHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "slashSessionMsgCount": "{count} 条消息",
-  "@slashSessionMsgCount": {"placeholders": {"count": {"type": "int"}}},
+  "@slashSessionMsgCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "slashSessionCurrentMarker": " [当前]",
   "slashSessionsMore": "…… 其余 {count} 个会话请打开会话管理视图查看。",
-  "@slashSessionsMore": {"placeholders": {"count": {"type": "int"}}},
+  "@slashSessionsMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "slashAccountTitle": "NovelAI 账号状态：",
   "slashAccountTier": "• 订阅等级: {tier}",
-  "@slashAccountTier": {"placeholders": {"tier": {"type": "String"}}},
+  "@slashAccountTier": {
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
   "slashAccountStamina": "• V5 专属体力池: {percent}%",
-  "@slashAccountStamina": {"placeholders": {"percent": {"type": "String"}}},
+  "@slashAccountStamina": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "slashAccountAnlas": "• 可用 Anlas: {total} (赠送: {fixed}, 购买: {purchased})",
-  "@slashAccountAnlas": {"placeholders": {"total": {"type": "int"}, "fixed": {"type": "int"}, "purchased": {"type": "int"}}},
+  "@slashAccountAnlas": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "fixed": {
+        "type": "int"
+      },
+      "purchased": {
+        "type": "int"
+      }
+    }
+  },
   "slashAccountQuotaExhausted": "• V5 体力配额已透支，生图将按正常价消耗 Anlas",
   "slashAccountFailed": "查询账号信息失败，请检查 API Key 设置。",
   "slashTagUsage": "用法: /tag <关键词> (例如: /tag silver)",
   "slashTagNotFound": "未找到与 \"{query}\" 相关的标签。",
-  "@slashTagNotFound": {"placeholders": {"query": {"type": "String"}}},
+  "@slashTagNotFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "slashTagSuggestions": "标签联想建议 (\"{query}\"):\n{list}",
-  "@slashTagSuggestions": {"placeholders": {"query": {"type": "String"}, "list": {"type": "String"}}},
+  "@slashTagSuggestions": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      },
+      "list": {
+        "type": "String"
+      }
+    }
+  },
   "slashUpscaleDone": "已执行超分放大",
   "slashNaiUsage": "用法: /nai <提示词>",
   "slashNaiDone": "插画已生成: {path}\n尺寸: {width}x{height}, 种子: {seed}",
-  "@slashNaiDone": {"placeholders": {"path": {"type": "String"}, "width": {"type": "int"}, "height": {"type": "int"}, "seed": {"type": "int"}}},
+  "@slashNaiDone": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "seed": {
+        "type": "int"
+      }
+    }
+  },
   "slashNaiDoneFallback": "完成",
   "slashUnknown": "未知指令 \"{cmd}\"，输入 /help 查看可用指令。",
-  "@slashUnknown": {"placeholders": {"cmd": {"type": "String"}}},
+  "@slashUnknown": {
+    "placeholders": {
+      "cmd": {
+        "type": "String"
+      }
+    }
+  },
   "vmSlashParamsTitle": "工作台当前生图参数：",
   "promptTokenLabel": "Token",
   "promptTokenEstimated": "约",
@@ -1447,21 +1942,43 @@
   "promptTokenBreakdownCharacterNegatives": "角色负面",
   "promptTokenFeatureLimited": "超过文字渲染支持上限，文字渲染功能受限",
   "promptTokenOverLimit": "超过模型 Token 上限，超出部分将被截断",
-
   "vmComfyPushing": "正在向 ComfyUI 推送参数…",
   "vmComfyBridgeUnreachable": "无法连接 ComfyUI Bridge：{error}",
-  "@vmComfyBridgeUnreachable": {"placeholders": {"error": {"type": "String"}}},
+  "@vmComfyBridgeUnreachable": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmComfyNoPromptPanel": "ComfyUI 工作流中未发现 Prompt Panel 节点，请先在画布添加",
   "vmComfyQueued": "已排队，等待 ComfyUI 出图…",
   "vmComfyWaitTimeout": "等待出图超时：请确认 ComfyUI 浏览器画布已打开 (排队需前端在线) 且工作流含 AI Image Output 节点",
   "vmComfyFailed": "ComfyUI 生图失败：{error}",
-  "@vmComfyFailed": {"placeholders": {"error": {"type": "String"}}},
-
+  "@vmComfyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "comfyStatusConnected": "ComfyUI 已连接",
   "comfyStatusConnecting": "正在连接 ComfyUI…",
   "comfyStatusDisconnected": "ComfyUI 未连接",
   "comfyBridgeNodeSummary": "提示词面板 {prompts} · 分辨率 {resolutions} · 参数面板 {params}",
-  "@comfyBridgeNodeSummary": {"placeholders": {"prompts": {"type": "int"}, "resolutions": {"type": "int"}, "params": {"type": "int"}}},
+  "@comfyBridgeNodeSummary": {
+    "placeholders": {
+      "prompts": {
+        "type": "int"
+      },
+      "resolutions": {
+        "type": "int"
+      },
+      "params": {
+        "type": "int"
+      }
+    }
+  },
   "comfyBackendNovelAI": "NovelAI",
   "comfyBackendComfyUI": "ComfyUI",
   "comfyBridgeNoPanelHint": "工作流缺少 Prompt Panel 节点；需安装 PromptToolkit 插件并在 ComfyUI 画布中添加节点后保持浏览器画布打开",
@@ -1469,7 +1986,6 @@
   "comfySchedulerLabel": "调度器",
   "comfyFollowWorkflow": "跟随工作流",
   "comfyOptionsPendingHint": "连接 ComfyUI 后自动获取可用采样器与调度器",
-
   "settingsSectionComfy": "ComfyUI 模式",
   "settingsComfyEnabledTitle": "启用 ComfyUI 模式",
   "settingsComfyEnabledDesc": "经 PromptToolkit AI Bridge 驱动本地或局域网 ComfyUI 生图；此模式下质量词与 UC 预设及 Token 上限计算均不生效",
@@ -1556,22 +2072,58 @@
   "presetExportButton": "导出预设",
   "presetImportInvalidJson": "请选择包含一个预设对象或预设数组的有效 JSON 文件。",
   "presetImportInvalidField": "预设字段 {field} 缺失或格式错误。权限列表必须显式填写，允许为空数组。",
-  "@presetImportInvalidField": {"placeholders": {"field": {"type": "String"}}},
+  "@presetImportInvalidField": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "presetImportUnknownTool": "未识别工具 {field}，请先导入对应工具或检查文件。",
-  "@presetImportUnknownTool": {"placeholders": {"field": {"type": "String"}}},
+  "@presetImportUnknownTool": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "presetImportUnknownParameter": "未识别参数权限 {field}，请检查文件。",
-  "@presetImportUnknownParameter": {"placeholders": {"field": {"type": "String"}}},
+  "@presetImportUnknownParameter": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "presetTransferFailed": "预设导入或导出失败：{error}",
-  "@presetTransferFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@presetTransferFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "presetImportedDraft": "已追加 {count} 个预设。点击“保存”保留，点击“取消”放弃；当前使用的预设未切换。",
-  "@presetImportedDraft": {"placeholders": {"count": {"type": "int"}}},
+  "@presetImportedDraft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "skillErrorPackageTooLarge": "技能包不能超过 32 MiB。",
   "skillErrorInstructionsTooLarge": "SKILL.md 不能超过 256 KiB。",
   "skillErrorFileType": "请选择 .zip、.skill 或 .md 文件。",
   "skillErrorTooManyEntries": "技能包条目过多。",
   "skillErrorSpecialFile": "技能包不允许链接或特殊文件。",
   "skillErrorDuplicatePath": "技能包存在重复路径：{detail}",
-  "@skillErrorDuplicatePath": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorDuplicatePath": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorSizeLimit": "技能包超出限制：单文件 8 MiB、总量 32 MiB、512 个文件。",
   "skillErrorEncrypted": "不支持加密或损坏的技能包。",
   "skillErrorMissingData": "技能包文件数据缺失。",
@@ -1587,13 +2139,25 @@
   "skillErrorInvalidId": "技能标识应为 1–64 位小写字母、数字与连字符，不能以连字符开头或结尾。",
   "skillErrorDescription": "标准技能 description 必须为 1–1024 个字符。",
   "skillErrorDuplicateFile": "重复的技能文件：{detail}",
-  "@skillErrorDuplicateFile": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorDuplicateFile": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorFileLimit": "技能包超出文件大小或数量限制。",
   "skillErrorTreeConflict": "技能包文件和目录路径冲突。",
   "skillErrorRelativePath": "无效的技能包相对路径。",
   "skillErrorPathDepth": "技能包目录层级过深。",
   "skillErrorUnsafePath": "不安全的技能包路径：{detail}",
-  "@skillErrorUnsafePath": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorUnsafePath": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorStorageId": "无效的技能存储标识。",
   "skillErrorMissingPackage": "技能包文件缺失，请重新导入。",
   "skillErrorMissingResource": "未找到该技能包内的资源。",
@@ -1603,17 +2167,320 @@
   "skillErrorUnpackedSize": "解压文件超过大小限制。",
   "skillErrorYamlDelimiter": "SKILL.md 的 YAML 头缺少结束分隔符。",
   "skillErrorYamlInvalid": "SKILL.md YAML 格式错误：{detail}",
-  "@skillErrorYamlInvalid": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorYamlInvalid": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorYamlMapping": "SKILL.md 的 YAML 头必须是字段映射。",
   "skillErrorYamlDepth": "SKILL.md YAML 嵌套过深或字段过多。",
   "skillErrorYamlKeys": "YAML 字段名必须是字符串。",
   "skillErrorYamlValue": "不支持的 YAML 值。",
   "skillErrorYamlString": "SKILL.md 的 {detail} 必须是字符串。",
-  "@skillErrorYamlString": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorYamlString": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorYamlBoolean": "disable-model-invocation 必须是布尔值。",
-  "@boardToolPasteImage": {"placeholders": {"shortcut": {"type": "String"}}},
+  "@boardToolPasteImage": {
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
   "promptsUcPreset": "UC 预设",
   "referenceImageBadge": "参考图",
   "toolFallbackName": "工具",
-  "@settingsUiZoomSubtitle": {"placeholders": {"modifier": {"type": "String"}}}
+  "@settingsUiZoomSubtitle": {
+    "placeholders": {
+      "modifier": {
+        "type": "String"
+      }
+    }
+  },
+  "type": "String",
+  "tabSources": "图源",
+  "sourcesTitle": "图源画廊",
+  "sourcesAitag": "AITag",
+  "sourcesCodex": "法典",
+  "sourcesSearchHint": "搜索作品或提示词…",
+  "sourcesApply": "套用到工作台",
+  "sourcesCategoryAll": "全部",
+  "sourcesCodexPage": "第 {page} / {pages} 页 · {total} 条",
+  "sourcesEmpty": "没有结果",
+  "sourcesLoadFailed": "加载失败：{message}",
+  "sourcesLoadMore": "正在加载…",
+  "sourcesPickCodex": "选择法典",
+  "sourcesDate": "日期",
+  "sourcesSize": "尺寸",
+  "sourcesSteps": "步数",
+  "sourcesSampler": "采样器",
+  "sourcesSeed": "种子",
+  "sourcesPrompt": "提示词",
+  "sourcesNegative": "负面提示词",
+  "sourcesRating": "分级",
+  "sourcesRatingGeneral": "全年龄",
+  "sourcesRatingQuestionable": "模糊",
+  "sourcesRatingExplicit": "限制级",
+  "sourcesRatingAll": "全部",
+  "sourcesDanbooruSize": "加载尺寸",
+  "sourcesSizeThumb": "缩略",
+  "sourcesSizeLarge": "高清",
+  "sourcesSizeOrig": "原图",
+  "sourcesMoreActions": "更多操作",
+  "sourcesCopyTags": "复制标签",
+  "sourcesUseTags": "套用标签",
+  "sourcesUseAsSource": "作为图生图源图",
+  "sourcesUseAsReference": "作为 Vibe 参考图",
+  "sourcesActionDone": "已复制",
+  "sourcesActionFailed": "操作失败：{message}",
+  "sourcesNote": "备注",
+  "sourcesLocal": "本地",
+  "sourcesFavoritesOnly": "只看收藏",
+  "sourcesDanbooru": "Danbooru",
+  "sourcesDanbooruHint": "搜索标签，如 1girl solo（默认仅全年龄，加 rating:explicit 查看 R-18）",
+  "sourcesDanbooruEmpty": "Danbooru 没有结果",
+  "sourcesDanbooruFavorite": "收藏到本地",
+  "sourcesDanbooruFavoriteSaved": "已收藏到本地",
+  "sourcesFavoriteSaved": "已收藏到本地",
+  "sourcesFavoriteFailed": "收藏失败：{message}",
+  "sourcesDanbooruFavoriteFailed": "收藏失败：{message}",
+  "sourcesSendToAgent": "发送到 Agent 对话框",
+  "sourcesSentToAgent": "已放入 Agent 对话框",
+  "sourcesSendToAgentFailed": "发送失败：{message}",
+  "sourcesFavoritesTab": "收藏",
+  "sourcesFavoritesEmpty": "还没有本地收藏",
+  "sourcesUnfavorite": "取消收藏",
+  "sourcesFavorite": "收藏到本地",
+  "sourcesSendToChat": "发送到聊天框",
+  "sourcesSentToChat": "已填入聊天输入框，尚未发送",
+  "sourcesSendToChatFailed": "发送失败：{message}",
+  "sourcesNothingToSend": "没有可发送的提示词或图片",
+  "sourcesDetails": "详情",
+  "sourcesScore": "评分",
+  "sourcesTags": "标签",
+  "sourcesSourceUrl": "来源",
+  "sourcesNoMore": "没有更多了",
+  "sourcesLibrary": "资料库",
+  "sourcesLibraryPick": "选择文件夹",
+  "sourcesLibraryRefresh": "刷新",
+  "sourcesLibraryNotSet": "还没有设置资料库目录",
+  "sourcesLibraryEmpty": "这个目录里没有可读文档",
+  "sourcesLibrarySearchHint": "搜索文档内容",
+  "sourcesReflections": "梳理",
+  "sourcesReflectionEmpty": "还没有梳理记录，试试 /reflect 或 /dream",
+  "sourcesImportDocs": "导入文档",
+  "sourcesImportDone": "已导入 {count} 个文档",
+  "sourcesResetDefaults": "恢复默认",
+  "sourcesDeleteFileTitle": "删除资料库文件",
+  "sourcesDeleteFileMessage": "确定删除「{name}」？此操作不可恢复。",
+  "sourcesReadFailed": "读取资料库文件失败：{message}",
+  "sourcesMorePending": "（还有更多）",
+  "accountPoolTitle": "订阅账号池",
+  "accountPoolSubtitle": "API Key 只保存在本机；切换账号会同步更新工作台密钥。",
+  "accountPoolFixed": "固定",
+  "accountPoolRotate": "轮换",
+  "accountPoolEmpty": "还没有账号，先在下面添加一个。",
+  "accountPoolDefault": "默认",
+  "accountPoolTierUnknown": "档位未知",
+  "accountPoolSummary": "{tier} · {anlas} Anlas · V5 {energy}%",
+  "accountPoolSetDefault": "设为默认",
+  "accountPoolDeleteTitle": "删除账号",
+  "accountPoolDeleteMessage": "确定删除「{label}」？其 API Key 将一并移除，无法恢复。",
+  "accountPoolRemark": "备注",
+  "accountPoolAdd": "添加",
+  "accountPoolRefreshAll": "刷新全部",
+  "promptsImg2imgSection": "图生图 / 氛围转移",
+  "promptsPreciseReference": "角色 / 画风参考",
+  "preciseRefHint": "NovelAI Precise Reference：可只参考角色、只参考画风或两者兼顾；与 Vibe 参考互斥，且仅 V4.5 模型支持。",
+  "preciseRefUnsupported": "当前模型不支持角色/画风参考。请切换到 NAI Diffusion V4.5 Full 或 Curated。",
+  "preciseRefAdd": "选择参考图",
+  "preciseRefEmpty": "还没有角色/画风参考图。",
+  "preciseRefAddFailed": "无法读取所选图片。",
+  "preciseRefCharacter": "角色",
+  "preciseRefStyle": "画风",
+  "preciseRefBoth": "角色+画风",
+  "preciseRefStrength": "参考强度",
+  "preciseRefFidelity": "保真度",
+  "dockAccountPool": "账号池",
+  "chatImageBlocked": "已阻止加载外部图片",
+  "paramsSectionImg2img": "图生图",
+  "paramsImg2imgStrength": "源图强度",
+  "paramsSelectFile": "选择文件",
+  "paramsImg2imgNoise": "附加噪声",
+  "paramsImg2imgUseCanvas": "用画板当前图",
+  "paramsImg2imgClear": "清除源图",
+  "paramsVibeReference": "Vibe 参考",
+  "paramsVibeAdd": "添加参考",
+  "paramsVibeClear": "清空参考",
+  "paramsVibeStrength": "参考强度",
+  "paramsVibeInfo": "提取信息量",
+  "paramsImg2imgEmpty": "未设置源图",
+  "paramsVibeEmpty": "未添加参考图",
+  "paramsCanvasEmpty": "画板还没有可用的图片",
+  "settingsSectionNetwork": "网络代理",
+  "settingsProxyEnabledTitle": "启用 HTTP 代理",
+  "settingsProxyEnabledSubtitle": "影响 Danbooru、图源、NovelAI 与 Agent 请求；可分别关闭各功能代理。保存后建议重启应用。",
+  "settingsProxyHostTitle": "代理地址",
+  "settingsProxyHostHint": "主机名或 IP，例如 127.0.0.1",
+  "settingsProxyPortTitle": "代理端口",
+  "settingsProxyRestartHint": "仅支持 HTTP 代理；保存后新建请求生效，已建立连接需重启应用。",
+  "settingsProxyInvalid": "代理地址或端口无效",
+  "settingsProxyUseNovelAiTitle": "生图走代理",
+  "settingsProxyUseNovelAiSubtitle": "关闭后 NovelAI 生图、超分与 AI 编辑请求直连。",
+  "settingsProxyUseAgentTitle": "Agent 走代理",
+  "settingsProxyUseAgentSubtitle": "关闭后 Agent 大模型 API 与联网工具直连。",
+  "settingsProxyUseGalleryTitle": "图源走代理",
+  "settingsProxyUseGallerySubtitle": "关闭后 Danbooru、AITag、法典及其图片直连。",
+  "promptOutputTitle": "输出",
+  "promptKeepMetadata": "保留元数据（取消勾选则清除）",
+  "promptKeepStealth": "保留隐写（取消勾选则清除）",
+  "promptStripTags": "正面 tag（出图后从元数据/隐写中去除）",
+  "promptStripNegativeTags": "负面 tag（出图后从元数据/隐写中去除）",
+  "canvasGeneratingDiscard": "丢弃",
+  "canvasGeneratingDiscardTooltip": "终止并丢弃本次生成",
+  "canvasGeneratingBackground": "转后台",
+  "canvasGeneratingBackgroundTooltip": "继续生成，但从画布隐藏",
+  "canvasGeneratingInBackground": "图片正在后台生成",
+  "canvasGeneratingInBackgroundDescription": "实时预览已隐藏，完成后会自动加入历史。",
+  "viewGeneration": "查看生成",
+  "vmGenCacheFailed": "图片已生成，但原图缓存写入失败；请检查保存目录，或换一个目录后手动保存。",
+  "vmGenMovedToBackground": "生成已转入后台，完成后会自动加入历史。",
+  "slashDreamEmpty": "还没有可整理的会话，先聊几句再来做梦。",
+  "slashDreamPrompt": "现在进入「梦境整理」。请先调用 memory 工具列出长期记忆，然后完成：\n1. 合并重复/冲突的偏好与设定；\n2. 提炼可复用的经验（有效的提示词结构、参数偏好、失败教训）；\n3. 用 memory 工具 add/remove，只保留最有价值的条目；\n4. 用 reflection 工具 add 写入一条梳理串（source=dream，title/summary/lessons）；\n5. 用 3-5 行总结这次梦境整理。",
+  "slashReflectPrompt": "现在做一次「自迭代复盘」。请完成：\n1. 回顾本次会话里理解错误、被用户纠正、或效果特别好的地方；\n2. 提炼 1-3 条可执行经验，用 memory 工具写入；\n3. 如果同类问题反复出现，给出一份 SKILL.md 补丁建议（不要直接修改技能或预设，除非用户确认）；\n4. 用 reflection 工具 add 写入一条梳理串（source=reflect，title/summary/lessons）；\n5. 用简短清单汇报。",
+  "settingsTabNetwork": "网络",
+  "settingsProxyIntro": "这里配置 HTTP 代理。开启后，下面的功能开关决定哪些请求走代理。",
+  "settingsProxyPerFeatureTitle": "功能代理选择",
+  "settingsProxyPerFeatureHint": "关闭某个开关 = 该功能直连，不经过代理。",
+  "settingsProxyDisabledHint": "先启用上方代理，再选择各功能是否走代理。",
+  "proxyFeatureNovelAi": "生图代理",
+  "proxyFeatureAgent": "Agent 代理",
+  "proxyFeatureGallery": "图源代理",
+  "proxyFeatureOnHint": "{label}当前走代理，点击改为直连",
+  "proxyFeatureOffHint": "{label}当前直连，点击改为走代理",
+  "proxyEnableFirst": "请先在 设置 → 网络 启用全局代理",
+  "queueTitle": "消息队列",
+  "queuePause": "暂停发送队列",
+  "queueResume": "恢复发送队列",
+  "queueHint": "生成结束后按顺序自动发送；可拖动排序、编辑或立即发送。",
+  "queueEmpty": "队列为空",
+  "queueEditTitle": "编辑排队消息",
+  "queueOnlyImages": "（仅图片）",
+  "queueImagesCount": "{count} 张图片",
+  "queueBarLabel": "队列 {count} 条 · 点击管理",
+  "queueQueuedToast": "生成中，已加入队列",
+  "commonSave": "保存",
+  "commonCancel": "取消",
+  "commonClose": "关闭",
+  "commonAdd": "添加",
+  "commonEdit": "编辑",
+  "commonDelete": "删除",
+  "styleCardTitle": "画风串固定选项",
+  "styleSelectHint": "选择画风组",
+  "styleNone": "不使用画风串",
+  "styleAddTitle": "添加画风串",
+  "styleEditTitle": "编辑画风串",
+  "styleName": "名称",
+  "stylePositive": "正面 tag",
+  "styleNegative": "负面 tag",
+  "styleStripAll": "出图后从元数据中去除画风组 tag（保留其他 tag）",
+  "styleInMetadata": "画风串写入导出元数据",
+  "styleTagLabel": "画风串",
+  "wd14Title": "在线 WD14 反推",
+  "wd14Run": "反推当前图片",
+  "wd14Running": "反推中…",
+  "wd14Pick": "选择图片反推",
+  "wd14Apply": "写入正面提示词",
+  "wd14Applied": "已写入正面提示词",
+  "wd14Settings": "端点与阈值",
+  "wd14Endpoint": "WD14 端点",
+  "wd14Token": "Token（可空）",
+  "wd14Threshold": "阈值 {value}",
+  "@queueImagesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@queueBarLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@wd14Threshold": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "queueSendNow": "立即发送",
+  "acctTitle": "订阅账号池",
+  "acctHint": "API Key 只保存在本机；切换账号会同步更新工作台密钥。",
+  "acctFixed": "固定",
+  "acctRotate": "轮换",
+  "acctDefault": "默认",
+  "acctSetDefault": "设为默认",
+  "acctLabel": "备注",
+  "acctKey": "API Key",
+  "acctEmpty": "还没有账号，先在下面添加一个。",
+  "acctUnknownTier": "档位未知",
+  "acctRefreshAll": "刷新全部",
+  "acctTierAnlasEnergy": "{tier} · {anlas} Anlas · V5 {energy}%",
+  "libImport": "导入文档",
+  "libResetDefault": "恢复默认",
+  "@acctTierAnlasEnergy": {
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      },
+      "anlas": {
+        "type": "int"
+      },
+      "energy": {
+        "type": "int"
+      }
+    }
+  },
+  "accountPoolApiKey": "API Key",
+  "libImportedCount": "已导入 {count} 个文档",
+  "@libImportedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTabExtensions": "扩展",
+  "settingsExtAccounts": "账号池管理",
+  "settingsExtQueue": "消息队列",
+  "settingsExtHint": "WD14 反推与画风串在「提示词」页使用。",
+  "bannedWordsTitle": "对 Agent 隐藏屏蔽词",
+  "bannedWordsSubtitle": "只影响返回给 Agent 的参数文本；编辑框与生成请求保持原文。",
+  "bannedWordsHint": "每行一个，或用逗号分隔",
+  "settingsAgentPersistentImages": "图片持久发送",
+  "settingsAgentPersistentImagesHint": "历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。",
+  "settingsSessionMaxCount": "会话保留数量",
+  "settingsSessionMaxCountHint": "最多保留多少个会话文件，超出时删除最旧的（至少保留 1 个）。",
+  "settingsSessionRetentionDays": "会话保留天数",
+  "settingsSessionRetentionDaysHint": "超过该天数的会话会被清理；最新会话始终保留。",
+  "promptStripAllTitle": "清除全部数据（元数据 + 隐写）",
+  "dockBatchCount": "批量",
+  "askCardEditOption": "修改选项文本",
+  "settingsProxyTest": "测试代理",
+  "settingsProxyTestRunning": "测试中…",
+  "settingsProxyTestResult": "代理测试结果：",
+  "vmCharTagConfirmTitle": "确认人物 tag 修改",
+  "vmCharTagConfirm": "确认写入",
+  "vmCharTagCancel": "取消"
 }

@@ -28,6 +28,11 @@ class CanvasHistorySidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final gallery = viewModel.gallery;
     final isGenerating = viewModel.isGenerating;
+    // 后台生成不在历史侧栏占位：改为顶部一条小进度 +「查看生成」恢复入口。
+    final isBackgrounded = viewModel.generationBackgrounded;
+    final showGeneratingThumb = isGenerating && !isBackgrounded;
+    final leadingCount =
+        (showGeneratingThumb ? 1 : 0) + (isBackgrounded ? 1 : 0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -39,18 +44,33 @@ class CanvasHistorySidebar extends StatelessWidget {
               ? const _HistoryEmptyState()
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
-                  itemCount: isGenerating ? gallery.length + 1 : gallery.length,
+                  itemCount: leadingCount + gallery.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    // 生成中时头部是实时预览缩略图
-                    if (isGenerating && index == 0) {
-                      return _GeneratingHistoryThumb(
-                        viewModel: viewModel,
-                        stream: stream,
-                      );
+                    var adjustedIndex = index;
+                    if (isBackgrounded) {
+                      if (adjustedIndex == 0) {
+                        return BackgroundGenerationBanner(
+                          viewModel: viewModel,
+                          compact: true,
+                          vertical: true,
+                          padding: const EdgeInsets.all(6),
+                        );
+                      }
+                      adjustedIndex -= 1;
                     }
-                    final item = gallery[isGenerating ? index - 1 : index];
-                    final isSelected = isGenerating
+                    // 生成中时头部是实时预览缩略图 (后台生成不展示)
+                    if (showGeneratingThumb) {
+                      if (adjustedIndex == 0) {
+                        return _GeneratingHistoryThumb(
+                          viewModel: viewModel,
+                          stream: stream,
+                        );
+                      }
+                      adjustedIndex -= 1;
+                    }
+                    final item = gallery[adjustedIndex];
+                    final isSelected = showGeneratingThumb
                         ? !viewModel.isViewingLatest &&
                               selectedImage?.id == item.id
                         : selectedImage?.id == item.id;
@@ -60,7 +80,7 @@ class CanvasHistorySidebar extends StatelessWidget {
                       item: item,
                       isSelected: isSelected,
                       // 单图且未生成时已在画板居中，无需滚动定位
-                      scrollToStream: isGenerating || gallery.length > 1,
+                      scrollToStream: showGeneratingThumb || gallery.length > 1,
                     );
                   },
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../data/services/config_service.dart';
+import '../../../../data/services/network_proxy_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_nav_tile.dart';
@@ -7,11 +8,14 @@ import '../../../core/widgets/app_page_stack.dart';
 import '../../../core/widgets/app_segmented_controls.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../studio/view_models/studio_view_model.dart';
+import '../../studio/widgets/account_pool_dialog.dart';
+import '../../studio/widgets/chat_queue_dialog.dart';
 import '../widgets/bill_settings_tab.dart';
 import '../widgets/defaults_settings_tab.dart';
 import '../widgets/general_settings_tab.dart';
 import '../widgets/image_save_template_settings.dart';
 import '../widgets/models_settings_tab.dart';
+import '../widgets/network_settings_tab.dart';
 import '../widgets/presets_settings_tab.dart';
 
 /// 全局设置弹窗：左侧导航 + 右侧配置详情 + 底部保存栏
@@ -50,11 +54,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
   /// 设置分类单一事实源 (图标)：桌面侧栏与窄屏顶部胶囊栏共用，
   /// 避免两处各抄一份导致新增分类漏改；文案经 [_settingsTabLabel] 接入 l10n。
   static const List<IconData> _settingsTabIcons = [
+    // 扩展工具
     Icons.tune_outlined,
     Icons.smart_toy_outlined,
     Icons.psychology_outlined,
     Icons.layers_outlined,
     Icons.receipt_long_outlined,
+    Icons.language_outlined,
+      Icons.extension_outlined,
   ];
 
   /// 分类文案 l10n 取词 (索引与 [_settingsTabIcons] 严格对齐)
@@ -65,6 +72,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         2 => l10n.settingsTabPresets,
         3 => l10n.settingsTabDefaults,
         4 => l10n.settingsTabBill,
+        5 => l10n.settingsTabNetwork,
+      6 => l10n.settingsTabExtensions,
         _ => l10n.settings,
       };
 
@@ -98,6 +107,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
         getProviders: () => _modelsDraft.providers,
       ),
       () => BillSettingsTab(viewModel: widget.viewModel),
+      () => NetworkSettingsTab(draft: _generalDraft),
+      () => _ExtensionsTab(viewModel: widget.viewModel),
     ];
   }
 
@@ -121,12 +132,30 @@ class _SettingsDialogState extends State<SettingsDialog> {
       ).showSnackBar(SnackBar(content: Text(templateError)));
       return;
     }
+    final proxyHost = _generalDraft.proxyHostController.text.trim();
+    final proxyPort =
+        int.tryParse(_generalDraft.proxyPortController.text.trim()) ?? 0;
+    if (_generalDraft.proxyEnabled &&
+        (!NetworkProxyService.isValidHost(proxyHost) ||
+            !NetworkProxyService.isValidPort(proxyPort))) {
+      setState(() => _activeTabIndex = 0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.settingsProxyInvalid)),
+      );
+      return;
+    }
     _modelsDraft.syncFromForm();
     _presetsDraft.syncFromForm();
 
     final newConfig = widget.viewModel.config.copyWith(
       novelAiKey: _generalDraft.naiKeyController.text.trim(),
       anySearchApiKey: _generalDraft.anySearchKeyController.text.trim(),
+      proxyEnabled: _generalDraft.proxyEnabled,
+      proxyHost: proxyHost,
+      proxyPort: proxyPort == 0 ? 7890 : proxyPort,
+      proxyUseNovelAi: _generalDraft.proxyUseNovelAi,
+      proxyUseAgent: _generalDraft.proxyUseAgent,
+      proxyUseGallery: _generalDraft.proxyUseGallery,
       saveDirectory: _generalDraft.saveDirController.text.trim(),
       imageSaveTemplate: _generalDraft.saveTemplateController.text.trim(),
       opusFreeMode: _generalDraft.opusFreeMode,
@@ -170,6 +199,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
       agentMaxTurns: _defaultsDraft.agentMaxTurns.clamp(1, 100),
       agentCompactionEnabled: _defaultsDraft.compactionEnabled,
       agentBackgroundCompaction: _defaultsDraft.backgroundCompaction,
+      agentPersistentImages: _defaultsDraft.persistentImages,
+      sessionMaxCount: _defaultsDraft.sessionMaxCount,
+      sessionRetentionDays: _defaultsDraft.sessionRetentionDays,
       compactionProviderId: _defaultsDraft.compactionProviderId,
       compactionModelId: _defaultsDraft.compactionModelId,
     );
@@ -434,6 +466,41 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExtensionsTab extends StatelessWidget {
+  const _ExtensionsTab({required this.viewModel});
+
+  final StudioViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ListTile(
+          leading: const Icon(Icons.manage_accounts_outlined),
+          title: Text(l10n.settingsExtAccounts),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => AccountPoolDialog.show(context, viewModel),
+        ),
+        ListTile(
+          leading: const Icon(Icons.queue_outlined),
+          title: Text(l10n.settingsExtQueue),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => ChatQueueDialog.show(context, viewModel),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            l10n.settingsExtHint,
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+        ),
+      ],
     );
   }
 }

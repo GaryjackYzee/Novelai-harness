@@ -68,7 +68,7 @@ class ContextMemoryTool extends AgentTool {
     Map<String, dynamic> args,
   ) async {
     try {
-      if (!harness.currentPreset.isToolEnabled(name)) {
+      if (!harness.isToolAllowed(name)) {
         throw StateError('当前预设未开放上下文记忆工具');
       }
       final offset = args['offset'] ?? 0;

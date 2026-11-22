@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/widgets/app_resize_divider.dart';
+import '../../../core/widgets/stable_edge_selection.dart';
 import 'prompt_edit_actions.dart';
 import 'tag_autocomplete_overlay.dart';
 
@@ -111,6 +112,7 @@ class ResizableTextField extends StatefulWidget {
 
 class _ResizableTextFieldState extends State<ResizableTextField> {
   late final ValueNotifier<double> _height;
+  final ScrollController _scrollController = ScrollController();
   double? _pendingHeight;
   late FocusNode _focusNode;
   bool _internalFocusNode = false;
@@ -167,6 +169,7 @@ class _ResizableTextFieldState extends State<ResizableTextField> {
   @override
   void dispose() {
     _height.dispose();
+    _scrollController.dispose();
     if (_internalFocusNode) {
       _focusNode.dispose();
     }
@@ -242,10 +245,15 @@ class _ResizableTextFieldState extends State<ResizableTextField> {
                   widget.onChanged,
                 ),
               },
-        child: TextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          readOnly: widget.readOnly,
+        child: StableEdgeSelection(
+          controller: _scrollController,
+          child: TextField(
+            controller: widget.controller,
+            focusNode: _focusNode,
+            scrollController: _scrollController,
+            scrollPhysics: const StableSelectionScrollPhysics(),
+            scrollPadding: EdgeInsets.zero,
+            readOnly: widget.readOnly,
           maxLines: null,
           expands: true,
           textAlignVertical: TextAlignVertical.top,
@@ -262,6 +270,7 @@ class _ResizableTextFieldState extends State<ResizableTextField> {
             focusedBorder: InputBorder.none,
           ),
           onChanged: widget.onChanged,
+          ),
         ),
       ),
     );

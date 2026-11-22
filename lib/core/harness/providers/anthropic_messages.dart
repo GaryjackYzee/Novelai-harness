@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
 
 import '../tools/agent_tool.dart';
@@ -328,7 +330,8 @@ class AnthropicMessages {
   static bool _isJsonObject(String raw) {
     try {
       return jsonDecode(raw) is Map;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return false;
     }
   }
@@ -359,7 +362,8 @@ class AnthropicMessages {
       try {
         final decoded = jsonDecode(input);
         if (decoded is Map) arguments = Map<String, dynamic>.from(decoded);
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         return null;
       }
     }
@@ -667,7 +671,8 @@ class _AnthropicBlock {
         } else if (strict) {
           return ErrorEvent('工具调用参数不是合法 JSON: $name');
         }
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         if (strict) return ErrorEvent('工具调用参数不是合法 JSON: $name');
         return null;
       }

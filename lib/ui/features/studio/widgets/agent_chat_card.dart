@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import '../../../core/context_l10n.dart';
 import '../../../../core/harness/tools/ask_user_tool.dart';
 import '../../../../core/harness/types.dart';
+import '../../../../data/services/network_proxy_service.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/smooth_scroll_controller.dart';
@@ -21,6 +22,7 @@ import 'agent_chat_messages.dart';
 import 'agent_rewind_view.dart';
 import 'agent_session_list_view.dart';
 import 'inline_agent_question_card.dart';
+import 'proxy_feature_switch.dart';
 
 /// Agent 对话卡主壳: 三视图切换 (对话/会话管理/历史回溯) + 布局组装
 ///
@@ -794,6 +796,13 @@ class AgentChatCardState extends State<AgentChatCard> {
                 ),
               ),
             ),
+          ),
+          const SizedBox(width: 6),
+          ProxyFeatureSwitch(
+            viewModel: widget.viewModel,
+            feature: NetworkFeature.agent,
+            label: context.l10n.proxyFeatureAgent,
+            compact: true,
           ),
           const SizedBox(width: 6),
           AppIconButton(

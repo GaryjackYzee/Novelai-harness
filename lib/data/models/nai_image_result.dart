@@ -1,7 +1,8 @@
 /// NovelAI 生成结果图片与流式生图进度数据模型。
 library;
 
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+
 
 import 'image_annotation.dart';
 import 'nai_generation_params.dart';
@@ -174,7 +175,8 @@ class NaiGeneratedImage {
         if (item is Map<String, dynamic>) {
           try {
             annotations.add(ImageAnnotation.fromJson(item));
-          } catch (_) {}
+          } catch (error) {
+    debugPrint('[ignored] $error');}
         }
       }
     }

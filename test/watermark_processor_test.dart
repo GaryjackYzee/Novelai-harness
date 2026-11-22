@@ -118,6 +118,37 @@ void main() {
     });
 
     test(
+      'processExportImage keeps metadata when stripMetadata is false',
+      () async {
+        final base = img.Image(width: 100, height: 100);
+        base.textData = {
+          'Comment': '{"prompt":"keep-metadata"}',
+          'Description': 'keep-metadata',
+        };
+        final rawWithMeta = Uint8List.fromList(img.encodePng(base));
+
+        const config = WatermarkConfig(
+          enabled: true,
+          posX: 0.5,
+          posY: 0.5,
+          scalePercent: 15.0,
+          opacity: 0.8,
+        );
+        final exportedBytes = await WatermarkService.processExportImage(
+          rawBytes: rawWithMeta,
+          stripMetadata: false,
+          enableWatermark: true,
+          watermarkConfig: config,
+          watermarkBytes: watermarkImageBytes,
+        );
+
+        final metadata = ImageMetadataService.parseMetadata(exportedBytes);
+        expect(metadata, isNotNull);
+        expect(metadata!.prompt, contains('keep-metadata'));
+      },
+    );
+
+    test(
       'applyWatermark auto contrast darkens watermark on bright background',
       () async {
         const config = WatermarkConfig(

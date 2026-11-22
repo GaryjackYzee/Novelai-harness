@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
@@ -27,7 +27,8 @@ Future<Uint8List?> resolveCanvasImageBytes(
   try {
     final bytes = await loader?.call(image);
     return bytes == null || bytes.isEmpty ? null : bytes;
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     return null;
   }
 }
@@ -440,7 +441,8 @@ class ViewCanvasImageTool extends AgentTool {
           );
           finalBytes = rendered.bytes;
           overlayApplied = true;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           overlayNote = '覆盖层渲染失败，已回退返回原图。';
         }
       }

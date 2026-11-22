@@ -66,7 +66,9 @@ void main() {
           )
           .length;
       expect(userA, equals(1));
-      expect(userB, equals(0));
+      // 第二条消息进入队列，本轮结束后自动发送。
+      expect(userB, equals(1));
+      expect(viewModel.queuedChatMessages, isEmpty);
       // 流式状态已复位
       expect(viewModel.isChatStreaming, isFalse);
       expect(viewModel.currentStreamingContent, isEmpty);

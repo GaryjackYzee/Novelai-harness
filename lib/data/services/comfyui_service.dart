@@ -7,13 +7,15 @@
 /// 协议事实源：reference/PromptToolkit `nodes/ai_bridge.py`。
 library;
 
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
 import '../models/comfyui_models.dart';
+import 'network_proxy_service.dart';
 
 /// ComfyUI AI Bridge 通信服务 (无状态，可按 baseUrl 随时重建)。
 class ComfyUiService {
@@ -23,7 +25,8 @@ class ComfyUiService {
   final http.Client _httpClient;
 
   ComfyUiService({required this.baseUrl, http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+    : _httpClient =
+          httpClient ?? NetworkProxyService.instance.createDirectClient();
 
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('$baseUrl$path').replace(queryParameters: query);
@@ -218,7 +221,8 @@ class ComfyUiService {
           if (decoded is Map<String, dynamic> && decoded['error'] is String) {
             detail = decoded['error'] as String;
           }
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
       throw ComfyUiBridgeException(
         detail.isEmpty ? 'HTTP ${response.statusCode}' : detail,
@@ -227,7 +231,8 @@ class ComfyUiService {
     try {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       if (decoded is Map<String, dynamic>) return decoded;
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     throw const ComfyUiBridgeException('响应不是有效的 JSON 对象');
   }
 }

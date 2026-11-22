@@ -3689,4 +3689,763 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get toolFallbackName => '工具';
+
+  @override
+  String get type => 'String';
+
+  @override
+  String get tabSources => '图源';
+
+  @override
+  String get sourcesTitle => '图源画廊';
+
+  @override
+  String get sourcesAitag => 'AITag';
+
+  @override
+  String get sourcesCodex => '法典';
+
+  @override
+  String get sourcesSearchHint => '搜索作品或提示词…';
+
+  @override
+  String get sourcesApply => '套用到工作台';
+
+  @override
+  String get sourcesCategoryAll => '全部';
+
+  @override
+  String sourcesCodexPage(Object page, Object pages, Object total) {
+    return '第 $page / $pages 页 · $total 条';
+  }
+
+  @override
+  String get sourcesEmpty => '没有结果';
+
+  @override
+  String sourcesLoadFailed(Object message) {
+    return '加载失败：$message';
+  }
+
+  @override
+  String get sourcesLoadMore => '正在加载…';
+
+  @override
+  String get sourcesPickCodex => '选择法典';
+
+  @override
+  String get sourcesDate => '日期';
+
+  @override
+  String get sourcesSize => '尺寸';
+
+  @override
+  String get sourcesSteps => '步数';
+
+  @override
+  String get sourcesSampler => '采样器';
+
+  @override
+  String get sourcesSeed => '种子';
+
+  @override
+  String get sourcesPrompt => '提示词';
+
+  @override
+  String get sourcesNegative => '负面提示词';
+
+  @override
+  String get sourcesRating => '分级';
+
+  @override
+  String get sourcesRatingGeneral => '全年龄';
+
+  @override
+  String get sourcesRatingQuestionable => '模糊';
+
+  @override
+  String get sourcesRatingExplicit => '限制级';
+
+  @override
+  String get sourcesRatingAll => '全部';
+
+  @override
+  String get sourcesDanbooruSize => '加载尺寸';
+
+  @override
+  String get sourcesSizeThumb => '缩略';
+
+  @override
+  String get sourcesSizeLarge => '高清';
+
+  @override
+  String get sourcesSizeOrig => '原图';
+
+  @override
+  String get sourcesMoreActions => '更多操作';
+
+  @override
+  String get sourcesCopyTags => '复制标签';
+
+  @override
+  String get sourcesUseTags => '套用标签';
+
+  @override
+  String get sourcesUseAsSource => '作为图生图源图';
+
+  @override
+  String get sourcesUseAsReference => '作为 Vibe 参考图';
+
+  @override
+  String get sourcesActionDone => '已复制';
+
+  @override
+  String sourcesActionFailed(Object message) {
+    return '操作失败：$message';
+  }
+
+  @override
+  String get sourcesNote => '备注';
+
+  @override
+  String get sourcesLocal => '本地';
+
+  @override
+  String get sourcesFavoritesOnly => '只看收藏';
+
+  @override
+  String get sourcesDanbooru => 'Danbooru';
+
+  @override
+  String get sourcesDanbooruHint =>
+      '搜索标签，如 1girl solo（默认仅全年龄，加 rating:explicit 查看 R-18）';
+
+  @override
+  String get sourcesDanbooruEmpty => 'Danbooru 没有结果';
+
+  @override
+  String get sourcesDanbooruFavorite => '收藏到本地';
+
+  @override
+  String get sourcesDanbooruFavoriteSaved => '已收藏到本地';
+
+  @override
+  String get sourcesFavoriteSaved => '已收藏到本地';
+
+  @override
+  String sourcesFavoriteFailed(Object message) {
+    return '收藏失败：$message';
+  }
+
+  @override
+  String sourcesDanbooruFavoriteFailed(Object message) {
+    return '收藏失败：$message';
+  }
+
+  @override
+  String get sourcesSendToAgent => '发送到 Agent 对话框';
+
+  @override
+  String get sourcesSentToAgent => '已放入 Agent 对话框';
+
+  @override
+  String sourcesSendToAgentFailed(Object message) {
+    return '发送失败：$message';
+  }
+
+  @override
+  String get sourcesFavoritesTab => '收藏';
+
+  @override
+  String get sourcesFavoritesEmpty => '还没有本地收藏';
+
+  @override
+  String get sourcesUnfavorite => '取消收藏';
+
+  @override
+  String get sourcesFavorite => '收藏到本地';
+
+  @override
+  String get sourcesSendToChat => '发送到聊天框';
+
+  @override
+  String get sourcesSentToChat => '已填入聊天输入框，尚未发送';
+
+  @override
+  String sourcesSendToChatFailed(Object message) {
+    return '发送失败：$message';
+  }
+
+  @override
+  String get sourcesNothingToSend => '没有可发送的提示词或图片';
+
+  @override
+  String get sourcesDetails => '详情';
+
+  @override
+  String get sourcesScore => '评分';
+
+  @override
+  String get sourcesTags => '标签';
+
+  @override
+  String get sourcesSourceUrl => '来源';
+
+  @override
+  String get sourcesNoMore => '没有更多了';
+
+  @override
+  String get sourcesLibrary => '资料库';
+
+  @override
+  String get sourcesLibraryPick => '选择文件夹';
+
+  @override
+  String get sourcesLibraryRefresh => '刷新';
+
+  @override
+  String get sourcesLibraryNotSet => '还没有设置资料库目录';
+
+  @override
+  String get sourcesLibraryEmpty => '这个目录里没有可读文档';
+
+  @override
+  String get sourcesLibrarySearchHint => '搜索文档内容';
+
+  @override
+  String get sourcesReflections => '梳理';
+
+  @override
+  String get sourcesReflectionEmpty => '还没有梳理记录，试试 /reflect 或 /dream';
+
+  @override
+  String get sourcesImportDocs => '导入文档';
+
+  @override
+  String sourcesImportDone(Object count) {
+    return '已导入 $count 个文档';
+  }
+
+  @override
+  String get sourcesResetDefaults => '恢复默认';
+
+  @override
+  String get sourcesDeleteFileTitle => '删除资料库文件';
+
+  @override
+  String sourcesDeleteFileMessage(Object name) {
+    return '确定删除「$name」？此操作不可恢复。';
+  }
+
+  @override
+  String sourcesReadFailed(Object message) {
+    return '读取资料库文件失败：$message';
+  }
+
+  @override
+  String get sourcesMorePending => '（还有更多）';
+
+  @override
+  String get accountPoolTitle => '订阅账号池';
+
+  @override
+  String get accountPoolSubtitle => 'API Key 只保存在本机；切换账号会同步更新工作台密钥。';
+
+  @override
+  String get accountPoolFixed => '固定';
+
+  @override
+  String get accountPoolRotate => '轮换';
+
+  @override
+  String get accountPoolEmpty => '还没有账号，先在下面添加一个。';
+
+  @override
+  String get accountPoolDefault => '默认';
+
+  @override
+  String get accountPoolTierUnknown => '档位未知';
+
+  @override
+  String accountPoolSummary(Object anlas, Object energy, Object tier) {
+    return '$tier · $anlas Anlas · V5 $energy%';
+  }
+
+  @override
+  String get accountPoolSetDefault => '设为默认';
+
+  @override
+  String get accountPoolDeleteTitle => '删除账号';
+
+  @override
+  String accountPoolDeleteMessage(Object label) {
+    return '确定删除「$label」？其 API Key 将一并移除，无法恢复。';
+  }
+
+  @override
+  String get accountPoolRemark => '备注';
+
+  @override
+  String get accountPoolAdd => '添加';
+
+  @override
+  String get accountPoolRefreshAll => '刷新全部';
+
+  @override
+  String get promptsImg2imgSection => '图生图 / 氛围转移';
+
+  @override
+  String get promptsPreciseReference => '角色 / 画风参考';
+
+  @override
+  String get preciseRefHint =>
+      'NovelAI Precise Reference：可只参考角色、只参考画风或两者兼顾；与 Vibe 参考互斥，且仅 V4.5 模型支持。';
+
+  @override
+  String get preciseRefUnsupported =>
+      '当前模型不支持角色/画风参考。请切换到 NAI Diffusion V4.5 Full 或 Curated。';
+
+  @override
+  String get preciseRefAdd => '选择参考图';
+
+  @override
+  String get preciseRefEmpty => '还没有角色/画风参考图。';
+
+  @override
+  String get preciseRefAddFailed => '无法读取所选图片。';
+
+  @override
+  String get preciseRefCharacter => '角色';
+
+  @override
+  String get preciseRefStyle => '画风';
+
+  @override
+  String get preciseRefBoth => '角色+画风';
+
+  @override
+  String get preciseRefStrength => '参考强度';
+
+  @override
+  String get preciseRefFidelity => '保真度';
+
+  @override
+  String get dockAccountPool => '账号池';
+
+  @override
+  String get chatImageBlocked => '已阻止加载外部图片';
+
+  @override
+  String get paramsSectionImg2img => '图生图';
+
+  @override
+  String get paramsImg2imgStrength => '源图强度';
+
+  @override
+  String get paramsSelectFile => '选择文件';
+
+  @override
+  String get paramsImg2imgNoise => '附加噪声';
+
+  @override
+  String get paramsImg2imgUseCanvas => '用画板当前图';
+
+  @override
+  String get paramsImg2imgClear => '清除源图';
+
+  @override
+  String get paramsVibeReference => 'Vibe 参考';
+
+  @override
+  String get paramsVibeAdd => '添加参考';
+
+  @override
+  String get paramsVibeClear => '清空参考';
+
+  @override
+  String get paramsVibeStrength => '参考强度';
+
+  @override
+  String get paramsVibeInfo => '提取信息量';
+
+  @override
+  String get paramsImg2imgEmpty => '未设置源图';
+
+  @override
+  String get paramsVibeEmpty => '未添加参考图';
+
+  @override
+  String get paramsCanvasEmpty => '画板还没有可用的图片';
+
+  @override
+  String get settingsSectionNetwork => '网络代理';
+
+  @override
+  String get settingsProxyEnabledTitle => '启用 HTTP 代理';
+
+  @override
+  String get settingsProxyEnabledSubtitle =>
+      '影响 Danbooru、图源、NovelAI 与 Agent 请求；可分别关闭各功能代理。保存后建议重启应用。';
+
+  @override
+  String get settingsProxyHostTitle => '代理地址';
+
+  @override
+  String get settingsProxyHostHint => '主机名或 IP，例如 127.0.0.1';
+
+  @override
+  String get settingsProxyPortTitle => '代理端口';
+
+  @override
+  String get settingsProxyRestartHint => '仅支持 HTTP 代理；保存后新建请求生效，已建立连接需重启应用。';
+
+  @override
+  String get settingsProxyInvalid => '代理地址或端口无效';
+
+  @override
+  String get settingsProxyUseNovelAiTitle => '生图走代理';
+
+  @override
+  String get settingsProxyUseNovelAiSubtitle => '关闭后 NovelAI 生图、超分与 AI 编辑请求直连。';
+
+  @override
+  String get settingsProxyUseAgentTitle => 'Agent 走代理';
+
+  @override
+  String get settingsProxyUseAgentSubtitle => '关闭后 Agent 大模型 API 与联网工具直连。';
+
+  @override
+  String get settingsProxyUseGalleryTitle => '图源走代理';
+
+  @override
+  String get settingsProxyUseGallerySubtitle => '关闭后 Danbooru、AITag、法典及其图片直连。';
+
+  @override
+  String get promptOutputTitle => '输出';
+
+  @override
+  String get promptKeepMetadata => '保留元数据（取消勾选则清除）';
+
+  @override
+  String get promptKeepStealth => '保留隐写（取消勾选则清除）';
+
+  @override
+  String get promptStripTags => '正面 tag（出图后从元数据/隐写中去除）';
+
+  @override
+  String get promptStripNegativeTags => '负面 tag（出图后从元数据/隐写中去除）';
+
+  @override
+  String get canvasGeneratingDiscard => '丢弃';
+
+  @override
+  String get canvasGeneratingDiscardTooltip => '终止并丢弃本次生成';
+
+  @override
+  String get canvasGeneratingBackground => '转后台';
+
+  @override
+  String get canvasGeneratingBackgroundTooltip => '继续生成，但从画布隐藏';
+
+  @override
+  String get canvasGeneratingInBackground => '图片正在后台生成';
+
+  @override
+  String get canvasGeneratingInBackgroundDescription => '实时预览已隐藏，完成后会自动加入历史。';
+
+  @override
+  String get viewGeneration => '查看生成';
+
+  @override
+  String get vmGenCacheFailed => '图片已生成，但原图缓存写入失败；请检查保存目录，或换一个目录后手动保存。';
+
+  @override
+  String get vmGenMovedToBackground => '生成已转入后台，完成后会自动加入历史。';
+
+  @override
+  String get slashDreamEmpty => '还没有可整理的会话，先聊几句再来做梦。';
+
+  @override
+  String get slashDreamPrompt =>
+      '现在进入「梦境整理」。请先调用 memory 工具列出长期记忆，然后完成：\n1. 合并重复/冲突的偏好与设定；\n2. 提炼可复用的经验（有效的提示词结构、参数偏好、失败教训）；\n3. 用 memory 工具 add/remove，只保留最有价值的条目；\n4. 用 reflection 工具 add 写入一条梳理串（source=dream，title/summary/lessons）；\n5. 用 3-5 行总结这次梦境整理。';
+
+  @override
+  String get slashReflectPrompt =>
+      '现在做一次「自迭代复盘」。请完成：\n1. 回顾本次会话里理解错误、被用户纠正、或效果特别好的地方；\n2. 提炼 1-3 条可执行经验，用 memory 工具写入；\n3. 如果同类问题反复出现，给出一份 SKILL.md 补丁建议（不要直接修改技能或预设，除非用户确认）；\n4. 用 reflection 工具 add 写入一条梳理串（source=reflect，title/summary/lessons）；\n5. 用简短清单汇报。';
+
+  @override
+  String get settingsTabNetwork => '网络';
+
+  @override
+  String get settingsProxyIntro => '这里配置 HTTP 代理。开启后，下面的功能开关决定哪些请求走代理。';
+
+  @override
+  String get settingsProxyPerFeatureTitle => '功能代理选择';
+
+  @override
+  String get settingsProxyPerFeatureHint => '关闭某个开关 = 该功能直连，不经过代理。';
+
+  @override
+  String get settingsProxyDisabledHint => '先启用上方代理，再选择各功能是否走代理。';
+
+  @override
+  String get proxyFeatureNovelAi => '生图代理';
+
+  @override
+  String get proxyFeatureAgent => 'Agent 代理';
+
+  @override
+  String get proxyFeatureGallery => '图源代理';
+
+  @override
+  String proxyFeatureOnHint(Object label) {
+    return '$label当前走代理，点击改为直连';
+  }
+
+  @override
+  String proxyFeatureOffHint(Object label) {
+    return '$label当前直连，点击改为走代理';
+  }
+
+  @override
+  String get proxyEnableFirst => '请先在 设置 → 网络 启用全局代理';
+
+  @override
+  String get queueTitle => '消息队列';
+
+  @override
+  String get queuePause => '暂停发送队列';
+
+  @override
+  String get queueResume => '恢复发送队列';
+
+  @override
+  String get queueHint => '生成结束后按顺序自动发送；可拖动排序、编辑或立即发送。';
+
+  @override
+  String get queueEmpty => '队列为空';
+
+  @override
+  String get queueEditTitle => '编辑排队消息';
+
+  @override
+  String get queueOnlyImages => '（仅图片）';
+
+  @override
+  String queueImagesCount(int count) {
+    return '$count 张图片';
+  }
+
+  @override
+  String queueBarLabel(int count) {
+    return '队列 $count 条 · 点击管理';
+  }
+
+  @override
+  String get queueQueuedToast => '生成中，已加入队列';
+
+  @override
+  String get commonSave => '保存';
+
+  @override
+  String get commonCancel => '取消';
+
+  @override
+  String get commonClose => '关闭';
+
+  @override
+  String get commonAdd => '添加';
+
+  @override
+  String get commonEdit => '编辑';
+
+  @override
+  String get commonDelete => '删除';
+
+  @override
+  String get styleCardTitle => '画风串固定选项';
+
+  @override
+  String get styleSelectHint => '选择画风组';
+
+  @override
+  String get styleNone => '不使用画风串';
+
+  @override
+  String get styleAddTitle => '添加画风串';
+
+  @override
+  String get styleEditTitle => '编辑画风串';
+
+  @override
+  String get styleName => '名称';
+
+  @override
+  String get stylePositive => '正面 tag';
+
+  @override
+  String get styleNegative => '负面 tag';
+
+  @override
+  String get styleStripAll => '出图后从元数据中去除画风组 tag（保留其他 tag）';
+
+  @override
+  String get styleInMetadata => '画风串写入导出元数据';
+
+  @override
+  String get styleTagLabel => '画风串';
+
+  @override
+  String get wd14Title => '在线 WD14 反推';
+
+  @override
+  String get wd14Run => '反推当前图片';
+
+  @override
+  String get wd14Running => '反推中…';
+
+  @override
+  String get wd14Pick => '选择图片反推';
+
+  @override
+  String get wd14Apply => '写入正面提示词';
+
+  @override
+  String get wd14Applied => '已写入正面提示词';
+
+  @override
+  String get wd14Settings => '端点与阈值';
+
+  @override
+  String get wd14Endpoint => 'WD14 端点';
+
+  @override
+  String get wd14Token => 'Token（可空）';
+
+  @override
+  String wd14Threshold(String value) {
+    return '阈值 $value';
+  }
+
+  @override
+  String get queueSendNow => '立即发送';
+
+  @override
+  String get acctTitle => '订阅账号池';
+
+  @override
+  String get acctHint => 'API Key 只保存在本机；切换账号会同步更新工作台密钥。';
+
+  @override
+  String get acctFixed => '固定';
+
+  @override
+  String get acctRotate => '轮换';
+
+  @override
+  String get acctDefault => '默认';
+
+  @override
+  String get acctSetDefault => '设为默认';
+
+  @override
+  String get acctLabel => '备注';
+
+  @override
+  String get acctKey => 'API Key';
+
+  @override
+  String get acctEmpty => '还没有账号，先在下面添加一个。';
+
+  @override
+  String get acctUnknownTier => '档位未知';
+
+  @override
+  String get acctRefreshAll => '刷新全部';
+
+  @override
+  String acctTierAnlasEnergy(String tier, int anlas, int energy) {
+    return '$tier · $anlas Anlas · V5 $energy%';
+  }
+
+  @override
+  String get libImport => '导入文档';
+
+  @override
+  String get libResetDefault => '恢复默认';
+
+  @override
+  String get accountPoolApiKey => 'API Key';
+
+  @override
+  String libImportedCount(int count) {
+    return '已导入 $count 个文档';
+  }
+
+  @override
+  String get settingsTabExtensions => '扩展';
+
+  @override
+  String get settingsExtAccounts => '账号池管理';
+
+  @override
+  String get settingsExtQueue => '消息队列';
+
+  @override
+  String get settingsExtHint => 'WD14 反推与画风串在「提示词」页使用。';
+
+  @override
+  String get bannedWordsTitle => '对 Agent 隐藏屏蔽词';
+
+  @override
+  String get bannedWordsSubtitle => '只影响返回给 Agent 的参数文本；编辑框与生成请求保持原文。';
+
+  @override
+  String get bannedWordsHint => '每行一个，或用逗号分隔';
+
+  @override
+  String get settingsAgentPersistentImages => '图片持久发送';
+
+  @override
+  String get settingsAgentPersistentImagesHint =>
+      '历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。';
+
+  @override
+  String get settingsSessionMaxCount => '会话保留数量';
+
+  @override
+  String get settingsSessionMaxCountHint => '最多保留多少个会话文件，超出时删除最旧的（至少保留 1 个）。';
+
+  @override
+  String get settingsSessionRetentionDays => '会话保留天数';
+
+  @override
+  String get settingsSessionRetentionDaysHint => '超过该天数的会话会被清理；最新会话始终保留。';
+
+  @override
+  String get promptStripAllTitle => '清除全部数据（元数据 + 隐写）';
+
+  @override
+  String get dockBatchCount => '批量';
+
+  @override
+  String get askCardEditOption => '修改选项文本';
+
+  @override
+  String get settingsProxyTest => '测试代理';
+
+  @override
+  String get settingsProxyTestRunning => '测试中…';
+
+  @override
+  String get settingsProxyTestResult => '代理测试结果：';
+
+  @override
+  String get vmCharTagConfirmTitle => '确认人物 tag 修改';
+
+  @override
+  String get vmCharTagConfirm => '确认写入';
+
+  @override
+  String get vmCharTagCancel => '取消';
 }

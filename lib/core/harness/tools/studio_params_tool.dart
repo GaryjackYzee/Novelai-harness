@@ -38,6 +38,11 @@ const _studioModelIds = <String>[
   'nai-diffusion-3',
 ];
 
+String _agentVisibleParamText(NaiGenerationParams params, String text) {
+  final shown = params.textForAgent(text);
+  return shown.isEmpty ? '(空)' : shown;
+}
+
 /// 按当前生图后端返回与请求路径一致的实际提示词。
 StudioEffectivePrompts resolveStudioEffectivePrompts(
   NaiGenerationParams params, {
@@ -82,10 +87,10 @@ String buildStudioParamsReport(
       resolveStudioEffectivePrompts(params, isComfyUi: false);
   final costStatus = buildCostEstimateStatus(params);
   final lines = <String>[
-    '• 原始正向提示词: ${params.prompt.isEmpty ? '(空)' : params.prompt}',
-    '• 最终正向提示词: ${effective.prompt.isEmpty ? '(空)' : effective.prompt}',
-    '• 原始负向提示词: ${params.negativePrompt.isEmpty ? '(空)' : params.negativePrompt}',
-    '• 最终负向提示词: ${effective.negativePrompt.isEmpty ? '(空)' : effective.negativePrompt}',
+    '• 原始正向提示词: ${_agentVisibleParamText(params, params.prompt)}',
+    '• 最终正向提示词: ${_agentVisibleParamText(params, effective.prompt)}',
+    '• 原始负向提示词: ${_agentVisibleParamText(params, params.negativePrompt)}',
+    '• 最终负向提示词: ${_agentVisibleParamText(params, effective.negativePrompt)}',
     '• 实际生图后端: ${effective.backend}',
     '• 绘图模型: ${params.model.label} (${params.apiModelId})',
     if (params.supportsEffort) '• 算力: ${params.isMediumEffort ? '节约' : '通常'}',
@@ -97,6 +102,8 @@ String buildStudioParamsReport(
     '• 质量标签: ${params.qualityToggle ? params.qualityPreset : 'Off'}',
     '• 质量开关: ${params.qualityToggle ? '开启' : '关闭'} '
         '(quality_toggle: ${params.qualityToggle})',
+    '• 屏蔽词: ${params.stripBannedWords ? '开启（${BannedWordSanitizer.parseList(params.bannedWords).length} 个）' : '关闭'}',
+    '• 质量词内容: ${params.qualityToggle ? NovelAiQualityTagsHelper.getQualityTags(params.model, params.qualityPreset) : '(关闭)'}',
     params.isMediumEffort
         ? '• UC 预设: Heavy（节约档固定）'
         : '• UC 预设: ${params.ucPresetKey}',
@@ -109,7 +116,7 @@ String buildStudioParamsReport(
   var report = '$title\n${lines.join('\n')}';
   report +=
       '\n\n角色提示词详情：\n'
-      '${buildCharacterPromptsReport(params.characterPrompts, aiPosition: params.characterAiPosition)}';
+      '${buildCharacterPromptsReport(params.characterPrompts, aiPosition: params.characterAiPosition, sanitizeText: params.textForAgent)}';
   return report;
 }
 
@@ -117,10 +124,12 @@ String buildStudioParamsReport(
 class NovelAiGetStudioParamsTool extends AgentTool {
   final CurrentParamsGetter getCurrentParams;
   final StudioEffectivePromptsResolver? resolveEffectivePrompts;
+  final String Function()? getAuxReport;
 
   NovelAiGetStudioParamsTool({
     required this.getCurrentParams,
     this.resolveEffectivePrompts,
+    this.getAuxReport,
   }) : super(
          name: 'get_studio_parameters',
          label: '读取参数',
@@ -186,7 +195,9 @@ class NovelAiGetStudioParamsTool extends AgentTool {
     if (queryAll) {
       return ToolResult(
         toolCallId: toolCallId,
-        content: buildStudioParamsReport(params, effectivePrompts: effective),
+        content:
+            buildStudioParamsReport(params, effectivePrompts: effective) +
+                (getAuxReport?.call() ?? ''),
       );
     }
 
@@ -301,11 +312,19 @@ class NovelAiUpdateParamsTool extends AgentTool {
   final CurrentParamsGetter getCurrentParams;
   final OnStudioParamsUpdate onUpdateParams;
   final ParamPermissionChecker? permissionChecker;
+  final Future<bool> Function()? useCanvasAsImg2img;
+  final void Function()? clearImg2img;
+  final Future<bool> Function()? addCanvasAsReference;
+  final void Function()? clearReferenceImages;
 
   NovelAiUpdateParamsTool({
     required this.getCurrentParams,
     required this.onUpdateParams,
     this.permissionChecker,
+    this.useCanvasAsImg2img,
+    this.clearImg2img,
+    this.addCanvasAsReference,
+    this.clearReferenceImages,
   }) : super(
          name: 'update_studio_parameters',
          label: '修改参数',
@@ -381,6 +400,30 @@ class NovelAiUpdateParamsTool extends AgentTool {
                'type': 'boolean',
                'description':
                    '全局角色位置模式：true = AI 自动布局 (AI\'s Choice，不发送位置参数)，false = 自定义定位 (发送各角色 center，需先用 add_character_prompt 配置角色与坐标)',
+             },
+             'img2img_strength': {
+               'type': 'number',
+               'description': '图生图强度 0.01~0.99（越大越偏离原图）',
+             },
+             'img2img_noise': {
+               'type': 'number',
+               'description': '图生图附加噪声 0.0~0.99',
+             },
+             'use_canvas_image_as_img2img': {
+               'type': 'boolean',
+               'description': '把画板当前选中的图片设为图生图源图',
+             },
+             'clear_img2img': {
+               'type': 'boolean',
+               'description': '清除图生图源图，回到纯文生图',
+             },
+             'add_canvas_image_as_reference': {
+               'type': 'boolean',
+               'description': '把画板当前选中的图片追加为一张 Vibe Transfer 参考图',
+             },
+             'clear_references': {
+               'type': 'boolean',
+               'description': '清空全部 Vibe Transfer 参考图',
              },
            },
          },
@@ -607,6 +650,48 @@ class NovelAiUpdateParamsTool extends AgentTool {
       }
     }
 
+    if (args['img2img_strength'] is num) {
+      if (isAllowed(PresetParamKeys.img2imgStrength)) {
+        updatedEntries.add(
+          '图生图强度: ${(args['img2img_strength'] as num).toDouble().clamp(0.01, 0.99)}',
+        );
+      } else {
+        blockedEntries.add('图生图强度');
+      }
+    }
+    if (args['img2img_noise'] is num) {
+      if (isAllowed(PresetParamKeys.img2imgNoise)) {
+        updatedEntries.add(
+          '图生图噪声: ${(args['img2img_noise'] as num).toDouble().clamp(0.0, 0.99)}',
+        );
+      } else {
+        blockedEntries.add('图生图噪声');
+      }
+    }
+    if (isAllowed(PresetParamKeys.img2imgSource)) {
+      if (args['use_canvas_image_as_img2img'] == true) {
+        final ok = await useCanvasAsImg2img?.call() ?? false;
+        updatedEntries.add(ok ? '图生图源图: 已使用画板当前图' : '图生图源图: 画板没有可用图片');
+      }
+      if (args['clear_img2img'] == true) {
+        clearImg2img?.call();
+        updatedEntries.add('图生图源图: 已清除');
+      }
+      if (args['add_canvas_image_as_reference'] == true) {
+        final ok = await addCanvasAsReference?.call() ?? false;
+        updatedEntries.add(ok ? 'Vibe 参考: 已添加画板当前图' : 'Vibe 参考: 画板没有可用图片');
+      }
+      if (args['clear_references'] == true) {
+        clearReferenceImages?.call();
+        updatedEntries.add('Vibe 参考: 已清空');
+      }
+    } else if (args['use_canvas_image_as_img2img'] == true ||
+        args['clear_img2img'] == true ||
+        args['add_canvas_image_as_reference'] == true ||
+        args['clear_references'] == true) {
+      blockedEntries.add('图生图源图 / Vibe 参考图');
+    }
+
     if (updatedEntries.isEmpty) {
       if (blockedEntries.isNotEmpty) {
         final mediumOnly = blockedEntries.every(
@@ -638,6 +723,12 @@ class NovelAiUpdateParamsTool extends AgentTool {
       qualityPreset: qualityPreset,
       qualityToggle: qualityToggle,
       characterAiPosition: characterAiPosition,
+      img2imgStrength: isAllowed(PresetParamKeys.img2imgStrength)
+          ? (args['img2img_strength'] as num?)?.toDouble().clamp(0.01, 0.99)
+          : null,
+      img2imgNoise: isAllowed(PresetParamKeys.img2imgNoise)
+          ? (args['img2img_noise'] as num?)?.toDouble().clamp(0.0, 0.99)
+          : null,
     );
 
     onUpdateParams(newParams);

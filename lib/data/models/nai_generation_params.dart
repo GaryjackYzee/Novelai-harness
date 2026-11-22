@@ -3,14 +3,96 @@ library;
 
 import 'dart:convert';
 import 'dart:typed_data';
+import 'banned_word_sanitizer.dart';
 import 'nai_catalog.dart';
 import 'nai_character_prompt.dart';
 import 'nai_prompt_presets.dart';
+
+/// Precise Reference 的角色/画风类型。
+enum NaiPreciseRefType {
+  character('character'),
+  style('style'),
+  characterAndStyle('character&style');
+
+  const NaiPreciseRefType(this.apiValue);
+
+  final String apiValue;
+}
+
+/// 一张 Precise Reference (角色参考 / 画风参考)。
+class NaiPreciseReference {
+  const NaiPreciseReference({
+    required this.bytes,
+    this.type = NaiPreciseRefType.characterAndStyle,
+    this.strength = 1.0,
+    this.fidelity = 1.0,
+    this.enabled = true,
+  });
+
+  final Uint8List bytes;
+  final NaiPreciseRefType type;
+
+  /// 0.0 ~ 1.0
+  final double strength;
+
+  /// 0.0 ~ 1.0
+  final double fidelity;
+  final bool enabled;
+
+  NaiPreciseReference copyWith({
+    NaiPreciseRefType? type,
+    double? strength,
+    double? fidelity,
+    bool? enabled,
+  }) => NaiPreciseReference(
+    bytes: bytes,
+    type: type ?? this.type,
+    strength: strength ?? this.strength,
+    fidelity: fidelity ?? this.fidelity,
+    enabled: enabled ?? this.enabled,
+  );
+}
+
+/// 一张 Vibe Transfer 参考图。
+class NaiReferenceImage {
+  const NaiReferenceImage({
+    required this.bytes,
+    this.strength = 0.6,
+    this.informationExtracted = 1.0,
+  });
+
+  final Uint8List bytes;
+
+  /// 参考风格强度 0.0 ~ 1.0
+  final double strength;
+
+  /// 提取的信息量 0.0 ~ 1.0
+  final double informationExtracted;
+}
 
 /// 图像生成请求参数
 class NaiGenerationParams {
   final String prompt;
   final String negativePrompt;
+
+  /// 仅参与生成、但写入元数据时剔除的私有 tag（逗号分隔）。
+  final String stripTags;
+
+  /// 仅参与负面提示词、但写入元数据时剔除的私有负面 tag。
+  final String stripNegativeTags;
+
+  /// 画风串固定选项附加的正/负 tag（只读，显示在提示词框下方）。
+  final String stylePositive;
+  final String styleNegative;
+
+  /// 生成前是否从请求里剔除 [bannedWords]。
+  final bool stripBannedWords;
+
+  /// 用户维护的屏蔽词，换行/逗号/分号分隔。编辑器原文不变。
+  final String bannedWords;
+
+  /// 画风串 tag 是否进入导出元数据（不影响生成）。
+  final bool styleTagsInMetadata;
   final NaiModel model;
 
   /// V5 Full 算力档位。其它模型忽略；缺省为通常，兼容旧存档。
@@ -41,9 +123,31 @@ class NaiGenerationParams {
   /// false = 自定义定位 (发送 use_coords=true 与各角色 center)
   final bool characterAiPosition;
 
+  /// 图生图源图 (PNG 字节)；null 表示纯文生图
+  final Uint8List? img2imgBytes;
+
+  /// 图生图强度 0.01 ~ 0.99 (越高越偏离原图)
+  final double img2imgStrength;
+
+  /// 图生图附加噪声 0.0 ~ 0.99
+  final double img2imgNoise;
+
+  /// Vibe Transfer 参考图列表
+  final List<NaiReferenceImage> referenceImages;
+
+  /// Precise Reference (角色 / 画风参考)，仅 V4.5 支持。
+  final List<NaiPreciseReference> preciseReferences;
+
   const NaiGenerationParams({
     required this.prompt,
     this.negativePrompt = '',
+    this.stripTags = '',
+    this.stripNegativeTags = '',
+    this.stylePositive = '',
+    this.styleNegative = '',
+    this.stripBannedWords = false,
+    this.bannedWords = '',
+    this.styleTagsInMetadata = true,
     this.model = NaiModel.v5Full,
     this.effort = NaiEffort.high,
     this.width = 832,
@@ -66,6 +170,11 @@ class NaiGenerationParams {
     this.applyFixedPrompts = true,
     this.characterPrompts = const [],
     this.characterAiPosition = true,
+    this.img2imgBytes,
+    this.img2imgStrength = 0.5,
+    this.img2imgNoise = 0.0,
+    this.referenceImages = const [],
+    this.preciseReferences = const [],
   });
 
   /// 组合最终正向词 (词缀 + 核心词 + 透明背景标签)
@@ -90,18 +199,61 @@ class NaiGenerationParams {
     return parts.join(', ');
   }
 
+  /// 实际发送给模型的提示词：在 effectivePrompt 末尾追加 stripTags。
+  /// 元数据注释仍使用 effectivePrompt，因此这些 tag 不会进入导出元数据。
+  /// 返回给 Agent 前按屏蔽词开关处理一段文本（生成请求不使用）。
+  String textForAgent(String text) {
+    if (!stripBannedWords || text.isEmpty || bannedWords.trim().isEmpty) {
+      return text;
+    }
+    return BannedWordSanitizer.strip(text, bannedWords);
+  }
+
+
+  String get generationPrompt {
+    final tags = stripTags.trim();
+    if (tags.isEmpty) return effectivePrompt;
+    return effectivePrompt.isEmpty ? tags : '$effectivePrompt, $tags';
+  }
+
+  /// 实际发送的负面词：在 effectiveNegativePrompt 末尾追加 stripNegativeTags。
+  String get generationNegativePrompt {
+    final tags = stripNegativeTags.trim();
+    if (tags.isEmpty) return requestNegativePrompt;
+    final base = requestNegativePrompt.trim();
+    return base.isEmpty ? tags : '$base, $tags';
+  }
+
   /// 组合实际发送的正向词：
   /// 1. 质量词后缀 (官网两层追加：prompt-mix 分段 + text: 标记前置)；
   /// 2. V5 系列模型的 Auto Text——把引号包住的文字注入 `teXt:` 渲染段
   ///    (官网在质量词之后追加，因此质量词永远落在 teXt: 之前)。
-  String get effectivePrompt {
+  String get effectivePrompt => _composeEffectivePrompt(includeStyle: true);
+
+  /// 写入 PNG Description 的提示词：按 styleTagsInMetadata 决定是否带画风串，
+  /// 并始终剔除私有 tag。
+  String get metadataPrompt => _removeTagsFromText(
+    _composeEffectivePrompt(includeStyle: styleTagsInMetadata),
+    stripTags,
+  );
+
+  String _composeEffectivePrompt({required bool includeStyle}) {
+    final styleText = includeStyle ? stylePositive.trim() : '';
+    final styledPrompt = styleText.isEmpty
+        ? finalPrompt
+        : NovelAiPromptText.applySuffix(
+            finalPrompt,
+            styleText,
+            isV4OrAbove: model.isV4OrAbove,
+            supportsTextRendering: model.supportsTextRendering,
+          );
     final qualityTags = qualityToggle
         ? NovelAiQualityTagsHelper.getQualityTags(model, qualityPreset)
         : '';
     final withQuality = qualityTags.trim().isEmpty
-        ? finalPrompt
+        ? styledPrompt
         : NovelAiPromptText.applySuffix(
-            finalPrompt,
+            styledPrompt,
             qualityTags,
             isV4OrAbove: model.isV4OrAbove,
             supportsTextRendering: model.supportsTextRendering,
@@ -130,8 +282,13 @@ class NaiGenerationParams {
   /// 组合实际发送的负面词 (官方 UC 预设前缀 + 自定义排除词)。
   /// 官网把预设内容拼在用户负面提示词前面，并做 nsfw 双向处理：
   /// 正向词不含 nsfw 时在负面词最开头附加 nsfw 压制；含 nsfw 时反而移除以放开。
-  String get effectiveNegativePrompt =>
-      _composeNegative(presetKey: ucPresetKey, userNegative: negativePrompt);
+  String get effectiveNegativePrompt => _composeNegative(
+        presetKey: ucPresetKey,
+        userNegative: [
+          negativePrompt.trim(),
+          styleNegative.trim(),
+        ].where((part) => part.isNotEmpty).join(', '),
+      );
 
   /// 节约档固定使用 Heavy 排除词，不拼接用户排除词。
   String get requestNegativePrompt => isMediumEffort
@@ -236,14 +393,76 @@ class NaiGenerationParams {
   /// 构建发送给 NovelAI 官方的 JSON 请求体
   /// [streaming] 为 true 时附带 stream=msgpack 参数，请求流式中间帧 (仅 V4+ 模型支持)
   Map<String, dynamic> toApiPayload({bool streaming = false}) {
-    final apiPrompt = effectivePrompt;
-    final apiNegative = requestNegativePrompt;
+    final apiPrompt = generationPrompt;
+    final apiNegative = generationNegativePrompt;
     final isV4OrAbove = model.isV4OrAbove;
+    final isImg2img = img2imgBytes != null;
     final requestSampler = effectiveSampler;
     // 官网对 Euler Ancestral + 非 Native 噪声调度固定开启布朗尼修正，保持一致
     final usesBrownianEulerAncestral =
         requestSampler == NaiSampler.kEulerAncestral &&
         noiseSchedule != NoiseSchedule.native;
+
+    final enabledPrecise = preciseReferences
+        .where((reference) => reference.enabled)
+        .toList(growable: false);
+    final usePrecise =
+        model.supportsPreciseReference && enabledPrecise.isNotEmpty;
+
+    final referencePayload = <String, dynamic>{};
+    // Precise Reference 与 Vibe Transfer 官方不兼容；同时存在时以角色/画风参考为准。
+    if (!usePrecise && referenceImages.isNotEmpty) {
+      referencePayload['reference_image_multiple'] = [
+        for (final reference in referenceImages) base64Encode(reference.bytes),
+      ];
+      referencePayload['reference_information_extracted_multiple'] = [
+        for (final reference in referenceImages) reference.informationExtracted,
+      ];
+      referencePayload['reference_strength_multiple'] = [
+        for (final reference in referenceImages) reference.strength,
+      ];
+      if (model.isV5) {
+        referencePayload['normalize_reference_strength_multiple'] = false;
+      }
+    }
+    final precisePayload = usePrecise
+        ? <String, dynamic>{
+            'normalize_reference_strength_multiple': true,
+            'director_reference_images': [
+              for (final reference in enabledPrecise)
+                base64Encode(reference.bytes),
+            ],
+            'director_reference_descriptions': [
+              for (final reference in enabledPrecise)
+                {
+                  'caption': {
+                    'base_caption': reference.type.apiValue,
+                    'char_captions': <dynamic>[],
+                  },
+                  'legacy_uc': false,
+                },
+            ],
+            'director_reference_information_extracted': [
+              for (final _ in enabledPrecise) 1,
+            ],
+            'director_reference_strength_values': [
+              for (final reference in enabledPrecise) reference.strength,
+            ],
+            'director_reference_secondary_strength_values': [
+              for (final reference in enabledPrecise) 1.0 - reference.fidelity,
+            ],
+          }
+        : const <String, dynamic>{};
+    final img2imgPayload = <String, dynamic>{
+      if (img2imgBytes != null) ...{
+        'image': base64Encode(img2imgBytes!),
+        'strength': img2imgStrength,
+        'noise': img2imgNoise,
+        'color_correct': false,
+        // 官网对带底图的请求固定使用 seed - 1 作为加噪种子，便于复现。
+        if (seed >= 0) 'extra_noise_seed': seed - 1,
+      },
+    };
 
     final baseParameters = <String, dynamic>{
       'width': width,
@@ -286,7 +505,7 @@ class NaiGenerationParams {
       return {
         'input': apiPrompt,
         'model': apiModelId,
-        'action': 'generate',
+        'action': isImg2img ? 'img2img' : 'generate',
         'parameters': {
           ...baseParameters,
           'params_version': 4,
@@ -309,6 +528,9 @@ class NaiGenerationParams {
             },
             'legacy_uc': false,
           },
+          ...referencePayload,
+          ...precisePayload,
+          ...img2imgPayload,
         },
       };
     }
@@ -317,8 +539,14 @@ class NaiGenerationParams {
     return {
       'input': apiPrompt,
       'model': apiModelId,
-      'action': 'generate',
-      'parameters': {...baseParameters, 'sm': false, 'sm_dyn': false},
+      'action': isImg2img ? 'img2img' : 'generate',
+      'parameters': {
+        ...baseParameters,
+        'sm': false,
+        'sm_dyn': false,
+        ...referencePayload,
+        ...img2imgPayload,
+      },
     };
   }
 
@@ -342,6 +570,9 @@ class NaiGenerationParams {
         requestSampler == NaiSampler.kEulerAncestral &&
         noiseSchedule != NoiseSchedule.native;
 
+    // Infill 只接收 sourceBytes/maskBytes 与调用方传入的 strength/noise。
+    // 图生图源图与 Vibe 参考图属于 generate 语义；若混入 infill，会覆盖
+    // parameters['image']/strength/noise，导致底图与蒙版错位、扣费却出废图。
     final baseParameters = <String, dynamic>{
       'width': requestWidth,
       'height': requestHeight,
@@ -419,6 +650,13 @@ class NaiGenerationParams {
   NaiGenerationParams copyWith({
     String? prompt,
     String? negativePrompt,
+    String? stripTags,
+    String? stripNegativeTags,
+    String? stylePositive,
+    String? styleNegative,
+    bool? stripBannedWords,
+    String? bannedWords,
+    bool? styleTagsInMetadata,
     NaiModel? model,
     NaiEffort? effort,
     int? width,
@@ -441,10 +679,25 @@ class NaiGenerationParams {
     bool? applyFixedPrompts,
     List<NaiCharacterPrompt>? characterPrompts,
     bool? characterAiPosition,
+    Uint8List? img2imgBytes,
+    bool clearImg2img = false,
+    double? img2imgStrength,
+    double? img2imgNoise,
+    List<NaiReferenceImage>? referenceImages,
+    bool clearReferenceImages = false,
+    List<NaiPreciseReference>? preciseReferences,
+    bool clearPreciseReferences = false,
   }) {
     return NaiGenerationParams(
       prompt: prompt ?? this.prompt,
       negativePrompt: negativePrompt ?? this.negativePrompt,
+      stripTags: stripTags ?? this.stripTags,
+      stripNegativeTags: stripNegativeTags ?? this.stripNegativeTags,
+      stylePositive: stylePositive ?? this.stylePositive,
+      styleNegative: styleNegative ?? this.styleNegative,
+      stripBannedWords: stripBannedWords ?? this.stripBannedWords,
+      bannedWords: bannedWords ?? this.bannedWords,
+      styleTagsInMetadata: styleTagsInMetadata ?? this.styleTagsInMetadata,
       model: model ?? this.model,
       effort: effort ?? this.effort,
       width: width ?? this.width,
@@ -467,6 +720,15 @@ class NaiGenerationParams {
       applyFixedPrompts: applyFixedPrompts ?? this.applyFixedPrompts,
       characterPrompts: characterPrompts ?? this.characterPrompts,
       characterAiPosition: characterAiPosition ?? this.characterAiPosition,
+      img2imgBytes: clearImg2img ? null : (img2imgBytes ?? this.img2imgBytes),
+      img2imgStrength: img2imgStrength ?? this.img2imgStrength,
+      img2imgNoise: img2imgNoise ?? this.img2imgNoise,
+      referenceImages: clearReferenceImages
+          ? const []
+          : (referenceImages ?? this.referenceImages),
+      preciseReferences: clearPreciseReferences
+          ? const []
+          : (preciseReferences ?? this.preciseReferences),
     );
   }
 
@@ -495,6 +757,17 @@ class NaiGenerationParams {
     'applyFixedPrompts': applyFixedPrompts,
     'characterPrompts': characterPrompts.map((c) => c.toJson()).toList(),
     'characterAiPosition': characterAiPosition,
+    // 私密 tag 与图生图强度/噪声必须持久化；图片字节与参考图列表体积大，
+    // 不进入设置快照（参考图在重启后回到空列表）。
+    'stripTags': stripTags,
+    'stripNegativeTags': stripNegativeTags,
+    'stylePositive': stylePositive,
+    'styleNegative': styleNegative,
+    'styleTagsInMetadata': styleTagsInMetadata,
+    'stripBannedWords': stripBannedWords,
+    'bannedWords': bannedWords,
+    'img2imgStrength': img2imgStrength,
+    'img2imgNoise': img2imgNoise,
   };
 
   factory NaiGenerationParams.fromJson(Map<String, dynamic> json) {
@@ -519,6 +792,11 @@ class NaiGenerationParams {
     return NaiGenerationParams(
       prompt: json['prompt'] as String? ?? '',
       negativePrompt: json['negativePrompt'] as String? ?? '',
+      stylePositive: json['stylePositive'] as String? ?? '',
+      styleNegative: json['styleNegative'] as String? ?? '',
+      styleTagsInMetadata: json['styleTagsInMetadata'] != false,
+      stripBannedWords: json['stripBannedWords'] == true,
+      bannedWords: json['bannedWords'] as String? ?? '',
       model: json['model'] is String
           ? NaiModel.fromId(json['model'] as String)
           : NaiModel.v5Full,
@@ -547,13 +825,29 @@ class NaiGenerationParams {
       applyFixedPrompts: json['applyFixedPrompts'] as bool? ?? true,
       characterPrompts: characters,
       characterAiPosition: json['characterAiPosition'] as bool? ?? true,
+      stripTags: json['stripTags'] as String? ?? '',
+      stripNegativeTags: json['stripNegativeTags'] as String? ?? '',
+      img2imgStrength: parseDouble(
+        'img2imgStrength',
+        0.5,
+      ).clamp(0.01, 0.99).toDouble(),
+      img2imgNoise: parseDouble(
+        'img2imgNoise',
+        0.0,
+      ).clamp(0.0, 0.99).toDouble(),
+      // Precise Reference 图片字节不进入设置快照，重启后回到空列表。
+      preciseReferences: const [],
     );
   }
 
   /// 构建 V4+ 多角色的三套官方协议结构 (正向/负向 char_captions 与
   /// characterPrompts 条目)，toApiPayload 与 toMetadataComment 共用，
   /// 保证请求与嵌入 PNG 的元数据完全同构。
-  _NaiCharacterPayloadParts _buildCharacterPayloadParts() {
+  _NaiCharacterPayloadParts _buildCharacterPayloadParts({
+    bool forMetadata = false,
+  }) {
+    String visible(String text, String strip) =>
+        forMetadata ? _removeTagsFromText(text, strip) : text;
     final enabledCharacters = enabledCharacterPrompts;
     final useCoords = this.useCoords;
     final quantize = model.isV5
@@ -575,18 +869,22 @@ class NaiGenerationParams {
         'centers': [
           {'x': center.x, 'y': center.y},
         ],
-        'char_caption': character.prompt,
+        'char_caption': visible(character.prompt, stripTags),
       });
       negativeCharCaptions.add({
         'centers': [
           {'x': center.x, 'y': center.y},
         ],
-        'char_caption': isMediumEffort ? '' : character.negativePrompt,
+        'char_caption': isMediumEffort
+            ? ''
+            : visible(character.negativePrompt, stripNegativeTags),
       });
-      final characterUc = isMediumEffort ? '' : character.negativePrompt;
+      final characterUc = isMediumEffort
+          ? ''
+          : visible(character.negativePrompt, stripNegativeTags);
       characterPromptEntries.add({
         'center': {'x': center.x, 'y': center.y},
-        'prompt': character.prompt,
+        'prompt': visible(character.prompt, stripTags),
         'uc': characterUc,
         'enabled': true,
       });
@@ -605,9 +903,49 @@ class NaiGenerationParams {
   /// 互斥与 text: 标记处理的**完整生效提示词**，与实际请求完全一致；本方法
   /// 同样使用 effectivePrompt / effectiveNegativePrompt，第三方工具 (官网、
   /// Aaalice 等) 可直接识别。读回时的反向剥离见 ImageMetadataService。
+  /// 从注释文本里剔除指定 tag（对应插件 removeTagsFromComment）。
+  static String _normalizeTag(String raw) {
+    var tag = raw.trim().toLowerCase();
+    tag = tag.replaceFirst(RegExp(r'^-?\d+(?:\.\d+)?\s*::\s*'), '');
+    tag = tag.replaceAll('::', '').trim();
+    return tag;
+  }
+
+  static String _removeTagsFromText(String text, String tags) {
+    final remove = tags
+        .split(',')
+        .map(_normalizeTag)
+        .where((tag) => tag.isNotEmpty)
+        .toSet();
+    if (remove.isEmpty) return text;
+    return text
+        .split(',')
+        .map((part) => part.trim())
+        .where(
+          (part) =>
+              part.isNotEmpty && !remove.contains(_normalizeTag(part)),
+        )
+        .join(', ');
+  }
+
   Map<String, dynamic> toMetadataComment({required int seed}) {
-    final apiPrompt = effectivePrompt;
-    final apiNegative = requestNegativePrompt;
+    final apiPrompt = _removeTagsFromText(
+      _composeEffectivePrompt(includeStyle: styleTagsInMetadata),
+      stripTags,
+    );
+    final metadataNegative = [
+      negativePrompt.trim(),
+      if (styleTagsInMetadata) styleNegative.trim(),
+    ].where((part) => part.isNotEmpty).join(', ');
+    final apiNegative = _removeTagsFromText(
+      isMediumEffort
+          ? _composeNegative(presetKey: 'Heavy', userNegative: '')
+          : _composeNegative(
+              presetKey: ucPresetKey,
+              userNegative: metadataNegative,
+            ),
+      stripNegativeTags,
+    );
     final isV4OrAbove = model.isV4OrAbove;
     final requestSampler = effectiveSampler;
     // 官网对 Euler Ancestral + 非 Native 噪声调度固定开启布朗尼修正，保持一致
@@ -650,7 +988,7 @@ class NaiGenerationParams {
     };
 
     if (isV4OrAbove) {
-      final parts = _buildCharacterPayloadParts();
+      final parts = _buildCharacterPayloadParts(forMetadata: true);
       comment['v4_prompt'] = {
         'caption': {
           'base_caption': apiPrompt,

@@ -10,6 +10,8 @@ import '../../../core/widgets/app_floating_dock.dart';
 import '../../../core/widgets/app_icon_button.dart';
 import '../../../core/widgets/app_progress_bar.dart';
 import '../view_models/studio_view_model.dart';
+import 'account_pool_dialog.dart';
+import 'image_stream_view.dart';
 
 /// 左侧面板底部常驻操作坞：账号等级 / 点数 / Opus 免点标识 / V5 体力条 / 刷新 + 主操作按钮
 ///
@@ -28,13 +30,16 @@ class GenerateDock extends StatelessWidget {
   String _buildButtonLabel(BuildContext context, int cost) {
     final l10n = context.l10n;
     if (viewModel.isGenerating) {
-      if (viewModel.liveTotalSteps > 0 && viewModel.liveCurrentStep > 0) {
-        return l10n.dockAbortWithSteps(
-          viewModel.liveCurrentStep,
-          viewModel.liveTotalSteps,
-        );
-      }
-      return l10n.abortGeneration;
+      final label = viewModel.liveTotalSteps > 0 &&
+              viewModel.liveCurrentStep > 0
+          ? l10n.dockAbortWithSteps(
+              viewModel.liveCurrentStep,
+              viewModel.liveTotalSteps,
+            )
+          : l10n.abortGeneration;
+      return viewModel.isBatchRunning
+          ? '${viewModel.batchCurrent}/${viewModel.batchTotal} · $label'
+          : label;
     }
     if (cost > 0) {
       return l10n.dockGenerateWithCost(cost);
@@ -62,7 +67,7 @@ class GenerateDock extends StatelessWidget {
     final info = viewModel.accountInfo;
     final estimatedCost = viewModel.estimatedGenerationCost;
     // 修复页签下主按钮切换为「开始修复」(AI 整图编辑模式下为「开始 AI 编辑」)，
-    // 其余页签为「生成图片」
+    // 其余页签为「生成图片」。
     final isInpaintTab = viewModel.activeSidebarTab == StudioSidebarTab.inpaint;
     final isAiEditMode =
         isInpaintTab && viewModel.inpaintParams.mode == InpaintMode.aiEdit;
@@ -105,6 +110,12 @@ class GenerateDock extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
+                IconButton(
+                  tooltip: context.l10n.dockAccountPool,
+                  onPressed: () => AccountPoolDialog.show(context, viewModel),
+                  icon: const Icon(Icons.switch_account, size: 16),
+                  visualDensity: VisualDensity.compact,
+                ),
                 _RefreshButton(viewModel: viewModel, compact: compact),
               ],
             )
@@ -133,6 +144,12 @@ class GenerateDock extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                IconButton(
+                  tooltip: context.l10n.dockAccountPool,
+                  onPressed: () => AccountPoolDialog.show(context, viewModel),
+                  icon: const Icon(Icons.switch_account, size: 16),
+                  visualDensity: VisualDensity.compact,
                 ),
                 _RefreshButton(viewModel: viewModel, compact: compact),
               ],
@@ -174,10 +191,44 @@ class GenerateDock extends StatelessWidget {
             ],
           ],
 
-          const SizedBox(height: AppSpacing.md),
+          // 生成转入后台：保持流式进度可见，并提供「查看生成」恢复入口
+          if (viewModel.generationBackgrounded) ...[
+            SizedBox(height: compact ? AppSpacing.xs : AppSpacing.sm),
+            BackgroundGenerationBanner(
+              viewModel: viewModel,
+              compact: true,
+              padding: const EdgeInsets.all(8),
+            ),
+          ],
 
-          // 主操作按钮 (修复页签 = 开始修复；其余 = 生成图片)
-          ElevatedButton.icon(
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (!isInpaintTab) ...[
+                DropdownButton<int>(
+                  value: viewModel.batchCount,
+                  isDense: true,
+                  underline: const SizedBox.shrink(),
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary),
+                  items: const [1, 2, 3, 4, 5, 10]
+                      .map(
+                        (n) => DropdownMenuItem<int>(
+                          value: n,
+                          child: Text(n == 1 ? '×1' : '×$n'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: viewModel.isGenerating
+                      ? null
+                      : (value) {
+                          if (value != null) viewModel.setBatchCount(value);
+                        },
+                ),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: isInpaintTab
                   ? colors.primary
@@ -196,7 +247,7 @@ class GenerateDock extends StatelessWidget {
                       : () => viewModel.executeInpaint())
                 : (viewModel.isGenerating
                       ? () => viewModel.abortGeneration()
-                      : () => viewModel.generateImage()),
+                      : () => viewModel.generateBatch()),
             icon: isInpaintTab
                 ? (isAiEditMode
                       ? const Icon(Icons.auto_awesome, size: 17)
@@ -220,7 +271,7 @@ class GenerateDock extends StatelessWidget {
                     ),
                   )
                 : ListenableBuilder(
-                    // 生成中的步数文案仅随实时进度控制器局部刷新
+                    // 生成中的步数文案仅随实时进度控制器局部刷新。
                     listenable: viewModel.liveProgressController,
                     builder: (context, _) => Text(
                       _buildButtonLabel(context, estimatedCost),
@@ -231,6 +282,9 @@ class GenerateDock extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

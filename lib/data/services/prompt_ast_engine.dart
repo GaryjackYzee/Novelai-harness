@@ -90,14 +90,14 @@ class PromptAstEngine {
       final di = inner.indexOf('::');
       final dj = inner.lastIndexOf('::');
 
-      if (di > 0 && dj > di && dj == inner.length - 2) {
+      if (di > 0 && dj >= di + 2 && dj == inner.length - 2) {
         final num = double.tryParse(inner.substring(0, di));
         if (num != null) {
           numMult = num;
-          nameS = _trimL(text, ia + di + 2, ib);
+          nameS = _trimL(text, ia + di + 2, ia + dj);
           nameE = _trimR(text, nameS, ia + dj);
         }
-      } else if (di > 0 && dj == di) {
+      } else if (di > 0 && dj < di + 2) {
         // 单个 :: 开头未闭合 (如 1.5::tag)
         final num = double.tryParse(inner.substring(0, di));
         if (num != null) {
@@ -107,6 +107,8 @@ class PromptAstEngine {
         }
       }
 
+      if (nameE < nameS) nameE = nameS;
+      if (nameE < nameS) nameE = nameS;
       final name = text.substring(nameS, nameE);
       final normalizedName = name.replaceAll('_', ' ').trim().toLowerCase();
 

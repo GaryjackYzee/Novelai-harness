@@ -79,6 +79,21 @@ mixin _StudioSlashMixin on _StudioCore {
         notifyListeners();
         break;
 
+      case '/dream':
+        {
+          if (_harness.messages.isEmpty) {
+            _harness.addInfoMessage(vmL10n.slashDreamEmpty);
+            notifyListeners();
+            break;
+          }
+          await sendChatMessage(vmL10n.slashDreamPrompt);
+        }
+
+      case '/reflect':
+        {
+          await sendChatMessage(vmL10n.slashReflectPrompt);
+        }
+
       case '/compact':
         {
           if (_harness.provider == null) {

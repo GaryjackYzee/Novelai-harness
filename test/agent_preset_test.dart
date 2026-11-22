@@ -25,6 +25,27 @@ void main() {
       expect(v5.enabledSkillIds, contains('v5-architect'));
       expect(v5.isToolEnabled('novelai_generate'), isTrue);
       expect(v5.isParamModifiable('prompt'), isTrue);
+      // 资料库读取是只读基础能力，所有内置预设都必须可用。
+      for (final preset in BuiltinPresets.all) {
+        expect(
+          preset.isToolEnabled(PresetToolKeys.library),
+          isTrue,
+          reason: '${preset.id} 缺少 library 工具',
+        );
+        // 记忆 / 复盘 / 会话笔记是跨会话连续性的基础工具，必须内置放行；
+        // 即便自定义预设未勾选，AgentHarness 运行时也会全局放行。
+        for (final key in <String>[
+          PresetToolKeys.memory,
+          PresetToolKeys.reflection,
+          PresetToolKeys.contextMemory,
+        ]) {
+          expect(
+            preset.isToolEnabled(key),
+            isTrue,
+            reason: '${preset.id} 缺少 $key 工具',
+          );
+        }
+      }
     });
 
     test(
@@ -214,10 +235,7 @@ void main() {
       expect(result.content, contains('不强制额外生图探测'));
       expect(result.content, contains('严禁擅自添加衣服/发型等 tag'));
       expect(result.content, contains('xxx(角色名) (xxx/皮肤名) (xxx/作品名)'));
-      expect(
-        result.content,
-        contains('非用户明确要求，绝对不应该添加任何衣服、发型等 tag 来干扰模型'),
-      );
+      expect(result.content, contains('非用户明确要求，绝对不应该添加任何衣服、发型等 tag 来干扰模型'));
       expect(result.content, contains('画面不够精细与构图透视修正'));
       expect(result.content, contains('严禁乱加新东西凑细节'));
       expect(result.content, contains('就用画面里已有的东西，说清楚它们的位置和相互关系'));
@@ -492,7 +510,7 @@ You are an expert in cinematic lighting, rim light, and ambient color harmony.''
   group('SkillRegistry & ToolRegistry Dynamic Tests', () {
     test('SkillRegistry manages builtin and custom skills dynamically', () {
       final registry = SkillRegistry();
-      expect(registry.getAll().length, equals(2));
+      expect(registry.getAll().length, equals(3));
 
       const customSkill = Skill(
         id: 'custom-1',
@@ -518,6 +536,10 @@ You are an expert in cinematic lighting, rim light, and ambient color harmony.''
       final deletedInpaint = registry.unregister('inpaint-specialist');
       expect(deletedInpaint, isFalse);
       expect(registry.get('inpaint-specialist'), isNotNull);
+
+      final deletedNovi = registry.unregister('novi');
+      expect(deletedNovi, isFalse);
+      expect(registry.get('novi'), isNotNull);
     });
 
     test('ToolRegistry clear removes all registered tools', () {

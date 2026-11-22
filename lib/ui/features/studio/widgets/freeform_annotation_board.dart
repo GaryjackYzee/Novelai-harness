@@ -361,7 +361,8 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
       if (mounted) {
         showCanvasSnackBar(context, context.l10n.boardPastedImage);
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   @override

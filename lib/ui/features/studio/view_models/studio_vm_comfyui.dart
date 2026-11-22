@@ -137,6 +137,7 @@ mixin _StudioComfyMixin on _StudioCore {
   /// ComfyUI 模式生图主流程
   @override
   Future<void> generateImageViaComfyUi() async {
+    if (_isGenerating || _isStartingGeneration) return;
     if (_params.prompt.trim().isEmpty) {
       _errorMessage = vmL10n.vmGenEmptyPrompt;
       notifyListeners();

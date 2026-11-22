@@ -73,6 +73,16 @@ class StudioSidebar extends StatelessWidget {
               label: context.l10n.tabLibrary,
               isSelected: activeTab == StudioSidebarTab.library,
             ),
+            const SizedBox(height: 6),
+
+            // 导航分类项：图源 (AITag / 法典瀑布流)
+            _buildTabItem(
+              context: context,
+              tab: StudioSidebarTab.sources,
+              icon: Icons.travel_explore_outlined,
+              label: context.l10n.tabSources,
+              isSelected: activeTab == StudioSidebarTab.sources,
+            ),
 
             const Spacer(),
 

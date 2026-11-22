@@ -27,7 +27,7 @@ class ParameterCard extends StatelessWidget {
       StudioSidebarTab.parameters => 0,
       StudioSidebarTab.prompts => 1,
       StudioSidebarTab.inpaint => 2,
-      StudioSidebarTab.library => 0,
+      StudioSidebarTab.library || StudioSidebarTab.sources => 0,
     };
 
     return ExcludeSemantics(

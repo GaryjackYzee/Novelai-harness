@@ -67,7 +67,8 @@ Future<void> copyImageToClipboard(
       await Pasteboard.writeImage(bytes);
     }
     success = true;
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     success = false;
   }
   if (!context.mounted) return;
@@ -194,7 +195,8 @@ Future<void> exportImageToCustomDirectory(
           ? context.l10n.canvasSavedImage(selectedDir)
           : (viewModel.errorMessage ?? context.l10n.canvasSaveFailed),
     );
-  } catch (_) {
+  } catch (error) {
+    debugPrint('[ignored] $error');
     if (context.mounted) {
       showCanvasSnackBar(context, context.l10n.canvasSaveFailed);
     }

@@ -48,7 +48,8 @@ abstract class WindowControlsState<T extends StatefulWidget> extends State<T>
     try {
       final maximized = await windowManager.isMaximized();
       if (mounted) setState(() => _windowIsMaximized = maximized);
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   @override
@@ -66,7 +67,8 @@ abstract class WindowControlsState<T extends StatefulWidget> extends State<T>
     if (!isDesktopWindow) return;
     try {
       await windowManager.minimize();
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 最大化 / 向下还原
@@ -79,7 +81,8 @@ abstract class WindowControlsState<T extends StatefulWidget> extends State<T>
       } else {
         await windowManager.maximize();
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 关闭窗口 (经 [WindowStateService] 统一等待参数/会话等待落盘状态)
@@ -87,7 +90,8 @@ abstract class WindowControlsState<T extends StatefulWidget> extends State<T>
     if (!isDesktopWindow) return;
     try {
       await WindowStateService.instance.closeWindow();
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 窗口拖拽区：桌面端可拖动移动 + 双击最大化；移动端原样返回

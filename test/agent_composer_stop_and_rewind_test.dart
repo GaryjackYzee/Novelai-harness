@@ -210,7 +210,11 @@ void main() {
 
     expect(sends, 0);
     expect(viewModel.isChatStreaming, isTrue);
-    expect(viewModel.chatDraft, '还没发出的草稿');
+    // 流式期间按 Enter：消息进入队列，草稿清空，不直接发送。
+    expect(viewModel.queuedChatMessages.map((m) => m.content),
+        contains('还没发出的草稿'));
+    expect(viewModel.chatDraft, '');
+    expect(sends, 0);
     expect(find.byKey(const ValueKey('chat_stop_button')), findsOneWidget);
     // 草稿防抖落盘计时器必须走完，否则用例结束时仍有未触发的 Timer。
     await tester.pump(const Duration(milliseconds: 400));

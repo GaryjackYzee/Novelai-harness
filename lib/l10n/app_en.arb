@@ -10,17 +10,29 @@
   "chatContextEstimate": "Context ≈{tokens} / {window}",
   "@chatContextEstimate": {
     "placeholders": {
-      "tokens": {"type": "int"},
-      "window": {"type": "int"}
+      "tokens": {
+        "type": "int"
+      },
+      "window": {
+        "type": "int"
+      }
     }
   },
   "chatContextShort": "Context {percent}%",
   "@chatContextShort": {
-    "placeholders": {"percent": {"type": "int"}}
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
   },
   "chatContextNotes": "Notes {count}",
   "@chatContextNotes": {
-    "placeholders": {"count": {"type": "int"}}
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "chatContextCompacting": "Compacting in background",
   "chatContextFailed": "Compaction failed",
@@ -152,7 +164,9 @@
   "settingsImageCount": "{count, plural, =1{1 image} other{{count} images}}",
   "@settingsImageCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "settingsSectionTagAutocomplete": "Danbooru Tag Autocomplete",
@@ -169,14 +183,20 @@
   "dictOnlineInfo": "Online dictionary, {count, plural, =1{1 entry} other{{count} entries}} · updated {date}",
   "@dictOnlineInfo": {
     "placeholders": {
-      "count": { "type": "int" },
-      "date": { "type": "String" }
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
     }
   },
   "dictBuiltinInfo": "Built-in dictionary, {count, plural, =1{1 entry} other{{count} entries}}",
   "@dictBuiltinInfo": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "dictBuiltinLoading": "Built-in dictionary (loading)",
@@ -186,7 +206,9 @@
   "dictUpdateFailed": "Update failed: {error}",
   "@dictUpdateFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "settingsModelSettings": "Model Settings",
@@ -197,7 +219,9 @@
   "settingsModelBadgeContext": "{tokens} Context",
   "@settingsModelBadgeContext": {
     "placeholders": {
-      "tokens": { "type": "String" }
+      "tokens": {
+        "type": "String"
+      }
     }
   },
   "settingsAddModel": "Add Model",
@@ -218,28 +242,38 @@
   "settingsNewProviderDefaultName": "New Provider {index}",
   "@settingsNewProviderDefaultName": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "settingsFetchModelsEnterBaseUrl": "Please enter a valid API Base URL first",
   "settingsFetchModelsSuccess": "Successfully fetched {count, plural, =1{1 model} other{{count} models}}",
   "@settingsFetchModelsSuccess": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "settingsFetchModelsSuccessWithEnriched": "Successfully fetched {count, plural, =1{1 model} other{{count} models}}, {enrichedCount} matched with models.dev metadata",
   "@settingsFetchModelsSuccessWithEnriched": {
     "placeholders": {
-      "count": { "type": "int" },
-      "enrichedCount": { "type": "int" }
+      "count": {
+        "type": "int"
+      },
+      "enrichedCount": {
+        "type": "int"
+      }
     }
   },
   "settingsEndpointUrlNotConfigured": "URL not configured",
   "settingsFullEndpoint": "Full Endpoint: {endpoint}",
   "@settingsFullEndpoint": {
     "placeholders": {
-      "endpoint": { "type": "String" }
+      "endpoint": {
+        "type": "String"
+      }
     }
   },
   "settingsSectionProviderSelection": "Provider Selection",
@@ -270,7 +304,9 @@
   "settingsImageEditUnrecognizedModel": "{modelId} (not recognized as drawing model)",
   "@settingsImageEditUnrecognizedModel": {
     "placeholders": {
-      "modelId": { "type": "String" }
+      "modelId": {
+        "type": "String"
+      }
     }
   },
   "settingsImageEditTip": "Image edit does not consume Anlas points, billing follows the drawing model provider; models without auto-detected capabilities can enable 'Image Output' manually in model settings",
@@ -283,8 +319,12 @@
   "settingsModelCount": "{current} / {total} models",
   "@settingsModelCount": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "settingsNoModelsInProvider": "No models in current provider",
@@ -292,7 +332,9 @@
   "settingsNoMatchingModels": "No models matching \"{query}\"",
   "@settingsNoMatchingModels": {
     "placeholders": {
-      "query": { "type": "String" }
+      "query": {
+        "type": "String"
+      }
     }
   },
   "settingsBadgeBuiltin": "Built-in",
@@ -312,7 +354,9 @@
   "presetNewName": "New Preset {index}",
   "@presetNewName": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "presetNewDescription": "Custom Agent preset description",
@@ -320,13 +364,17 @@
   "presetDuplicateName": "{name} (Copy)",
   "@presetDuplicateName": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "presetExportSkillSuccess": "Exported skill package {name}",
   "@presetExportSkillSuccess": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "presetBuiltinNotice": "Built-in presets are factory defaults refreshed automatically from code on launch and cannot be edited directly. To customize, click \"Copy\" first to make a copy.",
@@ -361,7 +409,9 @@
   "skillDialogEditTitle": "Edit Skill ({name})",
   "@skillDialogEditTitle": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "skillEditorTabStructured": "Structured Edit",
@@ -417,14 +467,18 @@
   "toolDialogSchemaTitle": "Tool Schema ({label})",
   "@toolDialogSchemaTitle": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "toolDialogNewTitle": "New Custom Tool",
   "toolDialogEditTitle": "Edit Custom Tool ({label})",
   "@toolDialogEditTitle": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "toolFieldId": "ID",
@@ -440,7 +494,9 @@
   "toolFieldOutputTemplateHint": "e.g. Successfully executed and built result: {placeholder}",
   "@toolFieldOutputTemplateHint": {
     "placeholders": {
-      "placeholder": { "type": "String" }
+      "placeholder": {
+        "type": "String"
+      }
     }
   },
   "toolSave": "Save Tool",
@@ -448,7 +504,9 @@
   "toolSchemaParseError": "Schema JSON parse failed: {error}",
   "@toolSchemaParseError": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "settingsSaveButton": "Save Settings",
@@ -471,7 +529,9 @@
   "settingsDefaultScaleSubtitle": "Prompt guidance scale (current: {scale})",
   "@settingsDefaultScaleSubtitle": {
     "placeholders": {
-      "scale": { "type": "String" }
+      "scale": {
+        "type": "String"
+      }
     }
   },
   "settingsSectionAgentLoop": "Agent Loop",
@@ -485,8 +545,12 @@
   "billSummaryRequestsAndTokens": "{requests} requests · Total {tokens} tokens",
   "@billSummaryRequestsAndTokens": {
     "placeholders": {
-      "requests": { "type": "int" },
-      "tokens": { "type": "String" }
+      "requests": {
+        "type": "int"
+      },
+      "tokens": {
+        "type": "String"
+      }
     }
   },
   "billEmptyRecords": "No usage records in this period",
@@ -513,8 +577,12 @@
   "paramsSeedTooltip": "Seed Settings ({mode} · {timing})",
   "@paramsSeedTooltip": {
     "placeholders": {
-      "mode": { "type": "String" },
-      "timing": { "type": "String" }
+      "mode": {
+        "type": "String"
+      },
+      "timing": {
+        "type": "String"
+      }
     }
   },
   "paramsSeedModeRandomShort": "Random",
@@ -551,7 +619,9 @@
   "watermarkPickImageFailed": "Failed to select image: {error}",
   "@watermarkPickImageFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "watermarkPositionTopLeft": "Top Left",
@@ -567,7 +637,9 @@
   "watermarkPositionPillLabel": "Position: {position}",
   "@watermarkPositionPillLabel": {
     "placeholders": {
-      "position": { "type": "String" }
+      "position": {
+        "type": "String"
+      }
     }
   },
   "watermarkAutoPosition": "Auto Position",
@@ -590,14 +662,20 @@
   "watermarkOverlayScale": "Scale: {scale}%",
   "@watermarkOverlayScale": {
     "placeholders": {
-      "scale": { "type": "String" }
+      "scale": {
+        "type": "String"
+      }
     }
   },
   "watermarkOverlayPosition": "Position: {x}%, {y}%",
   "@watermarkOverlayPosition": {
     "placeholders": {
-      "x": { "type": "int" },
-      "y": { "type": "int" }
+      "x": {
+        "type": "int"
+      },
+      "y": {
+        "type": "int"
+      }
     }
   },
   "promptsPageTitle": "Prompt Management",
@@ -639,7 +717,9 @@
   "charPromptDefaultName": "Character {index}",
   "@charPromptDefaultName": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "charPromptNameHint": "Character name (optional)",
@@ -702,13 +782,17 @@
   "inpaintSupersample": "{scale}x supersampling",
   "@inpaintSupersample": {
     "placeholders": {
-      "scale": { "type": "String" }
+      "scale": {
+        "type": "String"
+      }
     }
   },
   "inpaintReusedLabel": "Reused {label}",
   "@inpaintReusedLabel": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "inpaintReusedPromptEmpty": "(Empty, configure in Prompt tab)",
@@ -716,7 +800,9 @@
   "inpaintOverlayContextCrop": "Context extension +{padding}px",
   "@inpaintOverlayContextCrop": {
     "placeholders": {
-      "padding": { "type": "int" }
+      "padding": {
+        "type": "int"
+      }
     }
   },
   "inpaintOverlayInProgress": "Inpainting...",
@@ -728,7 +814,9 @@
   "canvasImportedReference": "Imported reference image: {fileName}",
   "@canvasImportedReference": {
     "placeholders": {
-      "fileName": { "type": "String" }
+      "fileName": {
+        "type": "String"
+      }
     }
   },
   "canvasDropTargetTitle": "Drop image to import (Metadata will be auto-detected)",
@@ -739,7 +827,9 @@
   "canvasActionViewAnnotation": "View Annotations ({count})",
   "@canvasActionViewAnnotation": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasActionSendToInpaint": "Send to Inpaint",
@@ -776,13 +866,17 @@
   "canvasClearHistoryAutoSaveMessage": "Are you sure you want to clear {count, plural, =1{1 image} other{{count} images}} from canvas history? Only UI records will be cleared, locally saved files are kept. This action cannot be undone.",
   "@canvasClearHistoryAutoSaveMessage": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasClearHistoryManualSaveMessage": "Are you sure you want to clear {count, plural, =1{1 image} other{{count} images}} from history? Unsaved cached images will be deleted, manually saved files are kept. This action cannot be undone.",
   "@canvasClearHistoryManualSaveMessage": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasHistoryEmpty": "No history",
@@ -793,14 +887,18 @@
   "canvasAnnotateWithCount": "Annotate ({count})",
   "@canvasAnnotateWithCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "canvasSaveButtonTooltip": "Save current image to local directory (apply metadata and watermark per export settings)",
   "canvasSavedImage": "Saved: {path}",
   "@canvasSavedImage": {
     "placeholders": {
-      "path": { "type": "String" }
+      "path": {
+        "type": "String"
+      }
     }
   },
   "canvasSaveFailed": "Save failed, please check storage directory settings",
@@ -824,8 +922,12 @@
   "metadataDimensions": "Dimensions: {width} x {height}",
   "@metadataDimensions": {
     "placeholders": {
-      "width": { "type": "String" },
-      "height": { "type": "String" }
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
     }
   },
   "metadataModelUnknown": "Unknown Model",
@@ -833,27 +935,37 @@
   "metadataModelAndSampler": "Model: {model}  ·  Sampler: {sampler}",
   "@metadataModelAndSampler": {
     "placeholders": {
-      "model": { "type": "String" },
-      "sampler": { "type": "String" }
+      "model": {
+        "type": "String"
+      },
+      "sampler": {
+        "type": "String"
+      }
     }
   },
   "metadataSeedLabel": "Seed: {seed}",
   "@metadataSeedLabel": {
     "placeholders": {
-      "seed": { "type": "String" }
+      "seed": {
+        "type": "String"
+      }
     }
   },
   "metadataCharacterPromptsTitle": "Character Prompts",
   "metadataCharacterIndex": "Character {index}",
   "@metadataCharacterIndex": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "metadataNegativePrefix": "Negative: {negative}",
   "@metadataNegativePrefix": {
     "placeholders": {
-      "negative": { "type": "String" }
+      "negative": {
+        "type": "String"
+      }
     }
   },
   "metadataParametersTitle": "Generation Parameters",
@@ -884,14 +996,20 @@
   "dockAbortWithSteps": "Abort Generation ({current}/{total})",
   "@dockAbortWithSteps": {
     "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "dockGenerateWithCost": "Generate Image ({cost} Anlas)",
   "@dockGenerateWithCost": {
     "placeholders": {
-      "cost": { "type": "int" }
+      "cost": {
+        "type": "int"
+      }
     }
   },
   "dockGenerateNeedPoints": "Generate Image (Costs Anlas)",
@@ -909,7 +1027,9 @@
   "boardImportedReferenceNamed": "Imported reference image: {name}",
   "@boardImportedReferenceNamed": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "boardAddedHistoryImage": "History image added as board reference",
@@ -929,8 +1049,12 @@
   "boardImageCardRefTitle": "Reference Image ({width}x{height})",
   "@boardImageCardRefTitle": {
     "placeholders": {
-      "width": { "type": "int" },
-      "height": { "type": "int" }
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
     }
   },
   "boardImageCardRemoveTooltip": "Remove reference image card",
@@ -950,8 +1074,12 @@
   "charPosCanvasTempBoard": "Temporary Canvas · {width} × {height}",
   "@charPosCanvasTempBoard": {
     "placeholders": {
-      "width": { "type": "int" },
-      "height": { "type": "int" }
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
     }
   },
   "posControlsDoneEditing": "Done Editing",
@@ -966,7 +1094,9 @@
   "libraryEntriesCount": "{count, plural, =1{1 item} other{{count} items}}",
   "@libraryEntriesCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "libraryCategoryAll": "All",
@@ -974,7 +1104,9 @@
   "libraryExportFailed": "Export failed: {error}",
   "@libraryExportFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryImportDialogTitle": "Import Library JSON",
@@ -982,37 +1114,49 @@
   "libraryImportSuccess": "Successfully imported {count, plural, =1{1 prompt combo entry} other{{count} prompt combo entries}}",
   "@libraryImportSuccess": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "libraryImportFailed": "Import failed, please check JSON format: {error}",
   "@libraryImportFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyAsCharacter": "Added character card: {title}",
   "@libraryApplyAsCharacter": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyReplace": "Replaced workbench prompt: {title}",
   "@libraryApplyReplace": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyAppendBoth": "Appended positive and negative prompts: {title}",
   "@libraryApplyAppendBoth": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryApplyAppendPrompt": "Appended main prompt: {title}",
   "@libraryApplyAppendPrompt": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryReturnToWorkbench": "Return to Workbench",
@@ -1020,13 +1164,17 @@
   "libraryDeleteDialogMessage": "Are you sure you want to delete prompt combo \"{title}\"? This action cannot be undone.",
   "@libraryDeleteDialogMessage": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryDeletedCombo": "Deleted prompt combo: {title}",
   "@libraryDeletedCombo": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryEmptyTitle": "No entries in prompt library",
@@ -1037,7 +1185,9 @@
   "libraryCardCopiedPrompt": "Copied prompt of \"{title}\" to clipboard",
   "@libraryCardCopiedPrompt": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryMenuAppendToPrompt": "Append to Workbench Prompt",
@@ -1053,7 +1203,9 @@
   "libraryEditPickImageFailed": "Failed to select image: {error}",
   "@libraryEditPickImageFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryEditAdoptedCanvasImage": "Current canvas image set as preview",
@@ -1065,19 +1217,25 @@
   "libraryEditUpdatedSuccess": "Updated prompt combo: {title}",
   "@libraryEditUpdatedSuccess": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryEditCreatedSuccess": "Added prompt combo: {title}",
   "@libraryEditCreatedSuccess": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "libraryEditSaveFailed": "Save failed: {error}",
   "@libraryEditSaveFailed": {
     "placeholders": {
-      "error": { "type": "String" }
+      "error": {
+        "type": "String"
+      }
     }
   },
   "libraryEditDialogTitleEdit": "Edit Prompt Combo",
@@ -1104,7 +1262,9 @@
   "tagAcAlias": "Alias: {alias}",
   "@tagAcAlias": {
     "placeholders": {
-      "alias": { "type": "String" }
+      "alias": {
+        "type": "String"
+      }
     }
   },
   "tagBrowserTitle": "Danbooru Tag Inspiration Library",
@@ -1112,14 +1272,20 @@
   "tagBrowserAddedTag": "Added tag: {tag}",
   "@tagBrowserAddedTag": {
     "placeholders": {
-      "tag": { "type": "String" }
+      "tag": {
+        "type": "String"
+      }
     }
   },
   "tagBrowserAddedTagWithZh": "Added tag: {tag} ({zh})",
   "@tagBrowserAddedTagWithZh": {
     "placeholders": {
-      "tag": { "type": "String" },
-      "zh": { "type": "String" }
+      "tag": {
+        "type": "String"
+      },
+      "zh": {
+        "type": "String"
+      }
     }
   },
   "tagBrowserNoMatchingTitle": "No matching tags found",
@@ -1129,7 +1295,9 @@
   "chatMaxAttachmentsNotice": "{count, plural, =1{At most 1 image can be attached at a time} other{At most {count} images can be attached at a time}}",
   "@chatMaxAttachmentsNotice": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "chatImageParseFailedNotice": "Image parsing failed, please try another image",
@@ -1149,30 +1317,46 @@
   "chatSessionUsageDetail": "Input {input} · Output {output} · Total {total}",
   "@chatSessionUsageDetail": {
     "placeholders": {
-      "input": { "type": "String" },
-      "output": { "type": "String" },
-      "total": { "type": "String" }
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
     }
   },
   "chatSessionUsageCacheRead": " · Cache read {cacheRead}",
   "@chatSessionUsageCacheRead": {
     "placeholders": {
-      "cacheRead": { "type": "String" }
+      "cacheRead": {
+        "type": "String"
+      }
     }
   },
   "chatSessionUsageCacheReadWithRate": " · Cache read {cacheRead} ({rate}%)",
   "@chatSessionUsageCacheReadWithRate": {
     "placeholders": {
-      "cacheRead": { "type": "String" },
-      "rate": { "type": "String" }
+      "cacheRead": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      }
     }
   },
   "chatToolNoOutput": "(No output)",
   "chatToolResultSummary": "{count, plural, =1{1 line · {firstLine}} other{{count} lines · {firstLine}}}",
   "@chatToolResultSummary": {
     "placeholders": {
-      "count": { "type": "int" },
-      "firstLine": { "type": "String" }
+      "count": {
+        "type": "int"
+      },
+      "firstLine": {
+        "type": "String"
+      }
     }
   },
   "chatThinkingProgress": "Thinking...",
@@ -1189,7 +1373,9 @@
   "rewindSelectedTurn": "Selected turn #{index}",
   "@rewindSelectedTurn": {
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
   "rewindSelectPrompt": "Please select a turn to rewind above",
@@ -1203,16 +1389,24 @@
   "sessionDeleteConfirm": "Are you sure you want to permanently delete session \"{title}\"? This action cannot be undone.",
   "@sessionDeleteConfirm": {
     "placeholders": {
-      "title": { "type": "String" }
+      "title": {
+        "type": "String"
+      }
     }
   },
   "sessionDeleteConfirmButton": "Delete",
   "sessionDateFormat": "{month}/{day} {time}",
   "@sessionDateFormat": {
     "placeholders": {
-      "month": { "type": "int" },
-      "day": { "type": "int" },
-      "time": { "type": "String" }
+      "month": {
+        "type": "int"
+      },
+      "day": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
     }
   },
   "sessionBackTooltip": "Back to Chat",
@@ -1227,7 +1421,9 @@
   "sessionMessageCount": "{count, plural, =1{1 message} other{{count} messages}}",
   "@sessionMessageCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "askCardDefaultHeader": "Question for User",
@@ -1236,7 +1432,6 @@
   "askCardSubmit": "Submit Answer",
   "askCardCustomInputHint": "Enter custom answer...",
   "chatThinkingProcess": "Thinking Process",
-
   "canvasBadgeUnsaved": "Unsaved",
   "canvasBadgeUpscale": "Upscaled",
   "canvasBadgeInpaint": "Inpainted",
@@ -1269,42 +1464,144 @@
   "libraryCatCustom": "Custom...",
   "vmGenDoneUnsaved": "Generation complete (unsaved, click save at the canvas bottom-right)",
   "vmGenDoneSavedTo": "Generation complete, saved to {path}",
-  "@vmGenDoneSavedTo": {"placeholders": {"path": {"type": "String"}}},
+  "@vmGenDoneSavedTo": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "vmGenLocalPath": "local storage",
   "vmGenNoSaveDir": "No local storage directory set. Configure the save path in Settings first.",
   "vmGenSaveFailedNoTarget": "Failed to save image: image not found or storage directory not writable.",
   "vmGenSavedTo": "Saved to {path}",
-  "@vmGenSavedTo": {"placeholders": {"path": {"type": "String"}}},
+  "@vmGenSavedTo": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "vmGenSaveFailed": "Failed to save image: {error}",
-  "@vmGenSaveFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmGenSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmGenAborted": "Generation aborted",
   "vmGenEmptyPrompt": "Prompt cannot be empty. Enter a description on the left panel or in the chat first.",
   "vmGenNoApiKey": "NovelAI API Key not configured. Open Settings at the top-right.",
   "vmGenRequesting": "Requesting NovelAI generation ({width}x{height}, {steps} steps)...",
-  "@vmGenRequesting": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}, "steps": {"type": "int"}}},
+  "@vmGenRequesting": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "steps": {
+        "type": "int"
+      }
+    }
+  },
   "vmGenFailed": "Generation failed: {error}",
-  "@vmGenFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmGenFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmUpscaleNoImage": "No image on the canvas to upscale.",
   "vmUpscaleNoApiKey": "NovelAI API Key not configured.",
   "vmUpscaleRunning": "Upscaling image...",
   "vmUpscaleDoneUnsaved": "Upscale complete ({width}x{height}, unsaved)",
-  "@vmUpscaleDoneUnsaved": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}}},
+  "@vmUpscaleDoneUnsaved": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
   "vmUpscaleDone": "Upscale complete ({width}x{height})",
-  "@vmUpscaleDone": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}}},
+  "@vmUpscaleDone": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
   "vmUpscaleFailed": "Upscale failed: {error}",
-  "@vmUpscaleFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmUpscaleFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatSlashNoImage": "Slash commands do not support attached images. Send a normal chat message instead.",
   "vmChatSlashFailed": "Command failed: {error}",
-  "@vmChatSlashFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmChatSlashFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatRetryNotice": "Transient failure, auto-retrying ({attempt}/{max}): {reason} · {retry}",
-  "@vmChatRetryNotice": {"placeholders": {"attempt": {"type": "int"}, "max": {"type": "int"}, "reason": {"type": "String"}, "retry": {"type": "String"}}},
+  "@vmChatRetryNotice": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      },
+      "retry": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatRetryDelayed": "retrying in {seconds}s",
-  "@vmChatRetryDelayed": {"placeholders": {"seconds": {"type": "int"}}},
+  "@vmChatRetryDelayed": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "vmChatRetrySoon": "retrying now",
   "vmChatCompacted": "Context auto-compacted ({before} → {after} tokens). Earlier messages were replaced with a summary.",
-  "@vmChatCompacted": {"placeholders": {"before": {"type": "int"}, "after": {"type": "int"}}},
+  "@vmChatCompacted": {
+    "placeholders": {
+      "before": {
+        "type": "int"
+      },
+      "after": {
+        "type": "int"
+      }
+    }
+  },
   "vmChatError": "Chat error: {error}",
-  "@vmChatError": {"placeholders": {"error": {"type": "String"}}},
+  "@vmChatError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmChatProviderNotConfigured": "No LLM provider is configured. Add a provider and API key in Settings.",
   "vmChatApiKeyMissing": "The current LLM provider has no API key. Add it in Settings.",
   "vmChatContextWindowInsufficient": "The context is still over the model's safe window after compaction. Release old replies, compact manually, or switch to a model with a larger context window.",
@@ -1312,42 +1609,99 @@
   "vmChatForceAborted": "Current generation force-terminated",
   "vmCostNoOpusQuota": "Current account has no Opus free quota",
   "vmCostEstimate": "Estimated cost: {cost} Anlas",
-  "@vmCostEstimate": {"placeholders": {"cost": {"type": "int"}}},
+  "@vmCostEstimate": {
+    "placeholders": {
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
   "vmCostWillCost": "Will consume Anlas",
   "vmCostTitle": "Anlas Cost Request",
   "vmCostGenQuestion": "Generation parameters ({reasons}) {cost}. Confirm generation?",
-  "@vmCostGenQuestion": {"placeholders": {"reasons": {"type": "String"}, "cost": {"type": "String"}}},
+  "@vmCostGenQuestion": {
+    "placeholders": {
+      "reasons": {
+        "type": "String"
+      },
+      "cost": {
+        "type": "String"
+      }
+    }
+  },
   "vmCostGenConfirm": "Confirm Generation",
   "vmCostGenConfirmDesc": "Generate with current parameters and deduct Anlas",
   "vmCostGenCancel": "Cancel Generation",
   "vmCostGenCancelDesc": "Cancel this generation and adjust parameters into the free range",
   "vmCostUpscaleQuestion": "Upscale the {width}x{height} input image via official upscaling. Estimated cost: {cost} Anlas. Confirm?",
-  "@vmCostUpscaleQuestion": {"placeholders": {"width": {"type": "int"}, "height": {"type": "int"}, "cost": {"type": "int"}}},
+  "@vmCostUpscaleQuestion": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "cost": {
+        "type": "int"
+      }
+    }
+  },
   "vmCostUpscaleConfirm": "Confirm Upscale",
   "vmCostUpscaleConfirmDesc": "Run official upscaling and deduct Anlas",
   "vmCostUpscaleCancel": "Cancel Upscale",
   "vmCostUpscaleCancelDesc": "Cancel this upscale operation",
   "vmInpaintConverted": "Annotation converted to inpaint selection",
   "vmInpaintSentToBoard": "Sent to inpaint canvas: {path}",
-  "@vmInpaintSentToBoard": {"placeholders": {"path": {"type": "String"}}},
+  "@vmInpaintSentToBoard": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "vmInpaintNoImage": "No base image to repair. Select or generate an image first.",
   "vmInpaintNoMask": "Select or paint the region to repair on the inpaint canvas first.",
   "vmInpaintNoApiKey": "NovelAI API Key not configured. Enter the token in Settings.",
   "vmInpaintRunning": "Running local inpaint...",
   "vmInpaintDone": "Local inpaint complete",
   "vmInpaintFailed": "Inpaint failed: {error}",
-  "@vmInpaintFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmInpaintFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmAiEditNoImage": "No base image to edit. Select or generate an image first.",
   "vmAiEditNoModel": "No image-editing model configured. Pick an image-model provider and model in Settings → Models.",
   "vmAiEditNoKey": "Image-model provider \"{provider}\" has no API Key configured. Fill it in Settings first.",
-  "@vmAiEditNoKey": {"placeholders": {"provider": {"type": "String"}}},
+  "@vmAiEditNoKey": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
   "vmAiEditEmptyPrompt": "Enter the AI full-image edit instruction first (inpaint page prompt, or turn off \"Reuse workbench prompt\" and fill it in).",
   "vmAiEditRunning": "Running AI full-image edit (image model processing, usually takes tens of seconds)...",
   "vmAiEditDone": "AI full-image edit complete",
   "vmAiEditFailed": "AI full-image edit failed: {error}",
-  "@vmAiEditFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@vmAiEditFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmSessionSwitched": "Switched session: {title}",
-  "@vmSessionSwitched": {"placeholders": {"title": {"type": "String"}}},
+  "@vmSessionSwitched": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "vmSessionCreated": "New session created",
   "vmSessionDeleted": "Session deleted",
   "vmRewindChatAndParams": "Rewound to a past moment. Later chat and parameter changes were reverted.",
@@ -1358,9 +1712,24 @@
   "vmHistoryCleared": "History cleared",
   "vmMetadataApplied": "Image metadata applied to workbench",
   "vmPresetSwitched": "Switched preset: [{name}]\n{description}",
-  "@vmPresetSwitched": {"placeholders": {"name": {"type": "String"}, "description": {"type": "String"}}},
+  "@vmPresetSwitched": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      }
+    }
+  },
   "vmCharacterDefaultName": "Character {index}",
-  "@vmCharacterDefaultName": {"placeholders": {"index": {"type": "int"}}},
+  "@vmCharacterDefaultName": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
   "vmNewCharacterName": "New Character",
   "slashHelpHeader": "Slash command reference:",
   "slashDescHelp": "Show the command help list",
@@ -1384,56 +1753,182 @@
   "slashPresetListIntro": "Available presets:",
   "slashPresetUsage": "Usage: /preset <preset name or ID>",
   "slashPresetNotFound": "Preset \"{query}\" not found. Type /preset to list available presets.",
-  "@slashPresetNotFound": {"placeholders": {"query": {"type": "String"}}},
+  "@slashPresetNotFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "slashSkillListIntro": "Available skills:",
   "slashSkillUsage": "Usage: /skill <skill name or ID>",
   "slashSkillLoaded": "[Skill loaded] {name}\n{description}\n\n{systemPrompt}",
-  "@slashSkillLoaded": {"placeholders": {"name": {"type": "String"}, "description": {"type": "String"}, "systemPrompt": {"type": "String"}}},
+  "@slashSkillLoaded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "description": {
+        "type": "String"
+      },
+      "systemPrompt": {
+        "type": "String"
+      }
+    }
+  },
   "slashSkillNotFound": "Skill \"{query}\" not found. Type /skill to list available skills.",
-  "@slashSkillNotFound": {"placeholders": {"query": {"type": "String"}}},
+  "@slashSkillNotFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "slashCompactNoProvider": "No LLM provider configured; cannot compact the context.",
   "slashCompactEmpty": "The conversation is empty; nothing to compact.",
   "slashCompactRunning": "Compacting conversation context...",
   "slashCompactNothing": "Nothing to compact (needs at least two chat turns), or summary generation failed.",
   "slashCompactDone": "Context compacted ({before} → {after} tokens). Earlier messages were replaced by the summary below; originals are kept in the chat stream and session log:\n\n{summary}",
-  "@slashCompactDone": {"placeholders": {"before": {"type": "int"}, "after": {"type": "int"}, "summary": {"type": "String"}}},
+  "@slashCompactDone": {
+    "placeholders": {
+      "before": {
+        "type": "int"
+      },
+      "after": {
+        "type": "int"
+      },
+      "summary": {
+        "type": "String"
+      }
+    }
+  },
   "slashNewNoTitle": "New session created. Start a fresh conversation!",
   "slashNewWithTitle": "New session created: {title}",
-  "@slashNewWithTitle": {"placeholders": {"title": {"type": "String"}}},
+  "@slashNewWithTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "slashUndoNothing": "No user message to undo.",
   "slashRenameUsage": "Usage: /rename <new title>",
   "slashRenameNoSession": "No active session to rename.",
   "slashRenamed": "Session renamed to \"{title}\"",
-  "@slashRenamed": {"placeholders": {"title": {"type": "String"}}},
+  "@slashRenamed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "slashSessionsEmpty": "No saved sessions yet.",
   "slashSessionsHeader": "Saved sessions ({count} total, sorted by recent use):",
-  "@slashSessionsHeader": {"placeholders": {"count": {"type": "int"}}},
+  "@slashSessionsHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "slashSessionMsgCount": "{count, plural, =1{1 message} other{{count} messages}}",
-  "@slashSessionMsgCount": {"placeholders": {"count": {"type": "int"}}},
+  "@slashSessionMsgCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "slashSessionCurrentMarker": " [current]",
   "slashSessionsMore": "…… {count, plural, =1{1 more session} other{{count} more sessions}} in the session manager view.",
-  "@slashSessionsMore": {"placeholders": {"count": {"type": "int"}}},
+  "@slashSessionsMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "slashAccountTitle": "NovelAI account status:",
   "slashAccountTier": "• Subscription tier: {tier}",
-  "@slashAccountTier": {"placeholders": {"tier": {"type": "String"}}},
+  "@slashAccountTier": {
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
   "slashAccountStamina": "• V5 stamina pool: {percent}%",
-  "@slashAccountStamina": {"placeholders": {"percent": {"type": "String"}}},
+  "@slashAccountStamina": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "slashAccountAnlas": "• Available Anlas: {total} (gifted: {fixed}, purchased: {purchased})",
-  "@slashAccountAnlas": {"placeholders": {"total": {"type": "int"}, "fixed": {"type": "int"}, "purchased": {"type": "int"}}},
+  "@slashAccountAnlas": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "fixed": {
+        "type": "int"
+      },
+      "purchased": {
+        "type": "int"
+      }
+    }
+  },
   "slashAccountQuotaExhausted": "• V5 stamina quota exhausted; generation will consume Anlas at full price",
   "slashAccountFailed": "Failed to query account info. Check the API Key settings.",
   "slashTagUsage": "Usage: /tag <keyword> (e.g. /tag silver)",
   "slashTagNotFound": "No tags found for \"{query}\".",
-  "@slashTagNotFound": {"placeholders": {"query": {"type": "String"}}},
+  "@slashTagNotFound": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "slashTagSuggestions": "Tag suggestions (\"{query}\"):\n{list}",
-  "@slashTagSuggestions": {"placeholders": {"query": {"type": "String"}, "list": {"type": "String"}}},
+  "@slashTagSuggestions": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      },
+      "list": {
+        "type": "String"
+      }
+    }
+  },
   "slashUpscaleDone": "Upscale executed",
   "slashNaiUsage": "Usage: /nai <prompt>",
   "slashNaiDone": "Illustration generated: {path}\nSize: {width}x{height}, seed: {seed}",
-  "@slashNaiDone": {"placeholders": {"path": {"type": "String"}, "width": {"type": "int"}, "height": {"type": "int"}, "seed": {"type": "int"}}},
+  "@slashNaiDone": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      },
+      "seed": {
+        "type": "int"
+      }
+    }
+  },
   "slashNaiDoneFallback": "done",
   "slashUnknown": "Unknown command \"{cmd}\". Type /help for available commands.",
-  "@slashUnknown": {"placeholders": {"cmd": {"type": "String"}}},
+  "@slashUnknown": {
+    "placeholders": {
+      "cmd": {
+        "type": "String"
+      }
+    }
+  },
   "vmSlashParamsTitle": "Workbench generation parameters:",
   "promptTokenLabel": "Token",
   "promptTokenEstimated": "~",
@@ -1447,21 +1942,43 @@
   "promptTokenBreakdownCharacterNegatives": "Character negatives",
   "promptTokenFeatureLimited": "Over the text rendering support limit; text rendering is limited",
   "promptTokenOverLimit": "Over the model token limit; excess tokens will be truncated",
-
   "vmComfyPushing": "Pushing parameters to ComfyUI...",
   "vmComfyBridgeUnreachable": "Cannot reach the ComfyUI Bridge: {error}",
-  "@vmComfyBridgeUnreachable": {"placeholders": {"error": {"type": "String"}}},
+  "@vmComfyBridgeUnreachable": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "vmComfyNoPromptPanel": "No Prompt Panel node found in the ComfyUI workflow; add one on the canvas first",
   "vmComfyQueued": "Queued, waiting for ComfyUI to finish...",
   "vmComfyWaitTimeout": "Timed out waiting for an image: keep the ComfyUI browser canvas open (queueing needs the frontend online) and make sure the workflow has an AI Image Output node",
   "vmComfyFailed": "ComfyUI generation failed: {error}",
-  "@vmComfyFailed": {"placeholders": {"error": {"type": "String"}}},
-
+  "@vmComfyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "comfyStatusConnected": "ComfyUI connected",
   "comfyStatusConnecting": "Connecting to ComfyUI...",
   "comfyStatusDisconnected": "ComfyUI disconnected",
   "comfyBridgeNodeSummary": "Prompt panels {prompts} · Resolutions {resolutions} · Params panels {params}",
-  "@comfyBridgeNodeSummary": {"placeholders": {"prompts": {"type": "int"}, "resolutions": {"type": "int"}, "params": {"type": "int"}}},
+  "@comfyBridgeNodeSummary": {
+    "placeholders": {
+      "prompts": {
+        "type": "int"
+      },
+      "resolutions": {
+        "type": "int"
+      },
+      "params": {
+        "type": "int"
+      }
+    }
+  },
   "comfyBackendNovelAI": "NovelAI",
   "comfyBackendComfyUI": "ComfyUI",
   "comfyBridgeNoPanelHint": "The workflow has no Prompt Panel node; install the PromptToolkit plugin, add its nodes on the ComfyUI canvas, and keep the browser canvas open",
@@ -1469,7 +1986,6 @@
   "comfySchedulerLabel": "Scheduler",
   "comfyFollowWorkflow": "Follow workflow",
   "comfyOptionsPendingHint": "Connect to ComfyUI to fetch the available samplers and schedulers",
-
   "settingsSectionComfy": "ComfyUI Mode",
   "settingsComfyEnabledTitle": "Enable ComfyUI mode",
   "settingsComfyEnabledDesc": "Drive a local or LAN ComfyUI via the PromptToolkit AI Bridge; quality/UC presets and token limit counting are disabled in this mode",
@@ -1556,22 +2072,58 @@
   "presetExportButton": "Export preset",
   "presetImportInvalidJson": "Choose a valid JSON file containing a preset object or an array of presets.",
   "presetImportInvalidField": "Preset field {field} is missing or invalid. Permission lists must be explicit; empty arrays are allowed.",
-  "@presetImportInvalidField": {"placeholders": {"field": {"type": "String"}}},
+  "@presetImportInvalidField": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "presetImportUnknownTool": "Unknown tool {field}. Import that tool first or check the file.",
-  "@presetImportUnknownTool": {"placeholders": {"field": {"type": "String"}}},
+  "@presetImportUnknownTool": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "presetImportUnknownParameter": "Unknown parameter permission {field}. Check the file.",
-  "@presetImportUnknownParameter": {"placeholders": {"field": {"type": "String"}}},
+  "@presetImportUnknownParameter": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "presetTransferFailed": "Could not import or export preset: {error}",
-  "@presetTransferFailed": {"placeholders": {"error": {"type": "String"}}},
+  "@presetTransferFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "presetImportedDraft": "{count, plural, one{Added 1 preset} other{Added {count} presets}}. Save to keep them or Cancel to discard. The active preset has not changed.",
-  "@presetImportedDraft": {"placeholders": {"count": {"type": "int"}}},
+  "@presetImportedDraft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "skillErrorPackageTooLarge": "Skill packages must not exceed 32 MiB.",
   "skillErrorInstructionsTooLarge": "SKILL.md must not exceed 256 KiB.",
   "skillErrorFileType": "Choose a .zip, .skill or .md file.",
   "skillErrorTooManyEntries": "The skill package contains too many entries.",
   "skillErrorSpecialFile": "Links and special files are not allowed in skill packages.",
   "skillErrorDuplicatePath": "Duplicate path in skill package: {detail}",
-  "@skillErrorDuplicatePath": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorDuplicatePath": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorSizeLimit": "Skill package limits: 8 MiB per file, 32 MiB total, 512 files.",
   "skillErrorEncrypted": "Encrypted or damaged skill packages are not supported.",
   "skillErrorMissingData": "File data is missing from the skill package.",
@@ -1587,13 +2139,25 @@
   "skillErrorInvalidId": "Skill IDs must contain 1–64 lowercase letters, digits or hyphens, without a leading or trailing hyphen.",
   "skillErrorDescription": "A skill description must contain 1–1024 characters.",
   "skillErrorDuplicateFile": "Duplicate skill file: {detail}",
-  "@skillErrorDuplicateFile": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorDuplicateFile": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorFileLimit": "The skill package exceeds the file size or count limit.",
   "skillErrorTreeConflict": "File and folder paths conflict in the skill package.",
   "skillErrorRelativePath": "Invalid relative path in the skill package.",
   "skillErrorPathDepth": "The skill package has too many nested folders.",
   "skillErrorUnsafePath": "Unsafe skill package path: {detail}",
-  "@skillErrorUnsafePath": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorUnsafePath": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorStorageId": "Invalid skill storage identifier.",
   "skillErrorMissingPackage": "Skill package files are missing. Import the package again.",
   "skillErrorMissingResource": "The resource was not found in this skill package.",
@@ -1603,17 +2167,320 @@
   "skillErrorUnpackedSize": "The extracted file exceeds the size limit.",
   "skillErrorYamlDelimiter": "The SKILL.md YAML header is missing its closing delimiter.",
   "skillErrorYamlInvalid": "Invalid SKILL.md YAML: {detail}",
-  "@skillErrorYamlInvalid": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorYamlInvalid": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorYamlMapping": "The SKILL.md YAML header must be a mapping of fields.",
   "skillErrorYamlDepth": "The SKILL.md YAML has too much nesting or too many fields.",
   "skillErrorYamlKeys": "YAML field names must be strings.",
   "skillErrorYamlValue": "Unsupported YAML value.",
   "skillErrorYamlString": "The SKILL.md field {detail} must be a string.",
-  "@skillErrorYamlString": {"placeholders": {"detail": {"type": "String"}}},
+  "@skillErrorYamlString": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
   "skillErrorYamlBoolean": "disable-model-invocation must be a boolean.",
-  "@boardToolPasteImage": {"placeholders": {"shortcut": {"type": "String"}}},
+  "@boardToolPasteImage": {
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
   "promptsUcPreset": "UC preset",
   "referenceImageBadge": "REF",
   "toolFallbackName": "Tool",
-  "@settingsUiZoomSubtitle": {"placeholders": {"modifier": {"type": "String"}}}
+  "@settingsUiZoomSubtitle": {
+    "placeholders": {
+      "modifier": {
+        "type": "String"
+      }
+    }
+  },
+  "type": "String",
+  "tabSources": "Sources",
+  "sourcesTitle": "Source gallery",
+  "sourcesAitag": "AITag",
+  "sourcesCodex": "Codex",
+  "sourcesSearchHint": "Search works or prompts…",
+  "sourcesApply": "Apply to workbench",
+  "sourcesCategoryAll": "All",
+  "sourcesCodexPage": "Page {page} / {pages} · {total} items",
+  "sourcesEmpty": "No results",
+  "sourcesLoadFailed": "Failed to load: {message}",
+  "sourcesLoadMore": "Loading…",
+  "sourcesPickCodex": "Choose codex",
+  "sourcesDate": "Date",
+  "sourcesSize": "Size",
+  "sourcesSteps": "Steps",
+  "sourcesSampler": "Sampler",
+  "sourcesSeed": "Seed",
+  "sourcesPrompt": "Prompt",
+  "sourcesNegative": "Negative prompt",
+  "sourcesRating": "Rating",
+  "sourcesRatingGeneral": "General",
+  "sourcesRatingQuestionable": "Questionable",
+  "sourcesRatingExplicit": "Explicit",
+  "sourcesRatingAll": "All",
+  "sourcesDanbooruSize": "Load size",
+  "sourcesSizeThumb": "Thumb",
+  "sourcesSizeLarge": "Large",
+  "sourcesSizeOrig": "Original",
+  "sourcesMoreActions": "More actions",
+  "sourcesCopyTags": "Copy tags",
+  "sourcesUseTags": "Use tags",
+  "sourcesUseAsSource": "Use as img2img source",
+  "sourcesUseAsReference": "Use as Vibe reference",
+  "sourcesActionDone": "Copied",
+  "sourcesActionFailed": "Action failed: {message}",
+  "sourcesNote": "Note",
+  "sourcesLocal": "Local",
+  "sourcesFavoritesOnly": "Favorites only",
+  "sourcesDanbooru": "Danbooru",
+  "sourcesDanbooruHint": "Search tags, e.g. 1girl solo (general only by default; add rating:explicit for R-18)",
+  "sourcesDanbooruEmpty": "No Danbooru results",
+  "sourcesDanbooruFavorite": "Save locally",
+  "sourcesDanbooruFavoriteSaved": "Saved to local favorites",
+  "sourcesFavoriteSaved": "Saved to local favorites",
+  "sourcesFavoriteFailed": "Save failed: {message}",
+  "sourcesDanbooruFavoriteFailed": "Save failed: {message}",
+  "sourcesSendToAgent": "Send to Agent composer",
+  "sourcesSentToAgent": "Added to the Agent composer",
+  "sourcesSendToAgentFailed": "Send failed: {message}",
+  "sourcesFavoritesTab": "Favorites",
+  "sourcesFavoritesEmpty": "No local favorites yet",
+  "sourcesUnfavorite": "Remove from favorites",
+  "sourcesFavorite": "Save locally",
+  "sourcesSendToChat": "Send to chat",
+  "sourcesSentToChat": "Filled the chat composer; not sent yet",
+  "sourcesSendToChatFailed": "Send failed: {message}",
+  "sourcesNothingToSend": "Nothing to send",
+  "sourcesDetails": "Details",
+  "sourcesScore": "Score",
+  "sourcesTags": "Tags",
+  "sourcesSourceUrl": "Source",
+  "sourcesNoMore": "No more items",
+  "sourcesLibrary": "Library",
+  "sourcesLibraryPick": "Choose folder",
+  "sourcesLibraryRefresh": "Refresh",
+  "sourcesLibraryNotSet": "No library folder yet",
+  "sourcesLibraryEmpty": "No readable documents in this folder",
+  "sourcesLibrarySearchHint": "Search inside documents",
+  "sourcesReflections": "Threads",
+  "sourcesReflectionEmpty": "No reflection threads yet, try /reflect or /dream",
+  "sourcesImportDocs": "Import documents",
+  "sourcesImportDone": "Imported {count} document(s)",
+  "sourcesResetDefaults": "Reset",
+  "sourcesDeleteFileTitle": "Delete library file",
+  "sourcesDeleteFileMessage": "Delete \"{name}\"? This cannot be undone.",
+  "sourcesReadFailed": "Failed to read library file: {message}",
+  "sourcesMorePending": " (more)",
+  "accountPoolTitle": "Account pool",
+  "accountPoolSubtitle": "API keys stay on this device; switching accounts updates the workbench key.",
+  "accountPoolFixed": "Fixed",
+  "accountPoolRotate": "Rotate",
+  "accountPoolEmpty": "No accounts yet. Add one below.",
+  "accountPoolDefault": "Default",
+  "accountPoolTierUnknown": "Unknown tier",
+  "accountPoolSummary": "{tier} · {anlas} Anlas · V5 {energy}%",
+  "accountPoolSetDefault": "Set as default",
+  "accountPoolDeleteTitle": "Delete account",
+  "accountPoolDeleteMessage": "Delete \"{label}\"? Its API key will be removed permanently.",
+  "accountPoolRemark": "Label",
+  "accountPoolAdd": "Add",
+  "accountPoolRefreshAll": "Refresh all",
+  "promptsImg2imgSection": "Img2Img / Vibe Transfer",
+  "promptsPreciseReference": "Character / Style Reference",
+  "preciseRefHint": "NovelAI Precise Reference: use character only, style only, or both. It is mutually exclusive with Vibe Transfer and only supported by V4.5 models.",
+  "preciseRefUnsupported": "The current model does not support character/style reference. Switch to NAI Diffusion V4.5 Full or Curated.",
+  "preciseRefAdd": "Choose reference images",
+  "preciseRefEmpty": "No character/style references yet.",
+  "preciseRefAddFailed": "Could not read the selected image.",
+  "preciseRefCharacter": "Character",
+  "preciseRefStyle": "Style",
+  "preciseRefBoth": "Character + style",
+  "preciseRefStrength": "Reference strength",
+  "preciseRefFidelity": "Fidelity",
+  "dockAccountPool": "Account pool",
+  "chatImageBlocked": "External image blocked",
+  "paramsSectionImg2img": "Img2img",
+  "paramsImg2imgStrength": "Source strength",
+  "paramsSelectFile": "Choose file",
+  "paramsImg2imgNoise": "Noise",
+  "paramsImg2imgUseCanvas": "Use canvas image",
+  "paramsImg2imgClear": "Clear source",
+  "paramsVibeReference": "Vibe references",
+  "paramsVibeAdd": "Add reference",
+  "paramsVibeClear": "Clear references",
+  "paramsVibeStrength": "Reference strength",
+  "paramsVibeInfo": "Information extracted",
+  "paramsImg2imgEmpty": "No source image",
+  "paramsVibeEmpty": "No references",
+  "paramsCanvasEmpty": "No canvas image available",
+  "settingsSectionNetwork": "Network proxy",
+  "settingsProxyEnabledTitle": "Enable HTTP proxy",
+  "settingsProxyEnabledSubtitle": "Applies to Danbooru, source galleries, NovelAI and Agent requests; each feature can bypass the proxy. Restart the app after saving.",
+  "settingsProxyHostTitle": "Proxy host",
+  "settingsProxyHostHint": "Hostname or IP, e.g. 127.0.0.1",
+  "settingsProxyPortTitle": "Proxy port",
+  "settingsProxyRestartHint": "HTTP proxy only. New requests use it after saving; existing connections need an app restart.",
+  "settingsProxyInvalid": "Invalid proxy host or port",
+  "settingsProxyUseNovelAiTitle": "Proxy image generation",
+  "settingsProxyUseNovelAiSubtitle": "Turn off to connect directly for NovelAI generation, upscaling and AI edit requests.",
+  "settingsProxyUseAgentTitle": "Proxy Agent",
+  "settingsProxyUseAgentSubtitle": "Turn off to connect directly for Agent LLM APIs and online tools.",
+  "settingsProxyUseGalleryTitle": "Proxy source galleries",
+  "settingsProxyUseGallerySubtitle": "Turn off to connect directly for Danbooru, AITag, Codex and their images.",
+  "promptOutputTitle": "Output",
+  "promptKeepMetadata": "Keep metadata (uncheck to strip)",
+  "promptKeepStealth": "Keep steganography (uncheck to strip)",
+  "promptStripTags": "Private tags (removed from metadata after generation)",
+  "promptStripNegativeTags": "Private negative tags (removed from metadata after generation)",
+  "canvasGeneratingDiscard": "Discard",
+  "canvasGeneratingDiscardTooltip": "Abort and discard this generation",
+  "canvasGeneratingBackground": "Background",
+  "canvasGeneratingBackgroundTooltip": "Keep generating, but hide it from the canvas",
+  "canvasGeneratingInBackground": "Image is generating in the background",
+  "canvasGeneratingInBackgroundDescription": "Live preview is hidden. The image will be added to history when done.",
+  "viewGeneration": "View generation",
+  "vmGenCacheFailed": "Image generated, but the original cache could not be written. Check the save folder, or choose another folder and save manually.",
+  "vmGenMovedToBackground": "Generation moved to background. It will be added to history when done.",
+  "slashDreamEmpty": "No session to organize yet. Chat a little first.",
+  "slashDreamPrompt": "Entering \"Dream Journal\". First call the memory tool to list long-term memory, then:\n1. Merge duplicate or conflicting preferences and settings;\n2. Extract reusable lessons (prompt structures, parameter preferences, failure lessons);\n3. Use memory add/remove and keep only the most valuable entries;\n4. Use the reflection tool to add one thread (source=dream, title/summary/lessons);\n5. Summarize this dream journal in 3-5 lines.",
+  "slashReflectPrompt": "Do a self-reflection pass. Complete:\n1. Review misunderstandings, user corrections, and what worked especially well in this session;\n2. Extract 1-3 actionable lessons and write them with the memory tool;\n3. If the same issue repeats, propose a SKILL.md patch (do not modify skills or presets without user confirmation);\n4. Use the reflection tool to add one thread (source=reflect, title/summary/lessons);\n5. Report back with a short checklist.",
+  "settingsTabNetwork": "Network",
+  "settingsProxyIntro": "Configure an HTTP proxy here. Once enabled, the feature switches below decide which requests use it.",
+  "settingsProxyPerFeatureTitle": "Feature proxy policy",
+  "settingsProxyPerFeatureHint": "Turn a switch off to connect that feature directly, bypassing the proxy.",
+  "settingsProxyDisabledHint": "Enable the proxy above first, then choose which features use it.",
+  "proxyFeatureNovelAi": "Image proxy",
+  "proxyFeatureAgent": "Agent proxy",
+  "proxyFeatureGallery": "Gallery proxy",
+  "proxyFeatureOnHint": "{label} is using the proxy; click to connect directly",
+  "proxyFeatureOffHint": "{label} connects directly; click to use the proxy",
+  "proxyEnableFirst": "Enable the global proxy in Settings → Network first",
+  "queueTitle": "Message queue",
+  "queuePause": "Pause queue",
+  "queueResume": "Resume queue",
+  "queueHint": "Queued messages are sent in order after the current turn. Drag to reorder, edit, or send now.",
+  "queueEmpty": "Queue is empty",
+  "queueEditTitle": "Edit queued message",
+  "queueOnlyImages": "(images only)",
+  "queueImagesCount": "{count} images",
+  "queueBarLabel": "Queue {count} · tap to manage",
+  "queueQueuedToast": "Generating, added to queue",
+  "commonSave": "Save",
+  "commonCancel": "Cancel",
+  "commonClose": "Close",
+  "commonAdd": "Add",
+  "commonEdit": "Edit",
+  "commonDelete": "Delete",
+  "styleCardTitle": "Style presets",
+  "styleSelectHint": "Select a style group",
+  "styleNone": "No style preset",
+  "styleAddTitle": "Add style preset",
+  "styleEditTitle": "Edit style preset",
+  "styleName": "Name",
+  "stylePositive": "Positive tags",
+  "styleNegative": "Negative tags",
+  "styleStripAll": "Remove style-preset tags from metadata (keep other tags)",
+  "styleInMetadata": "Write style tags into exported metadata",
+  "styleTagLabel": "Style",
+  "wd14Title": "Online WD14",
+  "wd14Run": "Tag current image",
+  "wd14Running": "Tagging…",
+  "wd14Pick": "Tag an image file",
+  "wd14Apply": "Write to positive prompt",
+  "wd14Applied": "Added to positive prompt",
+  "wd14Settings": "Endpoint and threshold",
+  "wd14Endpoint": "WD14 endpoint",
+  "wd14Token": "Token (optional)",
+  "wd14Threshold": "Threshold {value}",
+  "@queueImagesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@queueBarLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@wd14Threshold": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "queueSendNow": "Send now",
+  "acctTitle": "Account pool",
+  "acctHint": "API keys stay on this machine. Switching accounts updates the workbench key.",
+  "acctFixed": "Fixed",
+  "acctRotate": "Rotate",
+  "acctDefault": "Default",
+  "acctSetDefault": "Set as default",
+  "acctLabel": "Label",
+  "acctKey": "API Key",
+  "acctEmpty": "No accounts yet. Add one below.",
+  "acctUnknownTier": "Unknown tier",
+  "acctRefreshAll": "Refresh all",
+  "acctTierAnlasEnergy": "{tier} · {anlas} Anlas · V5 {energy}%",
+  "libImport": "Import documents",
+  "libResetDefault": "Reset to default",
+  "@acctTierAnlasEnergy": {
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      },
+      "anlas": {
+        "type": "int"
+      },
+      "energy": {
+        "type": "int"
+      }
+    }
+  },
+  "accountPoolApiKey": "API Key",
+  "libImportedCount": "{count} documents imported",
+  "@libImportedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsTabExtensions": "Extensions",
+  "settingsExtAccounts": "Account pool",
+  "settingsExtQueue": "Message queue",
+  "settingsExtHint": "WD14 tagging and style presets are on the Prompts page.",
+  "bannedWordsTitle": "Hide banned words from agent",
+  "bannedWordsSubtitle": "Only affects parameter text returned to the agent; editors and generation requests keep the original.",
+  "bannedWordsHint": "One per line, or comma separated",
+  "settingsAgentPersistentImages": "Persist historical images",
+  "settingsAgentPersistentImagesHint": "Resend images from earlier turns every round; higher token usage and may break prompt caching.",
+  "settingsSessionMaxCount": "Sessions to keep",
+  "settingsSessionMaxCountHint": "Maximum number of session files; the oldest are removed beyond this (the latest is always kept).",
+  "settingsSessionRetentionDays": "Session retention (days)",
+  "settingsSessionRetentionDaysHint": "Sessions older than this are pruned; the latest session is always kept.",
+  "promptStripAllTitle": "Strip all data (metadata + steganography)",
+  "dockBatchCount": "Batch",
+  "askCardEditOption": "Edit option text",
+  "settingsProxyTest": "Test proxy",
+  "settingsProxyTestRunning": "Testing…",
+  "settingsProxyTestResult": "Proxy test result: ",
+  "vmCharTagConfirmTitle": "Confirm character tag change",
+  "vmCharTagConfirm": "Confirm",
+  "vmCharTagCancel": "Cancel"
 }

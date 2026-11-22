@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../core/harness/skills/skill_format_exception.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -162,7 +164,8 @@ class SkillPackageService {
       return _fromFiles(files);
     } on FormatException {
       rethrow;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       throw const SkillFormatException(
         SkillFormatError.invalidZip,
         '无法读取 ZIP 技能包，请检查文件是否完整。',
@@ -402,7 +405,8 @@ class SkillPackageService {
         packageId: p.basename(directory.path),
         resourcePaths: List.unmodifiable(_resourcePaths(normalized)),
       );
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       await directory.delete(recursive: true);
       rethrow;
     }

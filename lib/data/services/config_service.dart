@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
+
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -130,6 +133,17 @@ class AppConfig {
 
   /// AnySearch 网络搜索 API Key (可选，空 = 匿名访问限流更低)
   final String anySearchApiKey;
+
+  /// 全局 HTTP 代理（仅支持 HTTP CONNECT 代理）。开启后影响新创建的
+  /// dart:io / package:http 客户端；已建立的客户端需重启应用才会切换。
+  final bool proxyEnabled;
+  final String proxyHost;
+  final int proxyPort;
+
+  /// 各功能是否使用代理；false = 该功能直连。
+  final bool proxyUseNovelAi;
+  final bool proxyUseAgent;
+  final bool proxyUseGallery;
   final NaiModel defaultModel;
   final NaiSampler defaultSampler;
   final NoiseSchedule defaultNoiseSchedule;
@@ -228,6 +242,15 @@ class AppConfig {
   final int agentMaxTurns;
   final bool agentCompactionEnabled;
   final bool agentBackgroundCompaction;
+
+  /// 历史图片每轮重发（关闭时折叠为占位符）。
+  final bool agentPersistentImages;
+
+  /// 会话轮转：最多保留的会话文件数。
+  final int sessionMaxCount;
+
+  /// 会话轮转：超过多少天的会话会被删除。
+  final int sessionRetentionDays;
   final String compactionProviderId;
   final String compactionModelId;
 
@@ -287,6 +310,12 @@ class AppConfig {
   const AppConfig({
     this.novelAiKey = '',
     this.anySearchApiKey = '',
+    this.proxyEnabled = false,
+    this.proxyHost = '',
+    this.proxyPort = 7890,
+    this.proxyUseNovelAi = true,
+    this.proxyUseAgent = true,
+    this.proxyUseGallery = true,
     this.defaultModel = NaiModel.v5Full,
     this.defaultSampler = NaiSampler.kEuler,
     this.defaultNoiseSchedule = NoiseSchedule.karras,
@@ -337,11 +366,14 @@ class AppConfig {
     this.agentMaxTurns = 30,
     this.agentCompactionEnabled = true,
     this.agentBackgroundCompaction = true,
+    this.agentPersistentImages = false,
+    this.sessionMaxCount = 300,
+    this.sessionRetentionDays = 90,
     this.compactionProviderId = '',
     this.compactionModelId = '',
 
     this.presets = const [],
-    this.activePresetId = 'v5-architect-preset',
+    this.activePresetId = 'novelai-v5-full-art-expert',
     this.customSkills = const [],
     this.customTools = const [],
   });
@@ -349,6 +381,12 @@ class AppConfig {
   AppConfig copyWith({
     String? novelAiKey,
     String? anySearchApiKey,
+    bool? proxyEnabled,
+    String? proxyHost,
+    int? proxyPort,
+    bool? proxyUseNovelAi,
+    bool? proxyUseAgent,
+    bool? proxyUseGallery,
     NaiModel? defaultModel,
     NaiSampler? defaultSampler,
     NoiseSchedule? defaultNoiseSchedule,
@@ -399,6 +437,9 @@ class AppConfig {
     int? agentMaxTurns,
     bool? agentCompactionEnabled,
     bool? agentBackgroundCompaction,
+    bool? agentPersistentImages,
+    int? sessionMaxCount,
+    int? sessionRetentionDays,
     String? compactionProviderId,
     String? compactionModelId,
 
@@ -412,6 +453,13 @@ class AppConfig {
 
     return AppConfig(
       novelAiKey: novelAiKey ?? this.novelAiKey,
+      anySearchApiKey: anySearchApiKey ?? this.anySearchApiKey,
+      proxyEnabled: proxyEnabled ?? this.proxyEnabled,
+      proxyHost: proxyHost ?? this.proxyHost,
+      proxyPort: proxyPort ?? this.proxyPort,
+      proxyUseNovelAi: proxyUseNovelAi ?? this.proxyUseNovelAi,
+      proxyUseAgent: proxyUseAgent ?? this.proxyUseAgent,
+      proxyUseGallery: proxyUseGallery ?? this.proxyUseGallery,
       defaultModel: defaultModel ?? this.defaultModel,
       defaultSampler: defaultSampler ?? this.defaultSampler,
       defaultNoiseSchedule: defaultNoiseSchedule ?? this.defaultNoiseSchedule,
@@ -462,7 +510,6 @@ class AppConfig {
       comfyUiScheduler: comfyUiScheduler ?? this.comfyUiScheduler,
       llmProviders: updatedProviders,
       activeLlmProviderId: targetActiveId,
-      anySearchApiKey: anySearchApiKey ?? this.anySearchApiKey,
       imageEditProviderId: imageEditProviderId ?? this.imageEditProviderId,
       imageEditModelId: imageEditModelId ?? this.imageEditModelId,
       agentMaxTurns: agentMaxTurns ?? this.agentMaxTurns,
@@ -470,6 +517,11 @@ class AppConfig {
           agentCompactionEnabled ?? this.agentCompactionEnabled,
       agentBackgroundCompaction:
           agentBackgroundCompaction ?? this.agentBackgroundCompaction,
+      agentPersistentImages:
+          agentPersistentImages ?? this.agentPersistentImages,
+      sessionMaxCount: sessionMaxCount ?? this.sessionMaxCount,
+      sessionRetentionDays:
+          sessionRetentionDays ?? this.sessionRetentionDays,
       compactionProviderId: compactionProviderId ?? this.compactionProviderId,
       compactionModelId: compactionModelId ?? this.compactionModelId,
 
@@ -502,6 +554,12 @@ class ConfigService {
 
   static const String _keyNovelAiKey = 'novelai_key';
   static const String _keyAnySearchApiKey = 'anysearch_api_key';
+  static const String _keyProxyEnabled = 'network_proxy_enabled';
+  static const String _keyProxyHost = 'network_proxy_host';
+  static const String _keyProxyPort = 'network_proxy_port';
+  static const String _keyProxyUseNovelAi = 'network_proxy_use_novelai';
+  static const String _keyProxyUseAgent = 'network_proxy_use_agent';
+  static const String _keyProxyUseGallery = 'network_proxy_use_gallery';
   static const String _keyModel = 'novelai_model';
   static const String _keySampler = 'novelai_sampler';
   static const String _keyNoiseSchedule = 'novelai_noise_schedule';
@@ -551,6 +609,11 @@ class ConfigService {
   static const String _keyCharacterAiPosition = 'novelai_character_ai_position';
   static const String _keySeedMode = 'novelai_seed_mode';
   static const String _keySeedTiming = 'novelai_seed_timing';
+
+  // 擦除 tag 输入历史缓存 (正面/负面各自独立，最新在前)
+  static const String _keyStripTagHistory = 'novelai_strip_tag_history';
+  static const String _keyStripNegativeTagHistory =
+      'novelai_strip_negative_tag_history';
 
   static const String _keyRtxUpscaleScale = 'novelai_rtx_upscale_scale';
 
@@ -615,6 +678,11 @@ class ConfigService {
   static const String _keyAgentMaxTurns = 'novelai_agent_max_turns';
   static const String _keyAgentCompactionEnabled =
       'novelai_agent_compaction_enabled';
+  static const String _keySessionMaxCount = 'novelai_session_max_count';
+  static const String _keySessionRetentionDays =
+      'novelai_session_retention_days';
+  static const String _keyAgentPersistentImages =
+      'novelai_agent_persistent_images';
   static const String _keyAgentBackgroundCompaction =
       'novelai_agent_background_compaction';
   static const String _keyCompactionProviderId =
@@ -622,6 +690,8 @@ class ConfigService {
   static const String _keyCompactionModelId = 'novelai_compaction_model_id';
   static const String _keyPresets = 'agent_presets_json';
   static const String _keyActivePresetId = 'active_preset_id';
+  static const String _keyDefaultPresetMigrated =
+      'novelai_default_preset_v5_full_migrated';
   static const String _keyCustomSkills = 'agent_custom_skills_json';
   static const String _keyCustomTools = 'agent_custom_tools_json';
 
@@ -644,6 +714,12 @@ class ConfigService {
 
     String naiKey = prefs.getString(_keyNovelAiKey) ?? '';
     final String anySearchKey = prefs.getString(_keyAnySearchApiKey) ?? '';
+    final bool proxyEnabled = prefs.getBool(_keyProxyEnabled) ?? false;
+    final String proxyHost = prefs.getString(_keyProxyHost) ?? '';
+    final int proxyPort = prefs.getInt(_keyProxyPort) ?? 7890;
+    final bool proxyUseNovelAi = prefs.getBool(_keyProxyUseNovelAi) ?? true;
+    final bool proxyUseAgent = prefs.getBool(_keyProxyUseAgent) ?? true;
+    final bool proxyUseGallery = prefs.getBool(_keyProxyUseGallery) ?? true;
     String prefix = prefs.getString(_keyPrefix) ?? '';
     String suffix = prefs.getString(_keySuffix) ?? '';
     String negative = prefs.getString(_keyNegative) ?? '';
@@ -695,7 +771,8 @@ class ConfigService {
             wmConfig = wmConfig.copyWith(imageBytes: f.readAsBytesSync());
           }
         }
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     // 首次启动且无配置时，尝试自动读取本地 ~/.pi/agent/novelai.json
@@ -759,7 +836,8 @@ class ConfigService {
         providers = decoded
             .map((e) => LlmProviderConfig.fromJson(e as Map<String, dynamic>))
             .toList();
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     // 若无多供应商配置，读取旧单配置并构建初始供应商列表
@@ -823,7 +901,8 @@ class ConfigService {
         presets = decoded
             .map((e) => AgentPreset.fromJson(e as Map<String, dynamic>))
             .toList();
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     if (presets.isEmpty) {
@@ -842,8 +921,16 @@ class ConfigService {
       }
     }
 
-    final activePresetId =
-        prefs.getString(_keyActivePresetId) ?? BuiltinPresets.v5Architect.id;
+    final storedActivePresetId = prefs.getString(_keyActivePresetId);
+    // 一次性迁移：升级后首次启动把当前预设切到新的 V5 Full 绘图专家，
+    // 包括此前选中的 Novi / 自定义预设；用户之后手动切换不再强制。
+    final defaultPresetMigrated =
+        prefs.getBool(_keyDefaultPresetMigrated) ?? false;
+    var activePresetId = storedActivePresetId ?? BuiltinPresets.v5FullExpert.id;
+    if (!defaultPresetMigrated) {
+      activePresetId = BuiltinPresets.v5FullExpert.id;
+      await prefs.setBool(_keyDefaultPresetMigrated, true);
+    }
 
     // 自定义 Skills 加载
     List<Skill> customSkills = [];
@@ -854,7 +941,8 @@ class ConfigService {
         customSkills = decoded
             .map((e) => Skill.fromJson(e as Map<String, dynamic>))
             .toList();
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     // 自定义 Tools 加载
@@ -866,7 +954,8 @@ class ConfigService {
         customTools = decoded
             .map((e) => CustomAgentTool.fromJson(e as Map<String, dynamic>))
             .toList();
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
 
     // ComfyUI 模式配置加载
@@ -885,6 +974,12 @@ class ConfigService {
     return AppConfig(
       novelAiKey: naiKey,
       anySearchApiKey: anySearchKey,
+      proxyEnabled: proxyEnabled,
+      proxyHost: proxyHost,
+      proxyPort: proxyPort,
+      proxyUseNovelAi: proxyUseNovelAi,
+      proxyUseAgent: proxyUseAgent,
+      proxyUseGallery: proxyUseGallery,
       imageSaveTemplate: prefs.getString(_keyImageSaveTemplate) ?? '',
       defaultModel: modelId.isNotEmpty
           ? NaiModel.fromId(modelId)
@@ -947,6 +1042,11 @@ class ConfigService {
       agentCompactionEnabled: prefs.getBool(_keyAgentCompactionEnabled) ?? true,
       agentBackgroundCompaction:
           prefs.getBool(_keyAgentBackgroundCompaction) ?? true,
+      agentPersistentImages:
+          prefs.getBool(_keyAgentPersistentImages) ?? false,
+      sessionMaxCount: prefs.getInt(_keySessionMaxCount) ?? 300,
+      sessionRetentionDays:
+          prefs.getInt(_keySessionRetentionDays) ?? 90,
       compactionProviderId: compactionProviderId,
       compactionModelId: compactionModelId,
 
@@ -989,6 +1089,12 @@ class ConfigService {
     final values = <String, Object?>{
       _keyNovelAiKey: config.novelAiKey,
       _keyAnySearchApiKey: config.anySearchApiKey,
+      _keyProxyEnabled: config.proxyEnabled,
+      _keyProxyHost: config.proxyHost,
+      _keyProxyPort: config.proxyPort,
+      _keyProxyUseNovelAi: config.proxyUseNovelAi,
+      _keyProxyUseAgent: config.proxyUseAgent,
+      _keyProxyUseGallery: config.proxyUseGallery,
       _keyModel: config.defaultModel.id,
       _keySampler: config.defaultSampler.id,
       _keyNoiseSchedule: config.defaultNoiseSchedule.id,
@@ -1039,6 +1145,9 @@ class ConfigService {
       _keyAgentMaxTurns: config.agentMaxTurns.clamp(1, 100),
       _keyAgentCompactionEnabled: config.agentCompactionEnabled,
       _keyAgentBackgroundCompaction: config.agentBackgroundCompaction,
+      _keyAgentPersistentImages: config.agentPersistentImages,
+      _keySessionMaxCount: config.sessionMaxCount,
+      _keySessionRetentionDays: config.sessionRetentionDays,
       _keyCompactionProviderId: config.compactionProviderId,
       _keyCompactionModelId: config.compactionModelId,
       _keyPresets: presetsJson,
@@ -1098,7 +1207,8 @@ class ConfigService {
               ...fallback.toJson(),
               ...savedGeneration,
             });
-          } catch (_) {
+          } catch (error) {
+    debugPrint('[ignored] $error');
             // 损坏的生图快照不影响修复设置恢复。
           }
         }
@@ -1112,7 +1222,8 @@ class ConfigService {
           });
         }
       }
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       // 旧数据损坏或类型不匹配时回退，不阻塞工作台启动。
     }
     return (generation: generation, inpaint: inpaint);
@@ -1137,6 +1248,220 @@ class ConfigService {
     if (!await prefs.setString(_keyStudioParameters, encoded)) {
       throw const FileSystemException('工作台参数保存失败');
     }
+  }
+
+  /// 加载外部图源收藏（scope:id）。
+  Future<List<String>> loadFavoriteSourceIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('novelai_favorite_source_ids') ??
+        const <String>[];
+  }
+
+  /// 保存外部图源收藏（scope:id）。
+  Future<void> saveFavoriteSourceIds(List<String> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('novelai_favorite_source_ids', ids);
+  }
+
+  Future<String> loadWd14Endpoint() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('novelai_wd14_endpoint') ?? '';
+  }
+
+  Future<void> saveWd14Endpoint(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('novelai_wd14_endpoint', value);
+  }
+
+  Future<String> loadWd14Token() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('novelai_wd14_token') ?? '';
+  }
+
+  Future<void> saveWd14Token(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('novelai_wd14_token', value);
+  }
+
+  Future<double> loadWd14Threshold() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble('novelai_wd14_threshold') ?? 0.35;
+  }
+
+  Future<void> saveWd14Threshold(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('novelai_wd14_threshold', value);
+  }
+
+  Future<List<String>> loadStylePresets() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('novelai_style_presets') ?? const <String>[];
+  }
+
+  Future<void> saveStylePresets(List<String> entries) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('novelai_style_presets', entries);
+  }
+
+  Future<String> loadStylePresetId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('novelai_style_preset_id') ?? '';
+  }
+
+  Future<void> saveStylePresetId(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('novelai_style_preset_id', id);
+  }
+
+  Future<int> loadBatchCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getInt('novelai_batch_count') ?? 1).clamp(1, 20);
+  }
+
+  Future<void> saveBatchCount(int value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('novelai_batch_count', value.clamp(1, 20));
+  }
+
+  Future<bool> loadChatQueuePaused() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('novelai_chat_queue_paused') ?? false;
+  }
+
+  Future<void> saveChatQueuePaused(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('novelai_chat_queue_paused', value);
+  }
+
+  Future<bool> loadStripStealth() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('novelai_strip_stealth') ?? false;
+  }
+
+  Future<void> saveStripStealth(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('novelai_strip_stealth', value);
+  }
+
+  /// 擦除 tag 输入历史保留条数 (去重后最新在前)。
+  static const int stripTagHistoryLimit = 10;
+
+  static String _stripTagHistoryKey({required bool negative}) =>
+      negative ? _keyStripNegativeTagHistory : _keyStripTagHistory;
+
+  /// 归一化历史列表：逐条 trim、丢弃空项、去重，并截断到 [limit]。
+  ///
+  /// 输入顺序即“最新在前”；旧版本/手工改坏的条目也在这里一次性修复，
+  /// 保证 UI 下拉不会被空白项或重复项占满。
+  static List<String> normalizeStripTagHistory(
+    Iterable<String> values, {
+    int limit = stripTagHistoryLimit,
+  }) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final raw in values) {
+      final value = raw.trim();
+      if (value.isEmpty || !seen.add(value)) continue;
+      result.add(value);
+      if (result.length >= limit) break;
+    }
+    return List<String>.unmodifiable(result);
+  }
+
+  /// 把一条输入并入历史：整串去重、最新在前，最多保留 [limit] 条。
+  static List<String> mergeStripTagHistory(
+    List<String> history,
+    String value, {
+    int limit = stripTagHistoryLimit,
+  }) => normalizeStripTagHistory(<String>[value, ...history], limit: limit);
+
+  /// 加载擦除 tag 输入历史 (true = 负面 tag 历史)。
+  Future<List<String>> loadStripTagHistory({bool negative = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored =
+        prefs.getStringList(_stripTagHistoryKey(negative: negative)) ??
+        const <String>[];
+    return normalizeStripTagHistory(stored);
+  }
+
+  /// 记录一次擦除 tag 输入，返回去重后的最新历史。
+  ///
+  /// 空输入或与最新一条完全相同时跳过落盘，避免每次失焦都重写偏好文件。
+  Future<List<String>> recordStripTagHistory(
+    String value, {
+    bool negative = false,
+    int limit = stripTagHistoryLimit,
+  }) async {
+    final key = _stripTagHistoryKey(negative: negative);
+    final prefs = await SharedPreferences.getInstance();
+    final current = normalizeStripTagHistory(
+      prefs.getStringList(key) ?? const <String>[],
+      limit: limit,
+    );
+    final merged = mergeStripTagHistory(current, value, limit: limit);
+    // merged 与 current 等长且首项相同时，说明输入是空值或最新一条的重复。
+    if (merged.length == current.length &&
+        (current.isEmpty || merged.first == current.first)) {
+      return current;
+    }
+    await prefs.setStringList(key, merged);
+    return merged;
+  }
+
+  /// 清空擦除 tag 输入历史 (true = 负面 tag 历史)。
+  Future<void> clearStripTagHistory({bool negative = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_stripTagHistoryKey(negative: negative));
+  }
+
+  /// 加载梳理串（复盘记录）。
+  Future<List<String>> loadReflectionEntries() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('novelai_reflection_entries') ??
+        const <String>[];
+  }
+
+  /// 保存梳理串（复盘记录）。
+  Future<void> saveReflectionEntries(List<String> entries) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('novelai_reflection_entries', entries);
+  }
+
+  /// 加载跨会话长期记忆条目。
+  Future<List<String>> loadMemoryEntries() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('novelai_memory_entries') ?? const <String>[];
+  }
+
+  /// 保存跨会话长期记忆条目。
+  Future<void> saveMemoryEntries(List<String> entries) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('novelai_memory_entries', entries);
+  }
+
+  /// 加载资料库目录。
+  Future<String> loadLibraryDir() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('novelai_library_dir') ?? '';
+  }
+
+  /// 保存资料库目录。
+  Future<void> saveLibraryDir(String dir) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('novelai_library_dir', dir);
+  }
+
+  /// 加载收藏的图片 ID 列表。
+  Future<List<String>> loadFavoriteImageIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('novelai_favorite_image_ids') ??
+        const <String>[];
+  }
+
+  /// 保存收藏的图片 ID 列表。
+  Future<void> saveFavoriteImageIds(List<String> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('novelai_favorite_image_ids', ids);
   }
 
   /// 加载上次保存的草稿提示词
@@ -1175,7 +1500,8 @@ class ConfigService {
           .whereType<Map<String, dynamic>>()
           .map(NaiCharacterPrompt.fromJson)
           .toList();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return [];
     }
   }
@@ -1498,7 +1824,8 @@ class ConfigService {
         final content = file.readAsStringSync();
         return jsonDecode(content) as Map<String, dynamic>;
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return null;
   }
 }

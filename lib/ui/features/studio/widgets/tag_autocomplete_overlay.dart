@@ -238,7 +238,8 @@ class _TagAutocompleteAnchorState extends State<TagAutocompleteAnchor> {
       _selectedIndex = 0;
       _isKeyboardNavigating = false;
       _showOverlay();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       // 旧请求失败不能清除新查询的结果。
       if (_isCurrentSearch(epoch) && _suggestions.isEmpty) _hideOverlay();
     }
@@ -298,7 +299,8 @@ class _TagAutocompleteAnchorState extends State<TagAutocompleteAnchor> {
           renderEditable.localToGlobal(caretRect.topLeft),
         );
         return caretLocal.dy.clamp(0.0, renderBox.size.height);
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         return 0.0;
       }
     }

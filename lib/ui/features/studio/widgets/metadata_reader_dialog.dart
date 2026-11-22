@@ -76,7 +76,8 @@ class _MetadataReaderDialogState extends State<MetadataReaderDialog> {
           _blindExtracting = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       if (mounted) {
         setState(() {
           _blindResult = '';

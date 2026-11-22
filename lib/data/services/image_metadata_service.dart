@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -50,7 +52,8 @@ class ImageMetadataService {
       if (imgBytes != null && imgBytes.isNotEmpty) {
         return (imgBytes, '剪贴板图片.png');
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return (null, null);
   }
 
@@ -105,7 +108,8 @@ class ImageMetadataService {
       if (decoded != null && decoded.textData != null) {
         return _decodeFromTextData(decoded.textData!);
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return null;
   }
 
@@ -166,7 +170,8 @@ class ImageMetadataService {
 
       final decoded = GZipCodec().decode(payload);
       return utf8.decode(decoded);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -385,16 +390,18 @@ class ImageMetadataService {
       if (model == null || model.isEmpty) {
         if (source != null && source.isNotEmpty) {
           final sLower = source.toLowerCase();
-          if (sLower.contains('v5') || sLower.contains('5')) {
-            model = 'nai-diffusion-5-full';
+          // 顺序很重要：'4.5'/'4-5' 都包含字符 '5'，必须先于裸 '5' 判断，
+          // 否则 V4.5 的 Source 会被错误还原成 V5。
+          if (sLower.contains('furry')) {
+            model = 'nai-diffusion-furry-3';
           } else if (sLower.contains('v4.5') ||
               sLower.contains('4.5') ||
               sLower.contains('4-5')) {
-            model = 'nai-diffusion-4.5-full';
+            model = 'nai-diffusion-4-5-full';
+          } else if (sLower.contains('v5') || sLower.contains('5')) {
+            model = 'nai-diffusion-5-full';
           } else if (sLower.contains('v4') || sLower.contains('4')) {
             model = 'nai-diffusion-4-full';
-          } else if (sLower.contains('furry')) {
-            model = 'nai-diffusion-furry-3';
           } else if (sLower.contains('v3') || sLower.contains('3')) {
             model = 'nai-diffusion-3';
           } else {
@@ -477,7 +484,8 @@ class ImageMetadataService {
         characterNegativePrompts: characterNegativePrompts,
         rawJson: text,
       );
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -583,7 +591,8 @@ class ImageMetadataService {
           rawJson: promptJson,
         );
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return null;
   }
 
@@ -615,7 +624,8 @@ class ImageMetadataService {
         software: 'InvokeAI',
         rawJson: sd,
       );
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return null;
   }
 
@@ -672,7 +682,7 @@ class ImageMetadataService {
           _writeTextChunk(output, 'Title', 'AI generated image');
           _writeTextChunk(output, 'Software', 'NovelAI');
           _writeTextChunk(output, 'Source', params.model.label);
-          _writeTextChunk(output, 'Description', params.effectivePrompt);
+          _writeTextChunk(output, 'Description', params.metadataPrompt);
           _writeTextChunk(output, 'Comment', commentJson);
         }
         // 过滤旧的重名文本块，避免重复
@@ -685,15 +695,17 @@ class ImageMetadataService {
               _decodeCompressedTextChunk(chunk.data);
           if (entry != null &&
               {
-                'Title',
-                'Software',
-                'Source',
-                'Description',
-                'Comment',
-              }.contains(entry.$1)) {
+                'title',
+                'software',
+                'source',
+                'description',
+                'comment',
+              }.contains(entry.$1.trim().toLowerCase())) {
             continue;
           }
         }
+        // EXIF / XMP 不属于 NovelAI 元数据，嵌入时一并丢弃。
+        if (chunk.type == 'eXIf' || _isXmpChunk(chunk)) continue;
         output.add(chunk.rawBytes);
       }
 
@@ -701,12 +713,13 @@ class ImageMetadataService {
         _writeTextChunk(output, 'Title', 'AI generated image');
         _writeTextChunk(output, 'Software', 'NovelAI');
         _writeTextChunk(output, 'Source', params.model.label);
-        _writeTextChunk(output, 'Description', params.effectivePrompt);
+        _writeTextChunk(output, 'Description', params.metadataPrompt);
         _writeTextChunk(output, 'Comment', commentJson);
       }
 
       return output.toBytes();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return pngBytes;
     }
   }
@@ -742,6 +755,58 @@ class ImageMetadataService {
   }
 
   // ==================== 3. 元数据删除 / 抹除 (Strip Metadata) ====================
+
+  /// 只清除 Alpha LSB 隐写，保留 PNG 文本块。
+  ///
+  /// Skia 从裸 RGBA 重新编码会生成一个不含任何辅助块的新 PNG，因此这里
+  /// 在编码后把原图的 tEXt/iTXt/zTXt 块原样注入回去，避免“只清隐写”把
+  /// prompt/seed/model 等文本元数据一起删掉。
+  static Future<Uint8List> stripPngStealthAsync(Uint8List bytes) async {
+    if (!isPngHeader(bytes) || !pngMayHaveAlpha(bytes)) return bytes;
+    final decoded = await decodeToRawRgba(bytes);
+    if (decoded == null) return bytes;
+    clearAlphaLsbInPlace(decoded.rgba);
+    final encoded = await encodeRawRgbaToPng(
+      decoded.rgba,
+      decoded.width,
+      decoded.height,
+    );
+    return reinsertTextChunks(bytes, encoded);
+  }
+
+  /// 把原图的文本块拼回新编码的 PNG (放在 IHDR 之后、IDAT 之前)。
+  ///
+  /// 水印/盲水印会整图重新编码，Skia 不会保留 tEXt/iTXt/zTXt；
+  /// 导出时必须把原文本块放回，否则 NovelAI 元数据会全部消失。
+  static Uint8List reinsertTextChunks(Uint8List original, Uint8List encoded) {
+    const textTypes = {'tEXt', 'iTXt', 'zTXt'};
+    final textChunks = <Uint8List>[];
+    for (final chunk in _parsePngChunks(original)) {
+      if (textTypes.contains(chunk.type)) textChunks.add(chunk.rawBytes);
+    }
+    if (textChunks.isEmpty || !isPngHeader(encoded)) return encoded;
+
+    final output = BytesBuilder(copy: false)
+      ..add(Uint8List.sublistView(encoded, 0, 8));
+    var inserted = false;
+    for (final chunk in _parsePngChunks(encoded)) {
+      // 编码结果里若已有文本块，以原图为准，避免重复。
+      if (textTypes.contains(chunk.type)) continue;
+      if (!inserted && chunk.type != 'IHDR') {
+        for (final textChunk in textChunks) {
+          output.add(textChunk);
+        }
+        inserted = true;
+      }
+      output.add(chunk.rawBytes);
+    }
+    if (!inserted) {
+      for (final textChunk in textChunks) {
+        output.add(textChunk);
+      }
+    }
+    return output.takeBytes();
+  }
 
   /// 抹除 PNG 图片的所有元数据文本块和 Alpha LSB 隐写数据
   static Future<Uint8List> stripPngMetadataAsync(Uint8List bytes) async {
@@ -779,9 +844,41 @@ class ImageMetadataService {
     return rgba;
   }
 
+  /// XMP 包同样属于相机/编辑软件写入的私有元数据，嵌入/清理时一并丢弃。
+  static bool _isXmpChunk(_PngChunk chunk) {
+    final entry = switch (chunk.type) {
+      'iTXt' => _decodeInternationalTextChunk(chunk.data),
+      'tEXt' => _decodeTextChunk(chunk.data),
+      'zTXt' => _decodeCompressedTextChunk(chunk.data),
+      _ => null,
+    };
+    return entry != null &&
+        entry.$1.trim().toLowerCase() == 'xml:com.adobe.xmp';
+  }
+
+  /// 只移除 eXIf / XMP 块，保留 NovelAI 文本元数据。
+  static Uint8List stripPngExifOnly(Uint8List bytes) {
+    if (!isPngHeader(bytes)) return bytes;
+    var hasExif = false;
+    for (final chunk in _parsePngChunks(bytes)) {
+      if (chunk.type == 'eXIf' || _isXmpChunk(chunk)) {
+        hasExif = true;
+        break;
+      }
+    }
+    if (!hasExif) return bytes;
+    final output = BytesBuilder(copy: false)
+      ..add(Uint8List.sublistView(bytes, 0, 8));
+    for (final chunk in _parsePngChunks(bytes)) {
+      if (chunk.type == 'eXIf' || _isXmpChunk(chunk)) continue;
+      output.add(chunk.rawBytes);
+    }
+    return output.toBytes();
+  }
+
   static Uint8List stripPngTextChunks(Uint8List bytes) {
     if (!isPngHeader(bytes)) return bytes;
-    const removed = {'tEXt', 'iTXt', 'zTXt', 'eXIf', 'dSIG', 'prWm'};
+    const removed = {'tEXt', 'iTXt', 'zTXt', 'eXIf', 'tIME', 'dSIG', 'prWm'};
     final output = BytesBuilder(copy: false)
       ..add(Uint8List.sublistView(bytes, 0, 8));
     for (final chunk in _parsePngChunks(bytes)) {
@@ -801,7 +898,8 @@ class ImageMetadataService {
           decoded.iccProfile = null;
           return Uint8List.fromList(img.encodePng(decoded));
         }
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
       return bytes;
     }
 
@@ -841,7 +939,8 @@ class ImageMetadataService {
       }
 
       return filteredBytes;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return bytes;
     }
   }
@@ -891,7 +990,8 @@ class ImageMetadataService {
   static String _decodeTextChunkValue(List<int> bytes) {
     try {
       return utf8.decode(bytes);
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return latin1.decode(bytes);
     }
   }

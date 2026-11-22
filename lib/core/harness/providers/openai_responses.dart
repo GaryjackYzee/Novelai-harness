@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
 
 import '../tools/agent_tool.dart';
@@ -538,7 +540,8 @@ class OpenAiResponses {
     if (raw is String && raw.trim().isNotEmpty) {
       try {
         return jsonDecode(raw) is! Map;
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         return true;
       }
     }
@@ -555,7 +558,8 @@ class OpenAiResponses {
         if (decoded is Map) {
           return decoded.map((key, value) => MapEntry(key.toString(), value));
         }
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
     return {};
   }

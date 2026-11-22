@@ -60,9 +60,44 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # 阶段二 A：构建 Windows 发行包
-  build-windows:
+  # 阶段二：发布前质量门禁 + 秘密扫描（任何一项失败都阻断构建）
+  quality:
     needs: check
+    if: needs.check.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+        with:
+          flutter-version: 3.47.8
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: dart run tool/gates.dart analyze
+
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Run all tests
+        run: >-
+          dart run tool/gates.dart test
+          --dart-define=HARNESS_AUTO_IMPORT_CREDENTIALS=false
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 阶段三 A：构建 Windows 发行包
+  build-windows:
+    needs: [check, quality]
     if: needs.check.outputs.skip == 'false'
     runs-on: windows-latest
     steps:
@@ -101,11 +136,11 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  # 阶段二 B：构建 Android 分 ABI APK（与 Windows 并行）
+  # 阶段三 B：构建 Android 分 ABI APK（与 Windows 并行）
   # --split-per-abi 由 Flutter Gradle 插件接管 ABI 拆分，
   # 各 APK 自动携带互不冲突的 versionCode，可直接上架/侧载。
   build-android:
-    needs: check
+    needs: [check, quality]
     if: needs.check.outputs.skip == 'false'
     runs-on: ubuntu-latest
     steps:

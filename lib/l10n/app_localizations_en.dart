@@ -3977,4 +3977,789 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toolFallbackName => 'Tool';
+
+  @override
+  String get type => 'String';
+
+  @override
+  String get tabSources => 'Sources';
+
+  @override
+  String get sourcesTitle => 'Source gallery';
+
+  @override
+  String get sourcesAitag => 'AITag';
+
+  @override
+  String get sourcesCodex => 'Codex';
+
+  @override
+  String get sourcesSearchHint => 'Search works or prompts…';
+
+  @override
+  String get sourcesApply => 'Apply to workbench';
+
+  @override
+  String get sourcesCategoryAll => 'All';
+
+  @override
+  String sourcesCodexPage(Object page, Object pages, Object total) {
+    return 'Page $page / $pages · $total items';
+  }
+
+  @override
+  String get sourcesEmpty => 'No results';
+
+  @override
+  String sourcesLoadFailed(Object message) {
+    return 'Failed to load: $message';
+  }
+
+  @override
+  String get sourcesLoadMore => 'Loading…';
+
+  @override
+  String get sourcesPickCodex => 'Choose codex';
+
+  @override
+  String get sourcesDate => 'Date';
+
+  @override
+  String get sourcesSize => 'Size';
+
+  @override
+  String get sourcesSteps => 'Steps';
+
+  @override
+  String get sourcesSampler => 'Sampler';
+
+  @override
+  String get sourcesSeed => 'Seed';
+
+  @override
+  String get sourcesPrompt => 'Prompt';
+
+  @override
+  String get sourcesNegative => 'Negative prompt';
+
+  @override
+  String get sourcesRating => 'Rating';
+
+  @override
+  String get sourcesRatingGeneral => 'General';
+
+  @override
+  String get sourcesRatingQuestionable => 'Questionable';
+
+  @override
+  String get sourcesRatingExplicit => 'Explicit';
+
+  @override
+  String get sourcesRatingAll => 'All';
+
+  @override
+  String get sourcesDanbooruSize => 'Load size';
+
+  @override
+  String get sourcesSizeThumb => 'Thumb';
+
+  @override
+  String get sourcesSizeLarge => 'Large';
+
+  @override
+  String get sourcesSizeOrig => 'Original';
+
+  @override
+  String get sourcesMoreActions => 'More actions';
+
+  @override
+  String get sourcesCopyTags => 'Copy tags';
+
+  @override
+  String get sourcesUseTags => 'Use tags';
+
+  @override
+  String get sourcesUseAsSource => 'Use as img2img source';
+
+  @override
+  String get sourcesUseAsReference => 'Use as Vibe reference';
+
+  @override
+  String get sourcesActionDone => 'Copied';
+
+  @override
+  String sourcesActionFailed(Object message) {
+    return 'Action failed: $message';
+  }
+
+  @override
+  String get sourcesNote => 'Note';
+
+  @override
+  String get sourcesLocal => 'Local';
+
+  @override
+  String get sourcesFavoritesOnly => 'Favorites only';
+
+  @override
+  String get sourcesDanbooru => 'Danbooru';
+
+  @override
+  String get sourcesDanbooruHint =>
+      'Search tags, e.g. 1girl solo (general only by default; add rating:explicit for R-18)';
+
+  @override
+  String get sourcesDanbooruEmpty => 'No Danbooru results';
+
+  @override
+  String get sourcesDanbooruFavorite => 'Save locally';
+
+  @override
+  String get sourcesDanbooruFavoriteSaved => 'Saved to local favorites';
+
+  @override
+  String get sourcesFavoriteSaved => 'Saved to local favorites';
+
+  @override
+  String sourcesFavoriteFailed(Object message) {
+    return 'Save failed: $message';
+  }
+
+  @override
+  String sourcesDanbooruFavoriteFailed(Object message) {
+    return 'Save failed: $message';
+  }
+
+  @override
+  String get sourcesSendToAgent => 'Send to Agent composer';
+
+  @override
+  String get sourcesSentToAgent => 'Added to the Agent composer';
+
+  @override
+  String sourcesSendToAgentFailed(Object message) {
+    return 'Send failed: $message';
+  }
+
+  @override
+  String get sourcesFavoritesTab => 'Favorites';
+
+  @override
+  String get sourcesFavoritesEmpty => 'No local favorites yet';
+
+  @override
+  String get sourcesUnfavorite => 'Remove from favorites';
+
+  @override
+  String get sourcesFavorite => 'Save locally';
+
+  @override
+  String get sourcesSendToChat => 'Send to chat';
+
+  @override
+  String get sourcesSentToChat => 'Filled the chat composer; not sent yet';
+
+  @override
+  String sourcesSendToChatFailed(Object message) {
+    return 'Send failed: $message';
+  }
+
+  @override
+  String get sourcesNothingToSend => 'Nothing to send';
+
+  @override
+  String get sourcesDetails => 'Details';
+
+  @override
+  String get sourcesScore => 'Score';
+
+  @override
+  String get sourcesTags => 'Tags';
+
+  @override
+  String get sourcesSourceUrl => 'Source';
+
+  @override
+  String get sourcesNoMore => 'No more items';
+
+  @override
+  String get sourcesLibrary => 'Library';
+
+  @override
+  String get sourcesLibraryPick => 'Choose folder';
+
+  @override
+  String get sourcesLibraryRefresh => 'Refresh';
+
+  @override
+  String get sourcesLibraryNotSet => 'No library folder yet';
+
+  @override
+  String get sourcesLibraryEmpty => 'No readable documents in this folder';
+
+  @override
+  String get sourcesLibrarySearchHint => 'Search inside documents';
+
+  @override
+  String get sourcesReflections => 'Threads';
+
+  @override
+  String get sourcesReflectionEmpty =>
+      'No reflection threads yet, try /reflect or /dream';
+
+  @override
+  String get sourcesImportDocs => 'Import documents';
+
+  @override
+  String sourcesImportDone(Object count) {
+    return 'Imported $count document(s)';
+  }
+
+  @override
+  String get sourcesResetDefaults => 'Reset';
+
+  @override
+  String get sourcesDeleteFileTitle => 'Delete library file';
+
+  @override
+  String sourcesDeleteFileMessage(Object name) {
+    return 'Delete \"$name\"? This cannot be undone.';
+  }
+
+  @override
+  String sourcesReadFailed(Object message) {
+    return 'Failed to read library file: $message';
+  }
+
+  @override
+  String get sourcesMorePending => ' (more)';
+
+  @override
+  String get accountPoolTitle => 'Account pool';
+
+  @override
+  String get accountPoolSubtitle =>
+      'API keys stay on this device; switching accounts updates the workbench key.';
+
+  @override
+  String get accountPoolFixed => 'Fixed';
+
+  @override
+  String get accountPoolRotate => 'Rotate';
+
+  @override
+  String get accountPoolEmpty => 'No accounts yet. Add one below.';
+
+  @override
+  String get accountPoolDefault => 'Default';
+
+  @override
+  String get accountPoolTierUnknown => 'Unknown tier';
+
+  @override
+  String accountPoolSummary(Object anlas, Object energy, Object tier) {
+    return '$tier · $anlas Anlas · V5 $energy%';
+  }
+
+  @override
+  String get accountPoolSetDefault => 'Set as default';
+
+  @override
+  String get accountPoolDeleteTitle => 'Delete account';
+
+  @override
+  String accountPoolDeleteMessage(Object label) {
+    return 'Delete \"$label\"? Its API key will be removed permanently.';
+  }
+
+  @override
+  String get accountPoolRemark => 'Label';
+
+  @override
+  String get accountPoolAdd => 'Add';
+
+  @override
+  String get accountPoolRefreshAll => 'Refresh all';
+
+  @override
+  String get promptsImg2imgSection => 'Img2Img / Vibe Transfer';
+
+  @override
+  String get promptsPreciseReference => 'Character / Style Reference';
+
+  @override
+  String get preciseRefHint =>
+      'NovelAI Precise Reference: use character only, style only, or both. It is mutually exclusive with Vibe Transfer and only supported by V4.5 models.';
+
+  @override
+  String get preciseRefUnsupported =>
+      'The current model does not support character/style reference. Switch to NAI Diffusion V4.5 Full or Curated.';
+
+  @override
+  String get preciseRefAdd => 'Choose reference images';
+
+  @override
+  String get preciseRefEmpty => 'No character/style references yet.';
+
+  @override
+  String get preciseRefAddFailed => 'Could not read the selected image.';
+
+  @override
+  String get preciseRefCharacter => 'Character';
+
+  @override
+  String get preciseRefStyle => 'Style';
+
+  @override
+  String get preciseRefBoth => 'Character + style';
+
+  @override
+  String get preciseRefStrength => 'Reference strength';
+
+  @override
+  String get preciseRefFidelity => 'Fidelity';
+
+  @override
+  String get dockAccountPool => 'Account pool';
+
+  @override
+  String get chatImageBlocked => 'External image blocked';
+
+  @override
+  String get paramsSectionImg2img => 'Img2img';
+
+  @override
+  String get paramsImg2imgStrength => 'Source strength';
+
+  @override
+  String get paramsSelectFile => 'Choose file';
+
+  @override
+  String get paramsImg2imgNoise => 'Noise';
+
+  @override
+  String get paramsImg2imgUseCanvas => 'Use canvas image';
+
+  @override
+  String get paramsImg2imgClear => 'Clear source';
+
+  @override
+  String get paramsVibeReference => 'Vibe references';
+
+  @override
+  String get paramsVibeAdd => 'Add reference';
+
+  @override
+  String get paramsVibeClear => 'Clear references';
+
+  @override
+  String get paramsVibeStrength => 'Reference strength';
+
+  @override
+  String get paramsVibeInfo => 'Information extracted';
+
+  @override
+  String get paramsImg2imgEmpty => 'No source image';
+
+  @override
+  String get paramsVibeEmpty => 'No references';
+
+  @override
+  String get paramsCanvasEmpty => 'No canvas image available';
+
+  @override
+  String get settingsSectionNetwork => 'Network proxy';
+
+  @override
+  String get settingsProxyEnabledTitle => 'Enable HTTP proxy';
+
+  @override
+  String get settingsProxyEnabledSubtitle =>
+      'Applies to Danbooru, source galleries, NovelAI and Agent requests; each feature can bypass the proxy. Restart the app after saving.';
+
+  @override
+  String get settingsProxyHostTitle => 'Proxy host';
+
+  @override
+  String get settingsProxyHostHint => 'Hostname or IP, e.g. 127.0.0.1';
+
+  @override
+  String get settingsProxyPortTitle => 'Proxy port';
+
+  @override
+  String get settingsProxyRestartHint =>
+      'HTTP proxy only. New requests use it after saving; existing connections need an app restart.';
+
+  @override
+  String get settingsProxyInvalid => 'Invalid proxy host or port';
+
+  @override
+  String get settingsProxyUseNovelAiTitle => 'Proxy image generation';
+
+  @override
+  String get settingsProxyUseNovelAiSubtitle =>
+      'Turn off to connect directly for NovelAI generation, upscaling and AI edit requests.';
+
+  @override
+  String get settingsProxyUseAgentTitle => 'Proxy Agent';
+
+  @override
+  String get settingsProxyUseAgentSubtitle =>
+      'Turn off to connect directly for Agent LLM APIs and online tools.';
+
+  @override
+  String get settingsProxyUseGalleryTitle => 'Proxy source galleries';
+
+  @override
+  String get settingsProxyUseGallerySubtitle =>
+      'Turn off to connect directly for Danbooru, AITag, Codex and their images.';
+
+  @override
+  String get promptOutputTitle => 'Output';
+
+  @override
+  String get promptKeepMetadata => 'Keep metadata (uncheck to strip)';
+
+  @override
+  String get promptKeepStealth => 'Keep steganography (uncheck to strip)';
+
+  @override
+  String get promptStripTags =>
+      'Private tags (removed from metadata after generation)';
+
+  @override
+  String get promptStripNegativeTags =>
+      'Private negative tags (removed from metadata after generation)';
+
+  @override
+  String get canvasGeneratingDiscard => 'Discard';
+
+  @override
+  String get canvasGeneratingDiscardTooltip =>
+      'Abort and discard this generation';
+
+  @override
+  String get canvasGeneratingBackground => 'Background';
+
+  @override
+  String get canvasGeneratingBackgroundTooltip =>
+      'Keep generating, but hide it from the canvas';
+
+  @override
+  String get canvasGeneratingInBackground =>
+      'Image is generating in the background';
+
+  @override
+  String get canvasGeneratingInBackgroundDescription =>
+      'Live preview is hidden. The image will be added to history when done.';
+
+  @override
+  String get viewGeneration => 'View generation';
+
+  @override
+  String get vmGenCacheFailed =>
+      'Image generated, but the original cache could not be written. Check the save folder, or choose another folder and save manually.';
+
+  @override
+  String get vmGenMovedToBackground =>
+      'Generation moved to background. It will be added to history when done.';
+
+  @override
+  String get slashDreamEmpty =>
+      'No session to organize yet. Chat a little first.';
+
+  @override
+  String get slashDreamPrompt =>
+      'Entering \"Dream Journal\". First call the memory tool to list long-term memory, then:\n1. Merge duplicate or conflicting preferences and settings;\n2. Extract reusable lessons (prompt structures, parameter preferences, failure lessons);\n3. Use memory add/remove and keep only the most valuable entries;\n4. Use the reflection tool to add one thread (source=dream, title/summary/lessons);\n5. Summarize this dream journal in 3-5 lines.';
+
+  @override
+  String get slashReflectPrompt =>
+      'Do a self-reflection pass. Complete:\n1. Review misunderstandings, user corrections, and what worked especially well in this session;\n2. Extract 1-3 actionable lessons and write them with the memory tool;\n3. If the same issue repeats, propose a SKILL.md patch (do not modify skills or presets without user confirmation);\n4. Use the reflection tool to add one thread (source=reflect, title/summary/lessons);\n5. Report back with a short checklist.';
+
+  @override
+  String get settingsTabNetwork => 'Network';
+
+  @override
+  String get settingsProxyIntro =>
+      'Configure an HTTP proxy here. Once enabled, the feature switches below decide which requests use it.';
+
+  @override
+  String get settingsProxyPerFeatureTitle => 'Feature proxy policy';
+
+  @override
+  String get settingsProxyPerFeatureHint =>
+      'Turn a switch off to connect that feature directly, bypassing the proxy.';
+
+  @override
+  String get settingsProxyDisabledHint =>
+      'Enable the proxy above first, then choose which features use it.';
+
+  @override
+  String get proxyFeatureNovelAi => 'Image proxy';
+
+  @override
+  String get proxyFeatureAgent => 'Agent proxy';
+
+  @override
+  String get proxyFeatureGallery => 'Gallery proxy';
+
+  @override
+  String proxyFeatureOnHint(Object label) {
+    return '$label is using the proxy; click to connect directly';
+  }
+
+  @override
+  String proxyFeatureOffHint(Object label) {
+    return '$label connects directly; click to use the proxy';
+  }
+
+  @override
+  String get proxyEnableFirst =>
+      'Enable the global proxy in Settings → Network first';
+
+  @override
+  String get queueTitle => 'Message queue';
+
+  @override
+  String get queuePause => 'Pause queue';
+
+  @override
+  String get queueResume => 'Resume queue';
+
+  @override
+  String get queueHint =>
+      'Queued messages are sent in order after the current turn. Drag to reorder, edit, or send now.';
+
+  @override
+  String get queueEmpty => 'Queue is empty';
+
+  @override
+  String get queueEditTitle => 'Edit queued message';
+
+  @override
+  String get queueOnlyImages => '(images only)';
+
+  @override
+  String queueImagesCount(int count) {
+    return '$count images';
+  }
+
+  @override
+  String queueBarLabel(int count) {
+    return 'Queue $count · tap to manage';
+  }
+
+  @override
+  String get queueQueuedToast => 'Generating, added to queue';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get commonAdd => 'Add';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get styleCardTitle => 'Style presets';
+
+  @override
+  String get styleSelectHint => 'Select a style group';
+
+  @override
+  String get styleNone => 'No style preset';
+
+  @override
+  String get styleAddTitle => 'Add style preset';
+
+  @override
+  String get styleEditTitle => 'Edit style preset';
+
+  @override
+  String get styleName => 'Name';
+
+  @override
+  String get stylePositive => 'Positive tags';
+
+  @override
+  String get styleNegative => 'Negative tags';
+
+  @override
+  String get styleStripAll =>
+      'Remove style-preset tags from metadata (keep other tags)';
+
+  @override
+  String get styleInMetadata => 'Write style tags into exported metadata';
+
+  @override
+  String get styleTagLabel => 'Style';
+
+  @override
+  String get wd14Title => 'Online WD14';
+
+  @override
+  String get wd14Run => 'Tag current image';
+
+  @override
+  String get wd14Running => 'Tagging…';
+
+  @override
+  String get wd14Pick => 'Tag an image file';
+
+  @override
+  String get wd14Apply => 'Write to positive prompt';
+
+  @override
+  String get wd14Applied => 'Added to positive prompt';
+
+  @override
+  String get wd14Settings => 'Endpoint and threshold';
+
+  @override
+  String get wd14Endpoint => 'WD14 endpoint';
+
+  @override
+  String get wd14Token => 'Token (optional)';
+
+  @override
+  String wd14Threshold(String value) {
+    return 'Threshold $value';
+  }
+
+  @override
+  String get queueSendNow => 'Send now';
+
+  @override
+  String get acctTitle => 'Account pool';
+
+  @override
+  String get acctHint =>
+      'API keys stay on this machine. Switching accounts updates the workbench key.';
+
+  @override
+  String get acctFixed => 'Fixed';
+
+  @override
+  String get acctRotate => 'Rotate';
+
+  @override
+  String get acctDefault => 'Default';
+
+  @override
+  String get acctSetDefault => 'Set as default';
+
+  @override
+  String get acctLabel => 'Label';
+
+  @override
+  String get acctKey => 'API Key';
+
+  @override
+  String get acctEmpty => 'No accounts yet. Add one below.';
+
+  @override
+  String get acctUnknownTier => 'Unknown tier';
+
+  @override
+  String get acctRefreshAll => 'Refresh all';
+
+  @override
+  String acctTierAnlasEnergy(String tier, int anlas, int energy) {
+    return '$tier · $anlas Anlas · V5 $energy%';
+  }
+
+  @override
+  String get libImport => 'Import documents';
+
+  @override
+  String get libResetDefault => 'Reset to default';
+
+  @override
+  String get accountPoolApiKey => 'API Key';
+
+  @override
+  String libImportedCount(int count) {
+    return '$count documents imported';
+  }
+
+  @override
+  String get settingsTabExtensions => 'Extensions';
+
+  @override
+  String get settingsExtAccounts => 'Account pool';
+
+  @override
+  String get settingsExtQueue => 'Message queue';
+
+  @override
+  String get settingsExtHint =>
+      'WD14 tagging and style presets are on the Prompts page.';
+
+  @override
+  String get bannedWordsTitle => 'Hide banned words from agent';
+
+  @override
+  String get bannedWordsSubtitle =>
+      'Only affects parameter text returned to the agent; editors and generation requests keep the original.';
+
+  @override
+  String get bannedWordsHint => 'One per line, or comma separated';
+
+  @override
+  String get settingsAgentPersistentImages => 'Persist historical images';
+
+  @override
+  String get settingsAgentPersistentImagesHint =>
+      'Resend images from earlier turns every round; higher token usage and may break prompt caching.';
+
+  @override
+  String get settingsSessionMaxCount => 'Sessions to keep';
+
+  @override
+  String get settingsSessionMaxCountHint =>
+      'Maximum number of session files; the oldest are removed beyond this (the latest is always kept).';
+
+  @override
+  String get settingsSessionRetentionDays => 'Session retention (days)';
+
+  @override
+  String get settingsSessionRetentionDaysHint =>
+      'Sessions older than this are pruned; the latest session is always kept.';
+
+  @override
+  String get promptStripAllTitle => 'Strip all data (metadata + steganography)';
+
+  @override
+  String get dockBatchCount => 'Batch';
+
+  @override
+  String get askCardEditOption => 'Edit option text';
+
+  @override
+  String get settingsProxyTest => 'Test proxy';
+
+  @override
+  String get settingsProxyTestRunning => 'Testing…';
+
+  @override
+  String get settingsProxyTestResult => 'Proxy test result: ';
+
+  @override
+  String get vmCharTagConfirmTitle => 'Confirm character tag change';
+
+  @override
+  String get vmCharTagConfirm => 'Confirm';
+
+  @override
+  String get vmCharTagCancel => 'Cancel';
 }

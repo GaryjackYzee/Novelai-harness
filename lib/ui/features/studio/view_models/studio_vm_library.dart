@@ -1,3 +1,4 @@
+
 part of 'studio_view_model.dart';
 
 /// 词组合预设库分部 (Prompt Combo Library)
@@ -12,7 +13,8 @@ mixin _StudioLibraryMixin on _StudioCore {
     try {
       _promptLibraryEntries = await _promptLibraryService.loadEntries();
       notifyListeners();
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 词库内容变更后同步刷新内存与自动补全缓存

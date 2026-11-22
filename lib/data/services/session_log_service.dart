@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -102,8 +105,15 @@ class SessionSnapshot {
 class SessionLogService implements SessionRecorder {
   static const int _sessionVersion = 3;
 
+  /// 轮转配置，由工作台在启动/设置变更时写入。
+  int maxSessions = 300;
+  int retentionDays = 90;
+
   Directory? _baseDir;
   File? _currentFile;
+  Map<String, dynamic>? _pendingHeader;
+  bool _sessionFileCreated = false;
+  final List<Map<String, dynamic>> _pendingMeta = [];
   String? _lastEntryId;
   static final Random _random = Random();
   int _sessionLoadEpoch = 0;
@@ -138,7 +148,8 @@ class SessionLogService implements SessionRecorder {
         File('${file.path}.context.json').readAsStringSync(),
       );
       return value is Map<String, Object?> ? value : const {};
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return const {};
     }
   }
@@ -169,7 +180,8 @@ class SessionLogService implements SessionRecorder {
       try {
         final docs = await getApplicationDocumentsDirectory();
         dirPath = p.join(docs.path, 'NovelAI_Sessions');
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         dirPath = p.join(Directory.systemTemp.path, 'NovelAI_Sessions');
       }
     }
@@ -177,12 +189,98 @@ class SessionLogService implements SessionRecorder {
     final dir = Directory(dirPath);
     await dir.create(recursive: true);
     _baseDir = dir;
+    unawaited(_pruneSessions(dir).then((_) => _pruneEmptySessions(dir)));
 
     // 接管最新会话文件：后续记录追加到该文件末尾
     final resumed = await runIsolated(_resumeLatestFile, dirPath);
     if (resumed != null) {
       _currentFile = File(resumed.path);
       _lastEntryId = resumed.lastEntryId;
+    }
+  }
+
+  /// 清理只有头部/元数据、没有实际消息的会话文件。
+  Future<void> _pruneEmptySessions(Directory dir) async {
+    try {
+      await for (final entity in dir.list()) {
+        if (entity is! File || !entity.path.endsWith('.jsonl')) continue;
+        if (entity.path == _currentFile?.path) continue;
+        try {
+          final stat = await entity.stat();
+          if (stat.size > 256 * 1024) continue;
+          final content = await entity.readAsString();
+          if (content.contains('"type":"message"')) continue;
+          await _deleteSessionWithSidecars(entity);
+        } on Object {
+          // 单个文件失败不影响其他
+        }
+      }
+    } on Object {
+      // 清理失败不影响启动
+    }
+  }
+
+  Future<void> _deleteSessionWithSidecars(File session) async {
+    try {
+      await session.delete();
+    } on Object {
+      return; // jsonl 没删掉时保留 sidecar，避免半删
+    }
+    try {
+      final sidecar = File('${session.path}.context.json');
+      if (await sidecar.exists()) await sidecar.delete();
+    } on Object {
+      // sidecar 删除失败不影响主流程
+    }
+  }
+
+  /// 会话轮转：最多保留 300 个会话文件，且删除 90 天前的旧会话。
+  Future<void> _pruneSessions(Directory dir) async {
+    try {
+      final files = <File>[];
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.jsonl')) {
+          files.add(entity);
+        }
+      }
+      if (files.isEmpty) return;
+      final stats = <({File file, DateTime modified})>[];
+      for (final file in files) {
+        try {
+          final stat = await file.stat();
+          stats.add((file: file, modified: stat.modified));
+        } on Object {
+          // 跳过无法读取的文件
+        }
+      }
+      stats.sort((a, b) => b.modified.compareTo(a.modified));
+      final keepCount = maxSessions.clamp(1, 100000);
+      final keepDays = retentionDays.clamp(1, 36500);
+      final cutoff = DateTime.now().subtract(Duration(days: keepDays));
+      for (var index = 0; index < stats.length; index += 1) {
+        // 永远保留最新一个会话，即使它超过保留天数（启动时正要恢复它）。
+        if (index == 0) continue;
+        final stale = stats[index];
+        if (index < keepCount && !stale.modified.isBefore(cutoff)) continue;
+        await _deleteSessionWithSidecars(stale.file);
+      }
+      // 清理没有 jsonl 对应会话的孤儿上下文检查点。
+      await for (final entity in dir.list()) {
+        if (entity is! File ||
+            !entity.path.toLowerCase().endsWith('.jsonl.context.json')) {
+          continue;
+        }
+        final sessionPath =
+            entity.path.substring(0, entity.path.length - '.context.json'.length);
+        if (await File(sessionPath).exists()) continue;
+        try {
+          await entity.delete();
+        } on Object {
+          // 单个文件失败不影响其他
+        }
+      }
+    } on Object {
+      // 轮转失败不影响会话加载
     }
   }
 
@@ -194,6 +292,12 @@ class SessionLogService implements SessionRecorder {
   void recordMessage(AgentMessage message, {String? provider, String? model}) {
     if (_baseDir == null) return;
     _ensureSession();
+    try {
+      final marker = File(p.join(_baseDir!.path, '.no_resume'));
+      if (marker.existsSync()) marker.deleteSync();
+    } catch (error) {
+      debugPrint('[ignored] $error');
+    }
 
     final msg = <String, dynamic>{
       'harnessMessageId': message.id,
@@ -290,7 +394,18 @@ class SessionLogService implements SessionRecorder {
   @override
   void recordModelChange(String provider, String modelId) {
     if (_baseDir == null) return;
-    _ensureSession();
+    final entry = <String, dynamic>{
+      'type': 'model_change',
+      'provider': provider,
+      'modelId': modelId,
+    };
+    if (_currentFile == null || !_sessionFileCreated) {
+      _pendingMeta.add(entry);
+      return;
+    }
+    _appendEntry(entry);
+    return;
+    // ignore: dead_code
     _appendEntry({
       'type': 'model_change',
       'provider': provider,
@@ -301,8 +416,15 @@ class SessionLogService implements SessionRecorder {
   @override
   void recordThinkingLevelChange(String level) {
     if (_baseDir == null) return;
-    _ensureSession();
-    _appendEntry({'type': 'thinking_level_change', 'thinkingLevel': level});
+    final entry = <String, dynamic>{
+      'type': 'thinking_level_change',
+      'thinkingLevel': level,
+    };
+    if (_currentFile == null || !_sessionFileCreated) {
+      _pendingMeta.add(entry);
+      return;
+    }
+    _appendEntry(entry);
   }
 
   @override
@@ -311,7 +433,14 @@ class SessionLogService implements SessionRecorder {
     if (_baseDir == null) return;
     _currentFile = null;
     _lastEntryId = null;
-    // 立即创建新的空会话文件 (写入头)，保证 /clear 后重启不会误恢复旧会话
+    _pendingHeader = null;
+    _sessionFileCreated = false;
+    // 用标记文件阻止重启后自动恢复旧会话，同时不产生空会话文件。
+    try {
+      File(p.join(_baseDir!.path, '.no_resume')).writeAsStringSync('1');
+    } catch (error) {
+      debugPrint('[ignored] $error');
+    }
     _ensureSession();
   }
 
@@ -336,7 +465,8 @@ class SessionLogService implements SessionRecorder {
     List<String> lines;
     try {
       lines = file.readAsLinesSync();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
     if (lines.isEmpty) return null;
@@ -353,7 +483,8 @@ class SessionLogService implements SessionRecorder {
       Map<String, dynamic> entry;
       try {
         entry = jsonDecode(line) as Map<String, dynamic>;
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         continue;
       }
 
@@ -469,6 +600,9 @@ class SessionLogService implements SessionRecorder {
   Future<SessionSnapshot?> _loadSessionAsync(String? sessionId) async {
     final directory = _baseDir?.path;
     if (directory == null) return null;
+    if (sessionId == null && File(p.join(directory, '.no_resume')).existsSync()) {
+      return null;
+    }
     final epoch = ++_sessionLoadEpoch;
     await flush();
     final loaded = await runIsolated(_readSessionTask, (
@@ -511,8 +645,8 @@ class SessionLogService implements SessionRecorder {
     final file = File(p.join(_baseDir!.path, fileName));
     _currentFile = file;
     _lastEntryId = null;
-
-    final header = <String, dynamic>{
+    _sessionFileCreated = false;
+    _pendingHeader = <String, dynamic>{
       'type': 'session',
       'version': _sessionVersion,
       'id': sessionId,
@@ -520,8 +654,13 @@ class SessionLogService implements SessionRecorder {
       'cwd': Directory.current.path,
       if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
     };
-
-    file.writeAsStringSync('${jsonEncode(header)}\n', flush: true);
+    final buffer = StringBuffer('${jsonEncode(_pendingHeader!)}\n');
+    for (final meta in _pendingMeta) {
+      buffer.write('${jsonEncode(_stampEntry(meta))}\n');
+    }
+    _pendingMeta.clear();
+    file.writeAsStringSync(buffer.toString(), flush: true);
+    _sessionFileCreated = true;
 
     return SessionInfo(
       id: sessionId,
@@ -557,7 +696,8 @@ class SessionLogService implements SessionRecorder {
         if (sidecar.existsSync()) sidecar.deleteSync();
       }
       return true;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return false;
     }
   }
@@ -592,7 +732,8 @@ class SessionLogService implements SessionRecorder {
     List<String> lines;
     try {
       lines = file.readAsLinesSync();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return;
     }
     if (lines.isEmpty) return;
@@ -602,7 +743,8 @@ class SessionLogService implements SessionRecorder {
       final header = jsonDecode(lines.first) as Map<String, dynamic>;
       header['title'] = trimmedTitle;
       lines[0] = jsonEncode(header);
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
 
     // 2. 写入/更新 session_info 条目 (Pi 标准)
     final infoEntry = <String, dynamic>{
@@ -620,13 +762,33 @@ class SessionLogService implements SessionRecorder {
   // ---------------------------------------------------------------------------
 
   void _ensureSession() {
-    if (_currentFile != null) return;
+    final existing = _currentFile;
+    if (existing != null) {
+      if (_sessionFileCreated) return;
+      final header = _pendingHeader;
+      if (header == null) return;
+      _sessionFileCreated = true;
+      final pending = _pendingMeta.map(_stampEntry).toList();
+      _pendingMeta.clear();
+      _queue = _queue.then((_) async {
+        final sink = existing.openWrite(mode: FileMode.writeOnly);
+        sink.writeln(jsonEncode(header));
+        for (final meta in pending) {
+          sink.writeln(jsonEncode(meta));
+        }
+        await sink.flush();
+        await sink.close();
+      });
+      return;
+    }
     final now = DateTime.now().toUtc();
     final sessionId = _uuidV4();
     final fileName = '${_formatFileTimestamp(now)}_$sessionId.jsonl';
     final file = File(p.join(_baseDir!.path, fileName));
     _currentFile = file;
     _lastEntryId = null;
+    final pending = _pendingMeta.map(_stampEntry).toList();
+    _pendingMeta.clear();
     _queue = _queue.then((_) async {
       final header = <String, dynamic>{
         'type': 'session',
@@ -637,9 +799,22 @@ class SessionLogService implements SessionRecorder {
       };
       final sink = file.openWrite(mode: FileMode.writeOnly);
       sink.writeln(jsonEncode(header));
+      for (final meta in pending) {
+        sink.writeln(jsonEncode(meta));
+      }
       await sink.flush();
       await sink.close();
     });
+    _sessionFileCreated = true;
+  }
+
+  Map<String, dynamic> _stampEntry(Map<String, dynamic> entry) {
+    final id = _hexId(8);
+    entry['id'] = id;
+    entry['parentId'] = _lastEntryId;
+    entry['timestamp'] = DateTime.now().toUtc().toIso8601String();
+    _lastEntryId = id;
+    return entry;
   }
 
   void _appendEntry(Map<String, dynamic> entry) {
@@ -706,7 +881,8 @@ class SessionLogService implements SessionRecorder {
         final header = jsonDecode(line) as Map<String, dynamic>;
         return header['id'] as String?;
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return null;
   }
 
@@ -728,11 +904,13 @@ class SessionLogService implements SessionRecorder {
         try {
           final entry = jsonDecode(trimmed) as Map<String, dynamic>;
           return entry['id'] as String?;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           continue;
         }
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return null;
   }
 
@@ -749,7 +927,8 @@ class SessionLogService implements SessionRecorder {
     List<String> lines;
     try {
       lines = file.readAsLinesSync();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
 
@@ -759,7 +938,8 @@ class SessionLogService implements SessionRecorder {
       Map<String, dynamic> entry;
       try {
         entry = jsonDecode(trimmed) as Map<String, dynamic>;
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         continue;
       }
 
@@ -842,7 +1022,8 @@ class SessionLogService implements SessionRecorder {
         Map<String, dynamic> entry;
         try {
           entry = jsonDecode(line) as Map<String, dynamic>;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           continue;
         }
 
@@ -911,7 +1092,8 @@ class SessionLogService implements SessionRecorder {
         modelId: modelId,
         totalTokens: totalTokens,
       );
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }

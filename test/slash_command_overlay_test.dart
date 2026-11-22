@@ -33,7 +33,7 @@ void main() {
         skills: skills,
         presets: presets,
       );
-      expect(result.length, 14);
+      expect(result.length, kSlashCommands.length);
       expect(result.first.completion, '/help');
     });
 

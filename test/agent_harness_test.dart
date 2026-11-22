@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novelai_harness/core/harness/agent_harness.dart';
 import 'package:novelai_harness/core/harness/presets/agent_preset.dart';
 import 'package:novelai_harness/core/harness/providers/llm_provider.dart';
 import 'package:novelai_harness/core/harness/session_recorder.dart';
 import 'package:novelai_harness/core/harness/tools/agent_tool.dart';
+import 'package:novelai_harness/core/harness/tools/library_tools.dart';
 import 'package:novelai_harness/core/harness/types.dart';
+import 'package:path/path.dart' as p;
 
 class MockLlmProvider implements LlmProvider {
   final List<HarnessEvent> Function(
@@ -94,6 +98,25 @@ class TestEchoTool extends AgentTool {
   ) async {
     executionCount++;
     return ToolResult(toolCallId: toolCallId, content: 'Echo: ${args['text']}');
+  }
+}
+
+/// 故意抛异常的工具：验证 harness 仍写入配对的错误 tool 结果。
+class ThrowingTool extends AgentTool {
+  ThrowingTool()
+    : super(
+        name: 'throw_test',
+        label: 'Throw Test',
+        description: 'Always throws',
+        parameters: const {'type': 'object', 'properties': <String, dynamic>{}},
+      );
+
+  @override
+  Future<ToolResult> execute(
+    String toolCallId,
+    Map<String, dynamic> args,
+  ) async {
+    throw StateError('boom');
   }
 }
 
@@ -276,6 +299,80 @@ void main() {
       expect(events.any((e) => e is TurnEndEvent), isTrue);
       // messages: 1. UserMsg, 2. AsstMsg (with toolCalls), 3. ToolMsg (Echo: world), 4. AsstMsg (Tool execution completed.)
       expect(harness.messages.length, equals(4));
+    });
+
+    test('工具抛异常仍写入配对的错误结果并继续下一轮', () async {
+      tools.register(ThrowingTool());
+      int turn = 0;
+      final provider = MockLlmProvider((messages, tools) {
+        turn++;
+        if (turn == 1) {
+          return [
+            ToolCallEvent(
+              const ToolCall(
+                id: 'call_boom',
+                name: 'throw_test',
+                arguments: {},
+              ),
+            ),
+          ];
+        }
+        return [ContentDeltaEvent('recovered')];
+      });
+
+      harness = AgentHarness(tools: tools, provider: provider);
+      final events = await harness.send('trigger').toList();
+
+      final results = events.whereType<ToolResultEvent>().toList();
+      expect(results, hasLength(1));
+      expect(results.single.result.isError, isTrue);
+      expect(results.single.result.toolCallId, 'call_boom');
+      expect(harness.messages.length, equals(4));
+      expect(harness.messages[2].role, AgentRole.tool);
+      expect(harness.messages[2].toolCallId, 'call_boom');
+      expect(harness.messages[2].isError, isTrue);
+      expect(harness.messages.last.content, 'recovered');
+    });
+
+    test('资料库工具不受预设白名单限制', () async {
+      final dir = Directory.systemTemp.createTempSync('library-tool-');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      File(p.join(dir.path, '设定.md')).writeAsStringSync('角色设定：测试');
+
+      tools.register(LibraryQueryTool(getLibraryDir: () => dir.path));
+      int turn = 0;
+      final provider = MockLlmProvider((messages, tools) {
+        turn++;
+        if (turn == 1) {
+          return [
+            ToolCallEvent(
+              const ToolCall(
+                id: 'call_library',
+                name: 'library_query',
+                arguments: {'action': 'tree'},
+              ),
+            ),
+          ];
+        }
+        return [ContentDeltaEvent('done')];
+      });
+
+      harness = AgentHarness(
+        tools: tools,
+        provider: provider,
+        initialPreset: const AgentPreset(
+          id: 'restricted',
+          name: 'restricted',
+          description: '',
+          systemPrompt: '',
+          enabledToolNames: ['echo_test'],
+        ),
+      );
+      final events = await harness.send('列出资料库').toList();
+
+      final result = events.whereType<ToolResultEvent>().single.result;
+      expect(result.isError, isFalse);
+      expect(result.content, contains('设定.md'));
     });
 
     test('每轮工具循环均以 TurnStartEvent 开场 (流式缓冲复位契约)', () async {

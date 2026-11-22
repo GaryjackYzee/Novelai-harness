@@ -19,7 +19,12 @@ typedef CharacterAiPositionGetter = bool Function();
 String buildCharacterPromptsReport(
   List<NaiCharacterPrompt> characters, {
   bool aiPosition = true,
+  String Function(String text)? sanitizeText,
 }) {
+  String visible(String text) {
+    final shown = sanitizeText?.call(text) ?? text;
+    return shown.isEmpty ? '(空)' : shown;
+  }
   final positionMode = aiPosition
       ? 'AI 自动布局 (官方 AI\'s Choice，不发送位置参数)'
       : '自定义定位 (发送 use_coords 与各角色 center)';
@@ -37,8 +42,8 @@ String buildCharacterPromptsReport(
       '[$index] ${c.name} (id: ${c.id})',
       '    状态: ${c.enabled ? '启用' : '停用'} | 定位: $position',
       '    坐标原值: position_x: ${c.positionX} | position_y: ${c.positionY}',
-      '    正向: ${c.prompt.isEmpty ? '(空)' : c.prompt}',
-      '    负面: ${c.negativePrompt.isEmpty ? '(空)' : c.negativePrompt}',
+      '    正向: ${visible(c.prompt)}',
+      '    负面: ${visible(c.negativePrompt)}',
     ].join('\n');
   });
   return '共 ${characters.length} 个角色提示词，位置模式: $positionMode。\n${lines.join('\n')}';
@@ -73,9 +78,13 @@ class NovelAiListCharacterPromptsTool extends AgentTool {
   final CharacterPromptsGetter getCharacterPrompts;
   final CharacterAiPositionGetter? getAiPosition;
 
+  /// 返回给 Agent 前处理正负提示词。
+  final String Function(String text)? sanitizeText;
+
   NovelAiListCharacterPromptsTool({
     required this.getCharacterPrompts,
     this.getAiPosition,
+    this.sanitizeText,
   }) : super(
          name: 'list_character_prompts',
          label: '角色列表',
@@ -93,6 +102,7 @@ class NovelAiListCharacterPromptsTool extends AgentTool {
       content: buildCharacterPromptsReport(
         getCharacterPrompts(),
         aiPosition: getAiPosition?.call() ?? true,
+        sanitizeText: sanitizeText,
       ),
     );
   }

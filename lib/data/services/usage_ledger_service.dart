@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -75,7 +77,8 @@ class UsageLedgerService {
       try {
         final docs = await getApplicationDocumentsDirectory();
         dirPath = p.join(docs.path, 'NovelAI_Sessions');
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         return;
       }
     }
@@ -208,7 +211,8 @@ class UsageLedgerService {
           'keys': decoded['keys'] ?? <String, dynamic>{},
         };
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return {
       'version': _version,
       'days': <String, dynamic>{},
@@ -248,7 +252,8 @@ class UsageLedgerService {
         final tmp = File('${file.path}.tmp');
         await tmp.writeAsString('$encoded\n', flush: true);
         await tmp.rename(file.path);
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         // 落盘失败不影响主流程，内存数据仍可用于本会话统计。
       }
     }

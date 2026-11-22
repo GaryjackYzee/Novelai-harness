@@ -5,6 +5,7 @@ import 'dart:ui' show Rect;
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../models/novelai_models.dart';
 import '../services/anlas_calculator.dart';
 import '../services/image_metadata_service.dart';
@@ -15,6 +16,7 @@ import '../services/image_thumbnail_service.dart';
 import '../services/media_store_service.dart' show MediaGalleryExportFn;
 import '../services/skia_image_codec.dart';
 import '../services/watermark_service.dart';
+import '../services/image_privacy_settings.dart';
 import '../services/novelai_service.dart';
 import '../services/image_edit_service.dart';
 import '../services/rtx_upscale_service.dart';
@@ -209,7 +211,8 @@ class NovelAiRepository {
           _history.add(NaiGeneratedImage.fromJson(item, bytes: Uint8List(0)));
         }
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     if (includeThumbnails) await loadHistoryThumbnails(saveDir: saveDir);
     return List.unmodifiable(_history);
   }
@@ -264,7 +267,8 @@ class NovelAiRepository {
       if (historyFile.existsSync()) {
         try {
           historyFile.deleteSync();
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
       return;
     }
@@ -286,11 +290,22 @@ class NovelAiRepository {
         dir.createSync(recursive: true);
       }
       final jsonList = _history.map((img) => img.toJson()).toList();
-      await historyFile.writeAsString(jsonEncode(jsonList), flush: true);
-    } catch (_) {}
+      // 原子写：避免崩溃/并发读时留下半个 JSON 导致整个历史索引丢失。
+      final temp = File('${historyFile.path}.tmp');
+      await temp.writeAsString(jsonEncode(jsonList), flush: true);
+      await temp.rename(historyFile.path);
+    } on Object catch (error) {
+      debugPrint('图片历史索引写入失败: $error');
+    }
   }
 
   /// 确保保存目录存在并写入图片文件，返回落盘路径 (目录为空或写入失败返回 null)
+  String _lastCacheWriteError = '';
+
+  /// 最近一次缓存写入失败原因（供 UI 诊断；成功写入后清空）。
+  String? get lastCacheWriteError =>
+      _lastCacheWriteError.isEmpty ? null : _lastCacheWriteError;
+
   Future<String?> _writeImageFile(
     String saveDir,
     String fileName,
@@ -303,7 +318,12 @@ class NovelAiRepository {
         relativePath: fileName,
         bytes: bytes,
       );
-    } on FileSystemException {
+    } on FileSystemException catch (error) {
+      _lastCacheWriteError =
+          '${error.message} (path=${error.path}, os=${error.osError?.message})';
+      return null;
+    } on Object catch (error) {
+      _lastCacheWriteError = '$error';
       return null;
     }
   }
@@ -365,11 +385,41 @@ class NovelAiRepository {
     Uint8List? watermarkBytes,
     String? existingOriginalPath,
   }) async {
-    final originalPath =
+    _lastCacheWriteError = '';
+    var originalPath =
         existingOriginalPath ??
         await _writeImageFile(cacheDirOf(saveDir), '$baseName.png', rawBytes);
-    if (saveDir.isNotEmpty && originalPath == null) {
-      throw FileSystemException('无法保存工作台原图缓存', cacheDirOf(saveDir));
+    if (originalPath == null) {
+      // 目标目录不可写或命名非法时，回退到程序内部缓存，避免整次生成失败。
+      final fallbackName = 'cache_${DateTime.now().microsecondsSinceEpoch}.png';
+      try {
+        final docs = await getApplicationDocumentsDirectory();
+        final fallbackDir = p.join(docs.path, 'NovelAI_Harness', 'cache');
+        originalPath = await _writeImageFile(
+          fallbackDir,
+          fallbackName,
+          rawBytes,
+        );
+      } on Object catch (error) {
+        _lastCacheWriteError = '$_lastCacheWriteError; docs=$error';
+      }
+      if (originalPath == null) {
+        try {
+          final tempDir = p.join(
+            Directory.systemTemp.path,
+            'NovelAI_Harness',
+            'cache',
+          );
+          originalPath = await _writeImageFile(tempDir, fallbackName, rawBytes);
+        } on Object catch (error) {
+          _lastCacheWriteError = '$_lastCacheWriteError; temp=$error';
+        }
+      }
+    }
+    if (originalPath == null) {
+      // 缓存写失败不再抛错：图片已经生成并扣费，至少保留内存字节，
+      // 允许用户换目录后手动保存；导出仍可继续尝试。
+      debugPrint('原图缓存写入失败: $_lastCacheWriteError');
     }
     if (!autoSave) {
       return (
@@ -378,8 +428,11 @@ class NovelAiRepository {
         isUnsaved: true,
       );
     }
+    final effectiveStripMetadata =
+        stripMetadata || ImagePrivacySettings.stripMetadata;
     final needsProcessing =
-        stripMetadata ||
+        ImagePrivacySettings.stripStealth ||
+        effectiveStripMetadata ||
         (enableWatermark &&
             watermarkBytes != null &&
             watermarkBytes.isNotEmpty) ||
@@ -390,12 +443,26 @@ class NovelAiRepository {
             rawBytes: rawBytes is Uint8List
                 ? rawBytes
                 : Uint8List.fromList(rawBytes),
-            stripMetadata: stripMetadata,
+            stripMetadata: effectiveStripMetadata,
             enableWatermark: enableWatermark,
             watermarkConfig: watermarkConfig,
             watermarkBytes: watermarkBytes,
           )
         : rawBytes;
+    var exportBytes = fileBytes is Uint8List
+        ? fileBytes
+        : Uint8List.fromList(fileBytes);
+    // EXIF 不属于 NovelAI 元数据：任何导出都移除，避免相机/位置信息外泄。
+    exportBytes = ImageMetadataService.stripPngExifOnly(exportBytes);
+    if (!effectiveStripMetadata) {
+      // 缓存可能被隐写清理或旧版本重编码过，不能假设文本块还在；
+      // 保存/导出时用历史参数重新嵌入，保证成品始终带 NovelAI 元数据。
+      exportBytes = ImageMetadataService.embedNovelAiMetadata(
+        pngBytes: exportBytes,
+        params: namingContext.params,
+        seed: namingContext.seed,
+      );
+    }
     String? filePath;
     final relativePath = ImageSavePathService.resolve(
       imageSaveTemplate,
@@ -406,7 +473,7 @@ class NovelAiRepository {
         filePath = await ImageFileStore.writeAsync(
           root: saveDir,
           relativePath: relativePath,
-          bytes: fileBytes,
+          bytes: exportBytes,
           originalBytes: needsProcessing && keepOriginalImage ? rawBytes : null,
         );
       } on FileSystemException {
@@ -418,10 +485,7 @@ class NovelAiRepository {
       // 安卓公共图库联动：无论本地正式导出是否成功，自动保存的成品
       // 都同步写入系统媒体库；失败不阻塞主流程 (本地已有缓存兜底)。
       try {
-        await galleryExport(
-          fileBytes is Uint8List ? fileBytes : Uint8List.fromList(fileBytes),
-          relativePath,
-        );
+        await galleryExport(exportBytes, relativePath);
       } catch (error) {
         debugPrint('公共图库导出失败: $error');
       }
@@ -606,6 +670,8 @@ class NovelAiRepository {
           generatedImage: generatedImage,
           totalSteps: requestParams.steps,
         );
+        // 最终图已落盘，主动结束生成器，避免空闲超时误报失败。
+        return;
       } else {
         yield progress;
       }
@@ -811,6 +877,11 @@ class NovelAiRepository {
       width: reqW,
       height: reqH,
       seed: effectiveSeed,
+      // 修复只合成/保留第一张；多采样会按 N 张扣费却只保存 1 张，强制单张。
+      nSamples: 1,
+      // infill 请求只使用修复底图与蒙版；图生图/Vibe 参考图不得带进修复管道。
+      clearImg2img: true,
+      clearReferenceImages: true,
     );
 
     return (
@@ -997,6 +1068,8 @@ class NovelAiRepository {
           generatedImage: generatedImage,
           totalSteps: prepared.requestParams.steps,
         );
+        // 最终图已落盘，主动结束生成器，避免空闲超时误报失败。
+        return;
       } else {
         yield progress;
       }
@@ -1410,7 +1483,8 @@ class NovelAiRepository {
       if (file.existsSync()) {
         try {
           file.deleteSync();
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
     }
 
@@ -1429,7 +1503,8 @@ class NovelAiRepository {
       if (historyFile.existsSync()) {
         try {
           historyFile.deleteSync();
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
     }
   }
@@ -1476,7 +1551,8 @@ class NovelAiRepository {
       }
       await layoutFile.writeAsString(jsonEncode(data.toJson()), flush: true);
       await _pruneBoardRefs(data, saveDir);
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 从 canvas_board.json 恢复大画布布局。
@@ -1504,7 +1580,8 @@ class NovelAiRepository {
         if (image == null) continue;
         try {
           imageNodes.add(CanvasImageNode.fromJson(raw, image: image));
-        } catch (_) {}
+        } catch (error) {
+    debugPrint('[ignored] $error');}
       }
 
       final rawNotes = decoded['noteNodes'];
@@ -1537,7 +1614,8 @@ class NovelAiRepository {
         viewTx: (decoded['viewTx'] as num?)?.toDouble() ?? 0.0,
         viewTy: (decoded['viewTy'] as num?)?.toDouble() ?? 0.0,
       );
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -1576,7 +1654,8 @@ class NovelAiRepository {
         isOpusFree: false,
         isImportedReference: meta['isImportedReference'] as bool? ?? true,
       );
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -1599,7 +1678,8 @@ class NovelAiRepository {
     try {
       File(filePath).writeAsBytesSync(bytes);
       return filePath;
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return null;
     }
   }
@@ -1624,7 +1704,8 @@ class NovelAiRepository {
           await _deleteIfExists(entity);
         }
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   Future<void> _deleteIfExists(FileSystemEntity entity) async {
@@ -1632,7 +1713,8 @@ class NovelAiRepository {
       if (entity.existsSync()) {
         await entity.delete(recursive: true);
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   /// 测试专用：直接向历史中注入图片

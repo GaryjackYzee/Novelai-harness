@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -19,6 +21,10 @@ import 'tool_call_ids.dart';
 /// - `thought_signature` 跨轮次无损回传
 /// - SSE 流式事件 (`step.start` / `step.delta` / `step.stop` / `interaction.completed`) 与非流式 JSON 兜底
 class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
+  /// 官方哑值：未捕获真实签名时跳过当前轮校验。
+  static const String _kSkipThoughtSignatureValidator =
+      'skip_thought_signature_validator';
+
   final String apiKey;
   final String baseUrl;
   @override
@@ -281,12 +287,17 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
 
           case AgentRole.assistant:
             final signature = _resolveAssistantThoughtSignature(msg);
+            final hasToolCalls = msg.toolCalls?.isNotEmpty ?? false;
+            final effectiveSignature =
+                (signature != null && signature.isNotEmpty)
+                    ? signature
+                    : (hasToolCalls ? _kSkipThoughtSignatureValidator : null);
             if (msg.thoughts.isNotEmpty ||
-                (signature != null && signature.isNotEmpty)) {
+                (effectiveSignature != null && effectiveSignature.isNotEmpty)) {
               inputSteps.add({
                 'type': 'thought',
-                if (signature != null && signature.isNotEmpty)
-                  'signature': signature,
+                if (effectiveSignature != null && effectiveSignature.isNotEmpty)
+                  'signature': effectiveSignature,
                 if (msg.thoughts.isNotEmpty)
                   'summary': [
                     {'type': 'text', 'text': msg.thoughts},
@@ -302,37 +313,17 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                 ],
               });
             }
-            if (msg.toolCalls != null && msg.toolCalls!.isNotEmpty) {
-              final calls = msg.toolCalls!;
-              final anyOwnSignature = calls.any(
-                (tc) =>
-                    tc.thoughtSignature != null &&
-                    tc.thoughtSignature!.isNotEmpty,
-              );
-              var usedFallback = false;
-              for (final tc in calls) {
+            if (hasToolCalls) {
+              for (final tc in msg.toolCalls!) {
                 toolNameByCallId[tc.id] = tc.name;
-                final own = tc.thoughtSignature;
-                var callSignature = own != null && own.isNotEmpty ? own : null;
-                // 调用本身没有签名时，只把消息级签名补到第一个函数调用上。
-                if (callSignature == null &&
-                    !anyOwnSignature &&
-                    !usedFallback &&
-                    signature != null &&
-                    signature.isNotEmpty) {
-                  callSignature = signature;
-                  usedFallback = true;
-                }
                 inputSteps.add({
                   'type': 'function_call',
                   'id': tc.id,
                   'name': tc.name,
                   'arguments': tc.arguments,
-                  'thought_signature': ?callSignature,
                 });
               }
             }
-
           case AgentRole.tool:
             final callId = msg.toolCallId ?? '';
             final resolvedName =
@@ -493,7 +484,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
           final decoded = jsonDecode(dataStr);
           if (decoded is! Map<String, dynamic>) continue;
           json = decoded;
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           continue;
         }
 
@@ -750,7 +742,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                 }
               }
             }
-          } catch (_) {}
+          } catch (error) {
+    debugPrint('[ignored] $error');}
         }
       }
 
@@ -944,7 +937,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
             _formatErrorObject(decoded['error']) ?? _formatErrorObject(decoded);
         if (msg != null && msg.isNotEmpty) return msg;
       }
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
     return trimmed;
   }
 
@@ -1010,7 +1004,8 @@ class _InteractionStepState {
         if (decoded is Map<String, dynamic>) {
           args = decoded;
         }
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
     final effectiveId = id.isNotEmpty ? id : 'call_${index + 1}';
     return ToolCall(

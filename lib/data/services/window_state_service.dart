@@ -99,7 +99,8 @@ class WindowStateService with WindowListener {
         isMaximized: false,
       );
       await _lastSaveFuture;
-    } catch (_) {}
+    } catch (error) {
+    debugPrint('[ignored] $error');}
   }
 
   @override
@@ -151,12 +152,25 @@ class WindowStateService with WindowListener {
 
   Future<void> _flushAndClose() async {
     if (!_isDesktop) return;
-    await beforeClose?.call();
-    // 关闭时只采集最终状态一次，不先冲刷计时器再重复采集/写盘。
-    _saveTimer?.cancel();
-    _saveTimer = null;
-    await _lastSaveFuture;
-    await saveCurrentState();
+    try {
+      final before = beforeClose;
+      if (before != null) {
+        // 超时只用于避免无限等待；失败/超时都不能销毁窗口。
+        await before().timeout(const Duration(seconds: 3));
+      }
+      // 关闭时只采集最终状态一次，不先冲刷计时器再重复采集/写盘。
+      _saveTimer?.cancel();
+      _saveTimer = null;
+      final lastSave = _lastSaveFuture;
+      if (lastSave != null) {
+        await lastSave.timeout(const Duration(seconds: 3));
+      }
+      await saveCurrentState().timeout(const Duration(seconds: 3));
+    } on Object catch (error) {
+      // 保存失败时保留窗口，让用户处理磁盘/权限问题后再次关闭。
+      debugPrint('关闭前保存失败，窗口保留以便重试: $error');
+      rethrow;
+    }
     await windowManager.destroy();
   }
 

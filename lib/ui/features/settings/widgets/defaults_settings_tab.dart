@@ -19,6 +19,9 @@ class DefaultsSettingsDraft {
       agentMaxTurns = config.agentMaxTurns,
       compactionEnabled = config.agentCompactionEnabled,
       backgroundCompaction = config.agentBackgroundCompaction,
+      persistentImages = config.agentPersistentImages,
+      sessionMaxCount = config.sessionMaxCount,
+      sessionRetentionDays = config.sessionRetentionDays,
       compactionProviderId = config.compactionProviderId,
       compactionModelId = config.compactionModelId;
 
@@ -32,6 +35,9 @@ class DefaultsSettingsDraft {
   int agentMaxTurns;
   bool compactionEnabled;
   bool backgroundCompaction;
+  bool persistentImages;
+  int sessionMaxCount;
+  int sessionRetentionDays;
   String compactionProviderId;
   String compactionModelId;
 }
@@ -154,6 +160,36 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
               onChanged: _draft.compactionEnabled
                   ? (v) => setState(() => _draft.backgroundCompaction = v)
                   : null,
+            ),
+          ),
+          AppSettingTile(
+            title: l10n.settingsSessionMaxCount,
+            subtitle: l10n.settingsSessionMaxCountHint,
+            control: const SizedBox.shrink(),
+            bottomChild: AppNumberSlider.integer(
+              value: _draft.sessionMaxCount,
+              min: 10,
+              max: 2000,
+              onChanged: (v) => setState(() => _draft.sessionMaxCount = v),
+            ),
+          ),
+          AppSettingTile(
+            title: l10n.settingsSessionRetentionDays,
+            subtitle: l10n.settingsSessionRetentionDaysHint,
+            control: const SizedBox.shrink(),
+            bottomChild: AppNumberSlider.integer(
+              value: _draft.sessionRetentionDays,
+              min: 1,
+              max: 3650,
+              onChanged: (v) => setState(() => _draft.sessionRetentionDays = v),
+            ),
+          ),
+          AppSettingTile(
+            title: l10n.settingsAgentPersistentImages,
+            subtitle: l10n.settingsAgentPersistentImagesHint,
+            control: Switch(
+              value: _draft.persistentImages,
+              onChanged: (v) => setState(() => _draft.persistentImages = v),
             ),
           ),
           AppSettingTile(

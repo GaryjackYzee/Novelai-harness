@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:msgpack_dart/msgpack_dart.dart' as msgpack;
@@ -52,6 +54,21 @@ class NovelAiService {
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   static final Random _random = Random.secure();
 
+  /// 生成/重绘请求整体上限。超时后释放 AsyncLock，避免一次卡死拖垮全部排队请求。
+  static const Duration _postTimeout = Duration(minutes: 5);
+
+  /// 超分请求上限 (图片上传 + 处理 + 回传)
+  static const Duration _upscaleTimeout = Duration(minutes: 3);
+
+  /// 流式请求首包超时 (建连/排队阶段)
+  static const Duration _streamStartupTimeout = Duration(seconds: 45);
+
+  /// 流式请求两帧之间的空闲上限 (官方会持续推送去噪帧)
+  static const Duration _streamIdleTimeout = Duration(minutes: 2);
+
+  /// 账号/标签等轻量 GET 的超时
+  static const Duration _lightTimeout = Duration(seconds: 20);
+
   final AsyncLock _lock = AsyncLock();
   final http.Client _httpClient;
 
@@ -90,6 +107,29 @@ class NovelAiService {
     }
   }
 
+  /// TLS 握手被对端中断时自动重试（常见于代理/网络抖动）。
+  Future<http.StreamedResponse> _sendWithHandshakeRetry(
+    http.BaseRequest Function() createRequest, {
+    int attempts = 3,
+  }) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await _httpClient
+            .send(createRequest())
+            .timeout(_streamStartupTimeout);
+      } on HandshakeException catch (error) {
+        lastError = error;
+      } on SocketException catch (error) {
+        lastError = error;
+      }
+      if (attempt < attempts) {
+        await Future.delayed(Duration(milliseconds: 400 * attempt));
+      }
+    }
+    throw lastError ?? StateError('网络连接失败');
+  }
+
   Stream<NaiStreamProgress> _executeImageStream({
     required String apiKey,
     required NaiGenerationParams params,
@@ -115,12 +155,12 @@ class NovelAiService {
       return req;
     }
 
-    streamedResponse = await _httpClient.send(createRequest());
+    streamedResponse = await _sendWithHandshakeRetry(createRequest);
 
     // 429 智能重试
     if (streamedResponse.statusCode == 429) {
       await Future.delayed(const Duration(milliseconds: 2500));
-      streamedResponse = await _httpClient.send(createRequest());
+      streamedResponse = await _sendWithHandshakeRetry(createRequest);
     }
 
     if (streamedResponse.statusCode != 200) {
@@ -137,7 +177,9 @@ class NovelAiService {
     var hasYieldedFinal = false;
     Uint8List? lastReceivedImage;
 
-    await for (final chunk in streamedResponse.stream) {
+    await for (final chunk in streamedResponse.stream.timeout(
+      _streamIdleTimeout,
+    )) {
       buffer.addAll(chunk);
 
       while (buffer.length >= 4) {
@@ -192,7 +234,8 @@ class NovelAiService {
               totalSteps: params.effectiveSteps,
             );
           }
-        } catch (_) {
+        } catch (error) {
+    debugPrint('[ignored] $error');
           // 容错忽略单帧解码失败
         }
       }
@@ -333,11 +376,13 @@ class NovelAiService {
         return req;
       }
 
-      streamedResponse = await _httpClient.send(createRequest());
+      streamedResponse = await _sendWithHandshakeRetry(createRequest);
 
       if (streamedResponse.statusCode == 429) {
         await Future.delayed(const Duration(milliseconds: 2500));
-        streamedResponse = await _httpClient.send(createRequest());
+        streamedResponse = await _httpClient
+            .send(createRequest())
+            .timeout(_streamStartupTimeout);
       }
 
       if (streamedResponse.statusCode != 200) {
@@ -354,7 +399,9 @@ class NovelAiService {
       var hasYieldedFinal = false;
       Uint8List? lastReceivedImage;
 
-      await for (final chunk in streamedResponse.stream) {
+      await for (final chunk in streamedResponse.stream.timeout(
+        _streamIdleTimeout,
+      )) {
         buffer.addAll(chunk);
 
         while (buffer.length >= 4) {
@@ -406,7 +453,8 @@ class NovelAiService {
                 totalSteps: params.effectiveSteps,
               );
             }
-          } catch (_) {}
+          } catch (error) {
+    debugPrint('[ignored] $error');}
         }
       }
 
@@ -506,14 +554,14 @@ class NovelAiService {
       http.Response response = await _postMultipartUpscale(
         apiKey: apiKey,
         imageBytes: imageBytes,
-      );
+      ).timeout(_upscaleTimeout);
 
       if (response.statusCode == 429) {
         await Future.delayed(const Duration(milliseconds: 2500));
         response = await _postMultipartUpscale(
           apiKey: apiKey,
           imageBytes: imageBytes,
-        );
+        ).timeout(_upscaleTimeout);
       }
 
       if (response.statusCode != 200) {
@@ -529,7 +577,8 @@ class NovelAiService {
       try {
         final extracted = _extractImagesFromZip(raw);
         if (extracted.isNotEmpty) return extracted.first;
-      } catch (_) {
+      } catch (error) {
+    debugPrint('[ignored] $error');
         // 非 ZIP 格式，走裸字节回退
       }
       return raw;
@@ -586,10 +635,9 @@ class NovelAiService {
     );
 
     try {
-      final response = await _httpClient.get(
-        uri,
-        headers: {'Authorization': 'Bearer ${apiKey.trim()}'},
-      );
+      final response = await _httpClient
+          .get(uri, headers: {'Authorization': 'Bearer ${apiKey.trim()}'})
+          .timeout(_lightTimeout);
 
       if (response.statusCode != 200) {
         return [];
@@ -602,7 +650,8 @@ class NovelAiService {
             (item) => NaiTagSuggestion.fromJson(item as Map<String, dynamic>),
           )
           .toList();
-    } catch (_) {
+    } catch (error) {
+    debugPrint('[ignored] $error');
       return [];
     }
   }
@@ -614,10 +663,9 @@ class NovelAiService {
     }
 
     final uri = Uri.parse(_userDataEndpoint);
-    final response = await _httpClient.get(
-      uri,
-      headers: {'Authorization': 'Bearer ${apiKey.trim()}'},
-    );
+    final response = await _httpClient
+        .get(uri, headers: {'Authorization': 'Bearer ${apiKey.trim()}'})
+        .timeout(_lightTimeout);
 
     if (response.statusCode != 200) {
       throw _parseHttpError(response, '查询账号信息失败');
@@ -634,14 +682,16 @@ class NovelAiService {
     String apiKey,
     String body,
   ) async {
-    return await _httpClient.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${apiKey.trim()}',
-      },
-      body: body,
-    );
+    return await _httpClient
+        .post(
+          Uri.parse(endpoint),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${apiKey.trim()}',
+          },
+          body: body,
+        )
+        .timeout(_postTimeout);
   }
 
   List<Uint8List> _extractImagesFromZip(Uint8List zipBytes) {
@@ -730,7 +780,8 @@ class NovelAiService {
           }
         }
         return Uint8List.fromList(base64Decode(str));
-      } catch (_) {}
+      } catch (error) {
+    debugPrint('[ignored] $error');}
     }
     return null;
   }
