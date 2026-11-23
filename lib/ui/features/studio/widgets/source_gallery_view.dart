@@ -1051,47 +1051,40 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
             ),
             if (_tab == 1) ...[
               const SizedBox(height: 8),
-              Row(
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  l10n.sourcesCodexPage(_codexPage, _codexPages, _codexTotal),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          FilterChip(
-                            label: Text(l10n.sourcesCategoryAll),
-                            selected: _codexCategory.isEmpty,
-                            onSelected: (_) {
-                              if (_codexCategory.isEmpty) return;
-                              setState(() => _codexCategory = '');
-                              _loadCodexFirst();
-                            },
-                          ),
-                          const SizedBox(width: 6),
-                          for (final category in _codexCategories.take(24)) ...[
-                            FilterChip(
-                              label: Text('${category.name} ${category.count}'),
-                              selected: _codexCategory == category.path,
-                              onSelected: (_) {
-                                if (_codexCategory == category.path) return;
-                                setState(() => _codexCategory = category.path);
-                                _loadCodexFirst();
-                              },
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                        ],
-                      ),
-                    ),
+                  FilterChip(
+                    label: Text(l10n.sourcesCategoryAll),
+                    selected: _codexCategory.isEmpty,
+                    onSelected: (_) {
+                      if (_codexCategory.isEmpty) return;
+                      setState(() => _codexCategory = '');
+                      _loadCodexFirst();
+                    },
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    l10n.sourcesCodexPage(_codexPage, _codexPages, _codexTotal),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: context.colors.textSecondary,
+                  for (final category in _codexCategories)
+                    FilterChip(
+                      label: Text('${category.name} ${category.count}'),
+                      selected: _codexCategory == category.path,
+                      onSelected: (_) {
+                        if (_codexCategory == category.path) return;
+                        setState(() => _codexCategory = category.path);
+                        _loadCodexFirst();
+                      },
                     ),
-                  ),
                 ],
               ),
             ],
