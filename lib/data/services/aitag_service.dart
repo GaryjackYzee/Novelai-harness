@@ -47,12 +47,25 @@ class AitagService {
     'Accept': 'application/json, text/plain, */*',
   };
 
-  static const Map<String, String> _imageHeaders = <String, String>{
-    'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
-    'Referer': 'https://aitag.win/',
-    'Accept': 'image/*',
-  };
+  /// AITag 列表里的原图多来自 Pixiv (i.pximg.net)，必须带 Pixiv Referer，
+  /// 否则会被防盗链返回 403；其他 CDN 仍使用 AITag Referer。
+  static Map<String, String> _imageHeadersFor(Uri uri) {
+    final host = uri.host.toLowerCase();
+    final referer = host.endsWith('pximg.net')
+        ? 'https://www.pixiv.net/'
+        : 'https://aitag.win/';
+    return <String, String>{
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+      'Referer': referer,
+      'Accept':
+          'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      'Sec-Fetch-Dest': 'image',
+      'Sec-Fetch-Mode': 'no-cors',
+      'Sec-Fetch-Site': 'cross-site',
+    };
+  }
 
   static final AitagService instance = AitagService._();
 
@@ -219,8 +232,9 @@ class AitagService {
       Object? lastError;
       for (var attempt = 0; attempt < 2; attempt += 1) {
         try {
+          final uri = Uri.parse(trimmed);
           final response = await _client
-              .get(Uri.parse(trimmed), headers: _imageHeaders)
+              .get(uri, headers: _imageHeadersFor(uri))
               .timeout(const Duration(seconds: 20));
           if (response.statusCode == 200) return response.bodyBytes;
           if (response.statusCode >= 500 && attempt == 0) {
