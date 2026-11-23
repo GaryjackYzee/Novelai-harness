@@ -5211,4 +5211,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get promptsConvertNewlinesTooltip => '把 \\n 转成换行';
+
+  @override
+  String get sourcesAppendToPrompt => '追加到正面提示词';
+
+  @override
+  String get sourcesAppendSuccess => '已追加到正面提示词';
+
+  @override
+  String get sourcesAppendAlready => '该 tag 已在正面提示词中';
 }

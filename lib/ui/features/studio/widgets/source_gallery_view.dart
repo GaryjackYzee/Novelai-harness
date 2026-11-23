@@ -1238,6 +1238,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
             busy: _chatBusy.contains('codex:${entry.id}'),
             onFavorite: () => _toggleCodexFavorite(entry),
             onSend: () => _sendCodexToAgent(entry),
+            onAppendPrompt: () => _appendCodexToPrompt(entry),
             onTap: () => _openCodexDetail(entry),
           ),
       ],
@@ -1380,6 +1381,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
       busy: _chatBusy.contains('codex:${favorite.id}'),
       onFavorite: () => _toggleCodexFavorite(entry),
       onSend: () => _sendCodexToAgent(entry),
+      onAppendPrompt: () => _appendCodexToPrompt(entry),
       onTap: () => _openCodexDetail(entry),
     );
   }
@@ -1961,6 +1963,27 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
     ).showSnackBar(SnackBar(content: Text(context.l10n.sourcesApply)));
   }
 
+  void _appendCodexToPrompt(CodexEntry entry) {
+    final sanitized = _sanitizeCodexTags(entry.tags).trim();
+    if (sanitized.isEmpty) {
+      _showNothingToSend();
+      return;
+    }
+    final params = widget.viewModel.params;
+    final current = params.prompt.trim();
+    if (current.contains(sanitized)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.sourcesAppendAlready)),
+      );
+      return;
+    }
+    final combined = current.isEmpty ? sanitized : '$current, $sanitized';
+    widget.viewModel.updateParams(params.copyWith(prompt: combined));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.sourcesAppendSuccess)),
+    );
+  }
+
   Future<void> _openCodexDetail(CodexEntry entry) async {
     final favorite = _sourceFavorites.byId('codex', entry.id);
     final savedPackId = (favorite?.metadata['packId'] as String?)?.trim();
@@ -1979,6 +2002,10 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
         loadImage: _codexThumbFor,
         onSendToChat: () {
           unawaited(_sendCodexToAgent(entry));
+        },
+        onAppendToPrompt: () {
+          _appendCodexToPrompt(entry);
+          Navigator.of(dialogContext).pop();
         },
         onApply: () {
           final params = widget.viewModel.params;
@@ -2489,6 +2516,7 @@ class _CodexCard extends StatelessWidget {
     required this.busy,
     required this.onFavorite,
     required this.onSend,
+    required this.onAppendPrompt,
     required this.onTap,
   });
 
@@ -2500,6 +2528,7 @@ class _CodexCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onFavorite;
   final VoidCallback onSend;
+  final VoidCallback onAppendPrompt;
   final VoidCallback onTap;
 
   @override
@@ -2576,6 +2605,21 @@ class _CodexCard extends StatelessWidget {
                         ),
                       )
                     else ...[
+                      IconButton(
+                        tooltip: context.l10n.sourcesAppendToPrompt,
+                        onPressed: onAppendPrompt,
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.playlist_add_rounded,
+                          size: 15,
+                          color: colors.textSecondary,
+                        ),
+                      ),
                       IconButton(
                         tooltip: context.l10n.sourcesSendToChat,
                         onPressed: onSend,
@@ -3218,6 +3262,7 @@ class _CodexDetailDialog extends StatefulWidget {
     required this.localPath,
     required this.loadImage,
     required this.onSendToChat,
+    required this.onAppendToPrompt,
     required this.onApply,
   });
 
@@ -3226,6 +3271,7 @@ class _CodexDetailDialog extends StatefulWidget {
   final String? localPath;
   final Future<Uint8List> Function(String url) loadImage;
   final VoidCallback onSendToChat;
+  final VoidCallback onAppendToPrompt;
   final VoidCallback onApply;
 
   @override
@@ -3434,6 +3480,12 @@ class _CodexDetailDialogState extends State<_CodexDetailDialog> {
                     onPressed: _sendToChat,
                     icon: const Icon(Icons.send_outlined, size: 16),
                     label: Text(l10n.sourcesSendToChat),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: widget.onAppendToPrompt,
+                    icon: const Icon(Icons.playlist_add_rounded, size: 16),
+                    label: Text(l10n.sourcesAppendToPrompt),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(

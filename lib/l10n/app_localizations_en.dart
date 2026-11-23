@@ -5556,4 +5556,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get promptsConvertNewlinesTooltip => 'Convert \\n to line breaks';
+
+  @override
+  String get sourcesAppendToPrompt => 'Append to prompt';
+
+  @override
+  String get sourcesAppendSuccess => 'Appended to positive prompt';
+
+  @override
+  String get sourcesAppendAlready =>
+      'These tags are already in the positive prompt';
 }

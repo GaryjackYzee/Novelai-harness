@@ -2936,5 +2936,8 @@
   "vmCharTagConfirm": "确认写入",
   "vmCharTagCancel": "取消",
   "reflectionNoLessons": "这条还没有经验条目，下次复盘会把助手处理与用户纠正一并写入。",
-  "promptsConvertNewlinesTooltip": "把 \\n 转成换行"
+  "promptsConvertNewlinesTooltip": "把 \\n 转成换行",
+  "sourcesAppendToPrompt": "追加到正面提示词",
+  "sourcesAppendSuccess": "已追加到正面提示词",
+  "sourcesAppendAlready": "该 tag 已在正面提示词中"
 }

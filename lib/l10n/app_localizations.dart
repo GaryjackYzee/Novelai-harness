@@ -9608,6 +9608,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'把 \\n 转成换行'**
   String get promptsConvertNewlinesTooltip;
+
+  /// No description provided for @sourcesAppendToPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'追加到正面提示词'**
+  String get sourcesAppendToPrompt;
+
+  /// No description provided for @sourcesAppendSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已追加到正面提示词'**
+  String get sourcesAppendSuccess;
+
+  /// No description provided for @sourcesAppendAlready.
+  ///
+  /// In zh, this message translates to:
+  /// **'该 tag 已在正面提示词中'**
+  String get sourcesAppendAlready;
 }
 
 class _AppLocalizationsDelegate
