@@ -1411,41 +1411,59 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
     required List<Widget> children,
     Widget? footer,
   }) {
-    final columns = <List<Widget>>[<Widget>[], <Widget>[], <Widget>[]];
-    for (var index = 0; index < children.length; index += 1) {
-      columns[index % 3].add(children[index]);
-    }
-    return SingleChildScrollView(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columnCount = width >= 1700
+            ? 6
+            : width >= 1400
+            ? 5
+            : width >= 1100
+            ? 4
+            : width >= 760
+            ? 3
+            : 2;
+        final columns = List.generate(
+          columnCount,
+          (_) => <Widget>[],
+          growable: false,
+        );
+        for (var index = 0; index < children.length; index += 1) {
+          columns[index % columnCount].add(children[index]);
+        }
+        return SingleChildScrollView(
+          controller: _scroll,
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          child: Column(
             children: [
-              for (final column in columns)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Column(children: column),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final column in columns)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: Column(children: column),
+                      ),
+                    ),
+                ],
+              ),
+              if (_loading)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    context.l10n.sourcesLoadMore,
+                    style: TextStyle(
+                      color: context.colors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
+              ?footer,
             ],
           ),
-          if (_loading)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                context.l10n.sourcesLoadMore,
-                style: TextStyle(
-                  color: context.colors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ?footer,
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -2514,7 +2532,7 @@ class _CodexCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AspectRatio(
-                aspectRatio: ratio.clamp(0.5, 2.0),
+                aspectRatio: ratio.clamp(0.72, 1.45),
                 child: localPath != null
                     ? Image.file(
                         File(localPath!),

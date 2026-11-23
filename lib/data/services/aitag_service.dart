@@ -4,6 +4,7 @@
 /// parsed from the work detail's `images[0].ai_json` (`Comment` JSON).
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -186,22 +187,59 @@ class AitagService {
   }
 
   /// Download a pixiv image through AITag's referer requirement.
-  Future<Uint8List> fetchImage(String url) async {
-    final trimmed = url.trim();
-    if (trimmed.isEmpty) throw const AitagException('缺少图片地址');
-    final http.Response response;
+  static const int _maxImageRequests = 4;
+  int _activeImageRequests = 0;
+  final List<Completer<void>> _imageWaiters = <Completer<void>>[];
+
+  Future<T> _withImageSlot<T>(Future<T> Function() action) async {
+    while (_activeImageRequests >= _maxImageRequests) {
+      final waiter = Completer<void>();
+      _imageWaiters.add(waiter);
+      await waiter.future;
+    }
+    _activeImageRequests += 1;
     try {
-      response = await _client.get(Uri.parse(trimmed), headers: _imageHeaders);
-    } on Exception catch (error) {
-      throw AitagException('AITag 图片不可达：$error');
+      return await action();
+    } finally {
+      _activeImageRequests -= 1;
+      if (_imageWaiters.isNotEmpty) {
+        _imageWaiters.removeAt(0).complete();
+      }
     }
-    if (response.statusCode != 200) {
-      throw AitagException(
-        'AITag 图片返回 HTTP ${response.statusCode}',
-        statusCode: response.statusCode,
-      );
+  }
+
+  Future<Uint8List> fetchImage(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      return Future<Uint8List>.error(const AitagException('缺少图片地址'));
     }
-    return response.bodyBytes;
+    return _withImageSlot(() async {
+      Object? lastError;
+      for (var attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          final response = await _client
+              .get(Uri.parse(trimmed), headers: _imageHeaders)
+              .timeout(const Duration(seconds: 20));
+          if (response.statusCode == 200) return response.bodyBytes;
+          if (response.statusCode >= 500 && attempt == 0) {
+            await Future<void>.delayed(const Duration(milliseconds: 400));
+            continue;
+          }
+          throw AitagException(
+            'AITag 图片返回 HTTP ${response.statusCode}',
+            statusCode: response.statusCode,
+          );
+        } on AitagException {
+          rethrow;
+        } on Object catch (error) {
+          lastError = error;
+          if (attempt == 0) {
+            await Future<void>.delayed(const Duration(milliseconds: 400));
+          }
+        }
+      }
+      throw AitagException('AITag 图片不可达：$lastError');
+    });
   }
 
   /// Keep character captions out of the main prompt when they were inlined.
