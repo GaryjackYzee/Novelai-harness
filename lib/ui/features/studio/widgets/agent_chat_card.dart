@@ -6,13 +6,17 @@ import 'package:flutter/rendering.dart'
         RenderSliverMultiBoxAdaptor,
         ScrollCacheExtent,
         SliverMultiBoxAdaptorParentData;
+import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter/services.dart';
 import '../../../core/context_l10n.dart';
 import '../../../../core/harness/tools/ask_user_tool.dart';
 import '../../../../core/harness/types.dart';
 import '../../../../data/services/network_proxy_service.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../../../core/widgets/smooth_scroll_controller.dart';
 import '../../../core/widgets/stable_scrollbar.dart';
 import '../../../core/widgets/app_icon_button.dart';
@@ -65,6 +69,24 @@ class AgentChatCardState extends State<AgentChatCard> {
   /// 配合近期消息 Element 保活，避免 Markdown 离屏后重新解析。
   final Map<String, AgentChatMessageItem> _messageWidgetCache = {};
 
+  /// 已知消息 ID 集合：用于区分历史加载与运行期新到达消息（仅新消息执行轻量入场）
+  final Set<String> _knownMessageIds = {};
+  bool _initialMessagesCaptured = false;
+  List<AgentMessage>? _lastPairedMessages;
+  ({Map<int, List<AgentMessage?>> pairedByAssistant, Set<int> mergedToolIndices})?
+      _cachedPairing;
+
+  bool _sameMessageSnapshot(
+    List<AgentMessage> cached,
+    List<AgentMessage> current,
+  ) {
+    if (cached.length != current.length) return false;
+    for (var i = 0; i < cached.length; i++) {
+      if (!identical(cached[i], current[i])) return false;
+    }
+    return true;
+  }
+
   static const int _maxKeptAliveMessages = 120;
   String? _renderedSessionId;
   int _followEpoch = 0;
@@ -111,6 +133,9 @@ class AgentChatCardState extends State<AgentChatCard> {
   /// 消息列表区域定位键 (判定指针是否落在右侧滚动条握把热区)
   final GlobalKey _messageListAreaKey = GlobalKey();
 
+  /// 悬浮「回到底部」按钮可见状态
+  final ValueNotifier<bool> _showScrollToBottom = ValueNotifier<bool>(false);
+
   bool get _extentFrozen =>
       _frozenMessages != null && (_thumbHeld || _listDragActive);
 
@@ -128,13 +153,38 @@ class AgentChatCardState extends State<AgentChatCard> {
   void dispose() {
     _scrollController.dispose();
     _cardFocusNode.dispose();
+    _showScrollToBottom.dispose();
     _messageWidgetCache.clear();
     super.dispose();
+  }
+
+  bool _shouldShowScrollToBottom() {
+    if (!_followSuspended || _currentView != _AgentCardView.chat) return false;
+    if (widget.viewModel.messages.isEmpty) return false;
+    if (!_scrollController.hasClients ||
+        !_scrollController.position.hasContentDimensions) {
+      return false;
+    }
+    return _scrollController.position.extentAfter > 16.0;
+  }
+
+  void _syncScrollToBottomButton() {
+    final next = _shouldShowScrollToBottom();
+    if (_showScrollToBottom.value == next) return;
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showScrollToBottom.value = _shouldShowScrollToBottom();
+      });
+    } else {
+      _showScrollToBottom.value = next;
+    }
   }
 
   void _scrollToBottom({bool animate = true}) {
     _followSuspended = false;
     _lastUserScrollIntentAt = null;
+    _syncScrollToBottomButton();
     _scrollToBottomAfterFrames(
       animate: animate,
       remainingFrames: 3,
@@ -271,6 +321,7 @@ class AgentChatCardState extends State<AgentChatCard> {
   void _pauseFollowing() {
     _followSuspended = true;
     _followEpoch++;
+    _syncScrollToBottomButton();
   }
 
   /// 指针是否落在消息流右侧滚动条握把热区 (厚度 6px + 悬停余量)
@@ -300,6 +351,7 @@ class AgentChatCardState extends State<AgentChatCard> {
     final backAtBottom = !_followSuspended;
     setState(() {});
     if (backAtBottom) _scrollToBottom(animate: false);
+    _syncScrollToBottomButton();
   }
 
   /// 无条件清理冻结状态 (视图切换 / 会话切换时陈旧快照保护)
@@ -317,6 +369,7 @@ class AgentChatCardState extends State<AgentChatCard> {
         _scrollController.position.extentAfter <= 1.0) {
       _followSuspended = false;
       _lastUserScrollIntentAt = null;
+      _syncScrollToBottomButton();
     }
   }
 
@@ -357,6 +410,11 @@ class AgentChatCardState extends State<AgentChatCard> {
       _listDragActive = false;
       _maybeUnfreezeExtent();
     }
+    if (notification is ScrollUpdateNotification ||
+        notification is ScrollEndNotification ||
+        notification is ScrollMetricsNotification) {
+      _syncScrollToBottomButton();
+    }
     return false;
   }
 
@@ -385,7 +443,7 @@ class AgentChatCardState extends State<AgentChatCard> {
   (Map<int, double> snapshot, (double, int) anchor)? _captureTopAnchor() {
     final sliver = _findMessageListSliver();
     if (sliver == null) return null;
-    final topEdge = _scrollController.position.pixels;
+    final topEdge = sliver.constraints.scrollOffset;
     final snapshot = <int, double>{};
     (double, int)? anchor;
     // 只遍历活动布局盒链 (firstChild..childAfter)；keepAlive 陈旧桶条目
@@ -496,8 +554,7 @@ class AgentChatCardState extends State<AgentChatCard> {
     _suppressScrollIntentNote = true;
     _scrollController.jumpTo(target);
     _suppressScrollIntentNote = false;
-    // 以新偏移为基准续链，结算剩余晚到布局
-    _pendingAnchor = (offset, anchor.$2);
+    // 保持重建前的 (anchor.$1, _anchorOriginPixels) 作为不变参照对，直至收敛
     if (chains > 0) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _applyPendingAnchor(chains: chains - 1),
@@ -558,243 +615,220 @@ class AgentChatCardState extends State<AgentChatCard> {
 
   @override
   Widget build(BuildContext context) {
-    // ViewModel 就地变更，不能比较 oldWidget.viewModel（它是同一个实例）。
-    final sessionId = widget.viewModel.currentSessionId;
-    if (_renderedSessionId != sessionId) {
-      _renderedSessionId = sessionId;
-      _clearExtentFreeze();
-      _messageWidgetCache.clear();
-      _scrollToBottom(animate: false);
-    }
-    // 非对话视图 (会话抽屉/回溯) 期间不得持陈旧冻结快照
-    if (_currentView != _AgentCardView.chat) {
-      _clearExtentFreeze();
-    }
-    switch (_currentView) {
-      case _AgentCardView.sessions:
-        return AgentSessionListView(
-          viewModel: widget.viewModel,
-          onBack: () => _switchView(_AgentCardView.chat),
-        );
-      case _AgentCardView.rewind:
-        return AgentRewindView(
-          viewModel: widget.viewModel,
-          onBack: () => _switchView(_AgentCardView.chat),
-          compact: widget.compact,
-        );
-      case _AgentCardView.chat:
-        break;
-    }
-
-    if (_currentView == _AgentCardView.chat) {
-      // 流式收尾瞬间：流式气泡被定稿消息替换 (Element 换型 + 进度条剥离)，
-      // 末尾高度可能瞬态落差几到几十像素；未暂停跟随时静默贴底结算
-      final streamingNow = widget.viewModel.isChatStreaming;
-      if (_wasStreaming && !streamingNow && !_followSuspended) {
-        _lastUserScrollIntentAt = null;
-        _scrollToBottom(animate: false);
-      }
-      _wasStreaming = streamingNow;
-      // 思考块全局展开/折叠 (Ctrl+O/状态切换): 所有思考块同时改变高度，
-      // 视口内容会被整个推走——捕获顶部锚点并在重建后静默补偿。
-      // 拖拽冻结期间判定走冻结值，Ctrl+O 补偿随之推迟到手势解除冻结时生效
-      final thinkingNow = _extentFrozen
-          ? _frozenThinkingExpanded
-          : widget.viewModel.isThinkingExpanded;
-      if (thinkingNow != _lastThinkingExpanded) {
-        _lastThinkingExpanded = thinkingNow;
-        _preserveTopAnchorAcrossRebuild();
-      }
-      // 结构性通知 (消息入列/工具结果等) 不一定伴随流式文本增量，
-      // build 里与 ListenableBuilder 的增量回调双路驱动跟随判断
-      _autoScrollOnStream();
-    }
-
-    return Focus(
-      focusNode: _cardFocusNode,
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          (widget.onEscape ?? _handleEscKey)();
-          return KeyEventResult.handled;
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        if (TickerMode.valuesOf(context).enabled) widget.viewModel,
+      ]),
+      builder: (context, _) {
+        // ViewModel 就地变更，不能比较 oldWidget.viewModel（它是同一个实例）。
+        final sessionId = widget.viewModel.currentSessionId;
+        if (_renderedSessionId != sessionId) {
+          _renderedSessionId = sessionId;
+          _clearExtentFreeze();
+          _messageWidgetCache.clear();
+          _knownMessageIds.clear();
+          _initialMessagesCaptured = false;
+          _scrollToBottom(animate: false);
         }
-        return KeyEventResult.ignored;
-      },
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 顶部预设选择栏与会话管理按钮
-            _buildPresetHeaderBar(),
+        // 非对话视图 (会话抽屉/回溯) 期间不得持陈旧冻结快照
+        if (_currentView != _AgentCardView.chat) {
+          _clearExtentFreeze();
+        } else {
+          // 流式收尾瞬间：流式气泡被定稿消息替换 (Element 换型 + 进度条剥离)，
+          // 末尾高度可能瞬态落差几到几十像素；未暂停跟随时静默贴底结算
+          final streamingNow = widget.viewModel.isChatStreaming;
+          if (_wasStreaming && !streamingNow && !_followSuspended) {
+            _lastUserScrollIntentAt = null;
+            _scrollToBottom(animate: false);
+          }
+          _wasStreaming = streamingNow;
+          // 思考块全局展开/折叠 (Ctrl+O/状态切换): 所有思考块同时改变高度，
+          // 视口内容会被整个推走——捕获顶部锚点并在重建后静默补偿。
+          // 拖拽冻结期间判定走冻结值，Ctrl+O 补偿随之推迟到手势解除冻结时生效
+          final thinkingNow = _extentFrozen
+              ? _frozenThinkingExpanded
+              : widget.viewModel.isThinkingExpanded;
+          if (thinkingNow != _lastThinkingExpanded) {
+            _lastThinkingExpanded = thinkingNow;
+            _preserveTopAnchorAcrossRebuild();
+          }
+          // 结构性通知 (消息入列/工具结果等) 不一定伴随流式文本增量，
+          // build 里与 ListenableBuilder 的增量回调双路驱动跟随判断
+          _autoScrollOnStream();
+          _syncScrollToBottomButton();
+        }
 
-            // 对话消息流展示区域
-            Expanded(
-              child: Listener(
-                key: _messageListAreaKey,
-                onPointerDown: (event) {
-                  _noteUserScrollIntent();
-                  _pressedPointers++;
-                  // 落在右侧滚动条握把热区：立即冻结渲染内容，
-                  // 冻结期内任何流式增长/收缩都不改内容高度，
-                  // 这里只隔离实时内容变化，懒加载估算变化由 StableScrollbar 处理
-                  if (_isScrollbarZonePress(event) && !_thumbHeld) {
-                    _thumbHeld = true;
-                    _engageExtentFreeze();
-                  }
-                },
-                onPointerUp: (_) {
-                  _pressedPointers = _pressedPointers > 0
-                      ? _pressedPointers - 1
-                      : 0;
-                  _thumbHeld = false;
-                  _maybeUnfreezeExtent();
-                  _resumeFollowingAtBottom();
-                },
-                onPointerCancel: (_) {
-                  _pressedPointers = _pressedPointers > 0
-                      ? _pressedPointers - 1
-                      : 0;
-                  _thumbHeld = false;
-                  _maybeUnfreezeExtent();
-                  _resumeFollowingAtBottom();
-                },
-                onPointerSignal: _onPointerSignal,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: _onScrollNotification,
-                  child: _buildMessageList(),
-                ),
+        final Widget activeView = switch (_currentView) {
+          _AgentCardView.sessions => AgentSessionListView(
+            viewModel: widget.viewModel,
+            onBack: () => _switchView(_AgentCardView.chat),
+          ),
+          _AgentCardView.rewind => AgentRewindView(
+            viewModel: widget.viewModel,
+            onBack: () => _switchView(_AgentCardView.chat),
+            compact: widget.compact,
+          ),
+          _AgentCardView.chat => Focus(
+            focusNode: _cardFocusNode,
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.escape) {
+                (widget.onEscape ?? _handleEscKey)();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Card(
+              margin: EdgeInsets.zero,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 顶部预设选择栏与会话/回溯管理按钮
+                  _buildPresetHeaderBar(),
+
+                  // 对话消息流展示区域 (列表 + 悬浮回到底部按钮)
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Listener(
+                            key: _messageListAreaKey,
+                            onPointerDown: (event) {
+                              _noteUserScrollIntent();
+                              _pressedPointers++;
+                              // 落在右侧滚动条握把热区：立即冻结渲染内容，
+                              // 冻结期内任何流式增长/收缩都不改内容高度，
+                              // 这里只隔离实时内容变化，懒加载估算变化由 StableScrollbar 处理
+                              if (_isScrollbarZonePress(event) && !_thumbHeld) {
+                                _thumbHeld = true;
+                                _engageExtentFreeze();
+                              }
+                            },
+                            onPointerUp: (_) {
+                              _pressedPointers = _pressedPointers > 0
+                                  ? _pressedPointers - 1
+                                  : 0;
+                              _thumbHeld = false;
+                              _maybeUnfreezeExtent();
+                              _resumeFollowingAtBottom();
+                            },
+                            onPointerCancel: (_) {
+                              _pressedPointers = _pressedPointers > 0
+                                  ? _pressedPointers - 1
+                                  : 0;
+                              _thumbHeld = false;
+                              _maybeUnfreezeExtent();
+                              _resumeFollowingAtBottom();
+                            },
+                            onPointerSignal: _onPointerSignal,
+                            child: NotificationListener<ScrollNotification>(
+                              onNotification: _onScrollNotification,
+                              child: _buildMessageList(),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          right: 14,
+                          bottom: 12,
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: _showScrollToBottom,
+                            builder: (context, visible, _) {
+                              return AppPanelReveal(
+                                visible: visible,
+                                openDuration: AppMotionDurations.fast,
+                                closeDuration: AppMotionDurations.quick,
+                                slideOffset: AppMotionDistances.medium,
+                                enableBlur: false,
+                                animateSize: false,
+                                alignment: Alignment.bottomRight,
+                                child: IgnorePointer(
+                                  ignoring: !visible,
+                                  child: AppIconButton(
+                                    key: const ValueKey(
+                                      'chat_scroll_to_bottom_button',
+                                    ),
+                                    icon: Icons.arrow_downward_rounded,
+                                    size: 32,
+                                    radius: AppRadius.pill,
+                                    variant: AppIconButtonVariant.elevated,
+                                    tooltip:
+                                        context
+                                            .maybeL10n
+                                            ?.chatScrollToBottomTooltip ??
+                                        '回到底部',
+                                    onPressed: () =>
+                                        _scrollToBottom(animate: true),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 底部控制与消息输入区：桌面与移动端统一结构。
+                  AgentChatInputBar(
+                    viewModel: widget.viewModel,
+                    compact: widget.compact,
+                    onSent: _scrollToBottom,
+                  ),
+                ],
               ),
             ),
+          ),
+        };
 
-            // 底部控制与消息输入区：窄屏独立压缩，不与生成坞强行等高。
-            AgentChatInputBar(
-              viewModel: widget.viewModel,
-              compact: widget.compact,
-              onSent: _scrollToBottom,
-            ),
-          ],
-        ),
-      ),
+        return _ViewSwitchEntrance(
+          viewIndex: _currentView.index,
+          child: activeView,
+        );
+      },
     );
   }
 
-  /// 顶部预设切换栏 + 会话管理入口
+  void _handleRewindMessage(String messageId) {
+    widget.viewModel.rewindToMessage(messageId);
+  }
+
+  /// 顶部预设切换栏 + 显式回溯 + 会话管理入口 (桌面/移动端统一布局)
   Widget _buildPresetHeaderBar() {
     final colors = context.colors;
     final currentPreset = widget.viewModel.currentPreset;
     final presets = widget.viewModel.presets;
-    final currentPresetId = presets.any((p) => p.id == currentPreset.id)
-        ? currentPreset.id
-        : (presets.isNotEmpty ? presets.first.id : null);
 
     return Container(
-      height: widget.compact ? 40 : 48,
-      padding: EdgeInsets.symmetric(horizontal: widget.compact ? 8 : 12),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: colors.cardBackground,
-        border: Border(bottom: BorderSide(color: colors.borderDefault)),
+        border: Border(bottom: BorderSide(color: colors.borderSubtle)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 预设选择框 (与模型选择框统一的圆角边框胶囊样式)
           Expanded(
-            child: Container(
-              height: 32,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: colors.cardBackground,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: colors.borderDefault),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: currentPresetId,
-                  isDense: true,
-                  isExpanded: true,
-                  dropdownColor: colors.cardBackground,
-                  icon: Icon(
-                    Icons.arrow_drop_down_rounded,
-                    size: 18,
-                    color: colors.textSecondary,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  menuMaxHeight: 400.0,
-                  selectedItemBuilder: (context) {
-                    return presets.map((preset) {
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.psychology_outlined,
-                            size: 15,
-                            color: colors.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              preset.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList();
-                  },
-                  items: presets.map((preset) {
-                    final isSelected = preset.id == currentPresetId;
-                    return DropdownMenuItem<String>(
+            child: AppDropdown<String>(
+              value: currentPreset.id,
+              danglingLabel: currentPreset.name,
+              variant: AppDropdownVariant.inline,
+              minHeight: 30,
+              menuWidth: 240,
+              items: presets
+                  .map(
+                    (preset) => AppDropdownItem<String>(
                       value: preset.id,
-                      child: Tooltip(
-                        message: preset.description,
-                        waitDuration: const Duration(milliseconds: 500),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.psychology_outlined,
-                              size: 15,
-                              color: isSelected
-                                  ? colors.primary
-                                  : colors.textMuted,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                preset.name,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? colors.primary
-                                      : colors.textPrimary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (presetId) {
-                    if (presetId != null) {
-                      final p = presets.firstWhere((e) => e.id == presetId);
-                      widget.viewModel.selectPreset(p);
-                    }
-                  },
-                ),
-              ),
+                      label: preset.name,
+                      icon: Icons.tune_rounded,
+                      tooltip: preset.description,
+                    ),
+                  )
+                  .toList(),
+              onChanged: (presetId) {
+                final p = presets.firstWhere((e) => e.id == presetId);
+                widget.viewModel.selectPreset(p);
+              },
             ),
           ),
           const SizedBox(width: 6),
@@ -807,6 +841,8 @@ class AgentChatCardState extends State<AgentChatCard> {
           const SizedBox(width: 6),
           AppIconButton(
             icon: Icons.add_comment_outlined,
+            size: 28,
+            iconSize: 16,
             tooltip: context.l10n.sessionNew,
             variant: AppIconButtonVariant.ghost,
             onPressed: widget.viewModel.isChatStreaming
@@ -816,17 +852,112 @@ class AgentChatCardState extends State<AgentChatCard> {
                     if (mounted) _scrollToBottom(animate: false);
                   },
           ),
-          IconButton(
-            icon: Icon(Icons.forum_outlined, size: 16, color: colors.textMuted),
+          const SizedBox(width: 4),
+          AppIconButton(
+            key: const ValueKey('chat_rewind_button'),
+            icon: Icons.history_rounded,
+            size: 28,
+            iconSize: 16,
+            tooltip: context.l10n.rewindTitle,
+            variant: AppIconButtonVariant.ghost,
+            onPressed: openRewindView,
+          ),
+          const SizedBox(width: 4),
+          AppIconButton(
+            icon: Icons.forum_outlined,
+            size: 28,
+            iconSize: 16,
             tooltip: context.l10n.chatSessionManagementTooltip,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            variant: AppIconButtonVariant.ghost,
             onPressed: () => _switchView(_AgentCardView.sessions),
-            visualDensity: VisualDensity.compact,
           ),
         ],
       ),
     );
+  }
+
+  /// 将相邻的工具调用与结果消息配对，便于合并渲染为单张紧凑步骤卡
+  ({
+    Map<int, List<AgentMessage?>> pairedByAssistant,
+    Set<int> mergedToolIndices,
+  })
+  _computeToolPairing(List<AgentMessage> messages) {
+    final pairedByAssistant = <int, List<AgentMessage?>>{};
+    final mergedToolIndices = <int>{};
+
+    for (var i = 0; i < messages.length; i++) {
+      final msg = messages[i];
+      final calls = msg.toolCalls;
+      if (msg.role != AgentRole.assistant || calls == null || calls.isEmpty) {
+        continue;
+      }
+
+      var end = i + 1;
+      while (end < messages.length && messages[end].role == AgentRole.tool) {
+        end++;
+      }
+      if (end == i + 1) continue;
+
+      final claimed = <int>{};
+      final paired = List<AgentMessage?>.filled(calls.length, null);
+
+      for (var cIdx = 0; cIdx < calls.length; cIdx++) {
+        final callId = calls[cIdx].id;
+        if (callId.isEmpty) continue;
+        for (var tIdx = i + 1; tIdx < end; tIdx++) {
+          if (claimed.contains(tIdx)) continue;
+          if (messages[tIdx].toolCallId == callId) {
+            paired[cIdx] = messages[tIdx];
+            claimed.add(tIdx);
+            break;
+          }
+        }
+      }
+
+      for (var cIdx = 0; cIdx < calls.length; cIdx++) {
+        if (paired[cIdx] != null) continue;
+        final callName = calls[cIdx].name;
+        for (var tIdx = i + 1; tIdx < end; tIdx++) {
+          if (claimed.contains(tIdx)) continue;
+          final toolMsg = messages[tIdx];
+          if ((toolMsg.toolCallId == null || toolMsg.toolCallId!.isEmpty) &&
+              toolMsg.toolName == callName) {
+            paired[cIdx] = toolMsg;
+            claimed.add(tIdx);
+            break;
+          }
+        }
+      }
+
+      for (var cIdx = 0; cIdx < calls.length; cIdx++) {
+        if (paired[cIdx] != null) continue;
+        for (var tIdx = i + 1; tIdx < end; tIdx++) {
+          if (claimed.contains(tIdx)) continue;
+          final toolMsg = messages[tIdx];
+          if (toolMsg.toolCallId == null || toolMsg.toolCallId!.isEmpty) {
+            paired[cIdx] = toolMsg;
+            claimed.add(tIdx);
+            break;
+          }
+        }
+      }
+
+      pairedByAssistant[i] = paired;
+      mergedToolIndices.addAll(claimed);
+    }
+
+    return (
+      pairedByAssistant: pairedByAssistant,
+      mergedToolIndices: mergedToolIndices,
+    );
+  }
+
+  bool _sameToolResults(List<AgentMessage?> a, List<AgentMessage?> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!identical(a[i], b[i])) return false;
+    }
+    return true;
   }
 
   /// 消息流: 历史消息 + 流式输出占位 + 内嵌提问卡片
@@ -844,8 +975,32 @@ class AgentChatCardState extends State<AgentChatCard> {
         ? _frozenThinkingExpanded
         : widget.viewModel.isThinkingExpanded;
 
-    final liveIds = messages.map((message) => message.id).toSet();
-    _messageWidgetCache.removeWhere((id, _) => !liveIds.contains(id));
+    final ({
+      Map<int, List<AgentMessage?>> pairedByAssistant,
+      Set<int> mergedToolIndices,
+    }) pairing;
+    final Set<String> newMessageIds;
+    final lastPaired = _lastPairedMessages;
+    final cachedPairing = _cachedPairing;
+    if (lastPaired != null &&
+        cachedPairing != null &&
+        _sameMessageSnapshot(lastPaired, messages)) {
+      newMessageIds = const <String>{};
+      pairing = cachedPairing;
+    } else {
+      final liveIds = messages.map((message) => message.id).toSet();
+      _messageWidgetCache.removeWhere((id, _) => !liveIds.contains(id));
+      final diffIds = _initialMessagesCaptured
+          ? liveIds.difference(_knownMessageIds)
+          : const <String>{};
+      // 批量加载历史消息（超过 3 条）不触发逐条入场动效，仅对运行期实时新入列消息执行轻量淡入
+      newMessageIds = diffIds.length <= 3 ? diffIds : const <String>{};
+      _knownMessageIds.addAll(liveIds);
+      _initialMessagesCaptured = true;
+      pairing = _computeToolPairing(messages);
+      _lastPairedMessages = List<AgentMessage>.of(messages, growable: false);
+      _cachedPairing = pairing;
+    }
 
     final list = ListView.builder(
       key: ValueKey(widget.viewModel.currentSessionId),
@@ -889,11 +1044,21 @@ class AgentChatCardState extends State<AgentChatCard> {
 
         final message = messages[index];
         final keepAlive = index >= messages.length - _maxKeptAliveMessages;
+        final hasToolCalls =
+            message.toolCalls != null && message.toolCalls!.isNotEmpty;
+        final isActiveTool =
+            isStreaming && hasToolCalls && index == messages.length - 1;
+        final pairedResults =
+            pairing.pairedByAssistant[index] ?? const <AgentMessage?>[];
+        final isMerged = pairing.mergedToolIndices.contains(index);
         final cached = _messageWidgetCache[message.id];
         if (cached != null &&
             identical(cached.message, message) &&
             cached.keepAlive == keepAlive &&
-            cached.thinkingExpanded == thinkingExpanded) {
+            cached.thinkingExpanded == thinkingExpanded &&
+            cached.isMergedToolResult == isMerged &&
+            cached.isActiveTool == isActiveTool &&
+            _sameToolResults(cached.pairedToolResults, pairedResults)) {
           return cached;
         }
 
@@ -902,6 +1067,11 @@ class AgentChatCardState extends State<AgentChatCard> {
           message: message,
           thinkingExpanded: thinkingExpanded,
           keepAlive: keepAlive,
+          pairedToolResults: pairedResults,
+          isMergedToolResult: isMerged,
+          animateEntry: newMessageIds.contains(message.id),
+          isActiveTool: isActiveTool,
+          onRewind: _handleRewindMessage,
         );
         if (_messageWidgetCache.length >= _maxCachedMessages &&
             !_messageWidgetCache.containsKey(message.id)) {
@@ -919,7 +1089,90 @@ class AgentChatCardState extends State<AgentChatCard> {
       radius: theme.radius,
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: list,
+        // 包住列表后，拖出视口会由这个 Scrollable 匀速把选区续到屏外正文。
+        // 思考块仍用 SelectableText，展开时不会把尚未布局的段落塞进这个选区容器。
+        child: SelectionArea(child: list),
+      ),
+    );
+  }
+}
+
+/// 单实例方向感知切页动效 (`08-page-side-by-side` 轻量单树版):
+/// 每次仅保留当前激活视图，避免双树叠放导致 GlobalKey 冲突或控件重复；
+/// 切入时按方向滑入 8px 并淡入，静止后自动卸载透明/变换包裹。
+class _ViewSwitchEntrance extends StatefulWidget {
+  final int viewIndex;
+  final Widget child;
+
+  const _ViewSwitchEntrance({
+    required this.viewIndex,
+    required this.child,
+  });
+
+  @override
+  State<_ViewSwitchEntrance> createState() => _ViewSwitchEntranceState();
+}
+
+class _ViewSwitchEntranceState extends State<_ViewSwitchEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  double _direction = 1.0;
+  GlobalKey _childKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppMotionDurations.fast,
+      value: 1.0,
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() {});
+        }
+      });
+  }
+
+  @override
+  void didUpdateWidget(_ViewSwitchEntrance oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewIndex != widget.viewIndex) {
+      _childKey = GlobalKey();
+      _direction = widget.viewIndex > oldWidget.viewIndex ? 1.0 : -1.0;
+      if (AppMotion.shouldReduceMotion(context)) {
+        _controller.value = 1.0;
+      } else {
+        _controller.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keyedChild = KeyedSubtree(key: _childKey, child: widget.child);
+    if (_controller.isCompleted) return keyedChild;
+    return ClipRect(
+      child: AnimatedBuilder(
+        animation: _controller,
+        child: keyedChild,
+        builder: (context, child) {
+          final t = AppMotionCurves.smoothOut
+              .transform(_controller.value)
+              .clamp(0.0, 1.0);
+          return Opacity(
+            opacity: 0.4 + 0.6 * t,
+            child: Transform.translate(
+              offset: Offset(_direction * AppMotionDistances.base * (1.0 - t), 0),
+              child: child,
+            ),
+          );
+        },
       ),
     );
   }

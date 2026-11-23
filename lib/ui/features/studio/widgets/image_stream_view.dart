@@ -1,11 +1,15 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../../../../data/models/novelai_models.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_progress_bar.dart';
+import '../../../core/widgets/app_skeleton.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../../../core/widgets/smooth_scroll_controller.dart';
 import '../../../core/widgets/context_menu.dart';
 import '../view_models/studio_view_model.dart';
@@ -13,56 +17,259 @@ import 'character_position_canvas_view.dart';
 import 'image_canvas_actions.dart';
 import 'image_lightbox.dart';
 
+/// 瀑布流卡片之间的固定分隔高度 (上下各 20px padding + 8px 圆点)
+const double kCanvasStreamSeparatorExtent = 48.0;
+
+/// 依据图片纵横比与画板约束计算卡片在瀑布流中的精确高度 (含上下各 2px 边框)
+double canvasStreamCardHeight(
+  NaiGenerationParams params,
+  double maxCardWidth,
+  double maxCardHeight,
+) {
+  final aspect = imageAspectRatioOf(params);
+  if (aspect <= 0) return 400.0;
+  const borderThickness = 4.0; // _canvasCardDecoration 上下各 2px border
+  final innerWidth = math.max(0.0, maxCardWidth - borderThickness);
+  final naturalHeight = innerWidth / aspect + borderThickness;
+  return naturalHeight.clamp(0.0, maxCardHeight);
+}
+
+/// 让某张卡片在视口中垂直居中所需的上下内边距
+double canvasStreamCenteringPadding(
+  double viewportHeight,
+  NaiGenerationParams params,
+  double maxCardWidth,
+  double maxCardHeight,
+) {
+  final cardHeight = canvasStreamCardHeight(
+    params,
+    maxCardWidth,
+    maxCardHeight,
+  );
+  return ((viewportHeight - cardHeight) / 2).clamp(
+    24.0,
+    (viewportHeight / 2).clamp(24.0, 500.0),
+  );
+}
+
 /// 画板垂直图像流的滚动协调器：
 /// 持有滚动控制器与每张图的锚点 Key，供图像流、历史侧边栏与浮动横幅共同驱动滚动定位。
 class CanvasStreamController {
   final ScrollController scrollController = SmoothWheelScrollController();
   final Map<String, GlobalKey> _itemKeys = {};
 
+  StudioViewModel? _viewModel;
+  double _viewportHeight = 0;
+  double _maxCardWidth = 0;
+  double _maxCardHeight = 0;
+  bool _compact = false;
+  int _anchorEpoch = 0;
+
   /// 是否正在程序化调整滚动锚点 (期间暂停"居中图自动选中"检测)
   bool isAdjustingAnchor = false;
 
   GlobalKey keyFor(String id) => _itemKeys.putIfAbsent(id, GlobalKey.new);
+
+  void pruneKeys(Set<String> validIds) {
+    if (_itemKeys.isEmpty) return;
+    _itemKeys.removeWhere((id, _) => !validIds.contains(id));
+  }
+
+  /// 同步当前视口与卡片布局约束，供跳转定位与卡片列表共享单一高度事实源
+  void attachLayout({
+    required StudioViewModel viewModel,
+    required double viewportHeight,
+    required double maxCardWidth,
+    required double maxCardHeight,
+    required bool compact,
+  }) {
+    _viewModel = viewModel;
+    _viewportHeight = viewportHeight;
+    _maxCardWidth = maxCardWidth;
+    _maxCardHeight = maxCardHeight;
+    _compact = compact;
+  }
+
+  /// 基于所有历史图真实宽高比计算目标卡片居中的精确滚动偏移
+  double? computeCenterOffsetForImage(
+    String imageId, {
+    int? fallbackGalleryIndex,
+  }) {
+    final vm = _viewModel;
+    if (vm == null || _viewportHeight <= 0 || _maxCardWidth <= 0) return null;
+    final gallery = vm.gallery;
+    if (gallery.isEmpty) return null;
+
+    var galleryIndex = gallery.indexWhere((item) => item.id == imageId);
+    if (galleryIndex < 0) {
+      if (fallbackGalleryIndex != null &&
+          fallbackGalleryIndex >= 0 &&
+          fallbackGalleryIndex < gallery.length) {
+        galleryIndex = fallbackGalleryIndex;
+      } else {
+        return null;
+      }
+    }
+
+    final isGenerating = vm.isGenerating;
+    final selectedImage =
+        vm.selectedImage ?? (gallery.isNotEmpty ? gallery.first : null);
+    final isEditingPositions =
+        vm.isEditingCharacterPositions || vm.isEditingWatermarkPosition;
+    final targetAspect = imageAspectRatioOf(vm.params);
+    final selectedAspect = selectedImage != null
+        ? imageAspectRatioOf(selectedImage.params)
+        : 0.0;
+    final isAspectMatching =
+        selectedImage != null && (targetAspect - selectedAspect).abs() < 0.01;
+    final showPositionPlaceholder = isEditingPositions && !isAspectMatching;
+
+    final itemParams = <NaiGenerationParams>[
+      if (isGenerating) vm.params,
+      if (showPositionPlaceholder) vm.params,
+      for (final item in gallery) item.params,
+    ];
+    final headerCount =
+        (isGenerating ? 1 : 0) + (showPositionPlaceholder ? 1 : 0);
+    final cardIndex = headerCount + galleryIndex;
+    if (cardIndex < 0 || cardIndex >= itemParams.length) return null;
+    if (itemParams.length <= 1) return 0.0;
+
+    final topPadding = canvasStreamCenteringPadding(
+      _viewportHeight,
+      itemParams.first,
+      _maxCardWidth,
+      _maxCardHeight,
+    );
+    final calculatedBottomPadding = canvasStreamCenteringPadding(
+      _viewportHeight,
+      itemParams.last,
+      _maxCardWidth,
+      _maxCardHeight,
+    );
+    final bottomPadding = _compact
+        ? math.max(76.0, calculatedBottomPadding)
+        : calculatedBottomPadding;
+
+    var offset = topPadding;
+    double? targetCardCenter;
+    for (var i = 0; i < itemParams.length; i++) {
+      final cardHeight = canvasStreamCardHeight(
+        itemParams[i],
+        _maxCardWidth,
+        _maxCardHeight,
+      );
+      if (i == cardIndex) {
+        targetCardCenter = offset + cardHeight / 2.0;
+      }
+      offset += cardHeight;
+      if (i < itemParams.length - 1) {
+        offset += kCanvasStreamSeparatorExtent;
+      }
+    }
+    if (targetCardCenter == null) return null;
+
+    final totalContentHeight = offset + bottomPadding;
+    final maxExtent = math.max(0.0, totalContentHeight - _viewportHeight);
+    return (targetCardCenter - _viewportHeight / 2.0).clamp(0.0, maxExtent);
+  }
 
   void scrollToTop() {
     if (!scrollController.hasClients) return;
     _animateAnchor(
       scrollController.animateTo(
         0.0,
-        duration: const Duration(milliseconds: 380),
-        curve: Curves.easeOutCubic,
+        duration: AppMotionDurations.medium,
+        curve: AppMotionCurves.smoothOut,
       ),
     );
   }
 
   void scrollToItem(int index, String imageId) {
+    if (!scrollController.hasClients) return;
+    final targetOffset = computeCenterOffsetForImage(
+      imageId,
+      fallbackGalleryIndex: index,
+    );
+    if (targetOffset != null) {
+      final epoch = ++_anchorEpoch;
+      isAdjustingAnchor = true;
+      final pos = scrollController.position;
+      final clampedTarget = targetOffset.clamp(
+        pos.minScrollExtent,
+        pos.maxScrollExtent,
+      );
+      scrollController
+          .animateTo(
+            clampedTarget,
+            duration: AppMotionDurations.medium,
+            curve: AppMotionCurves.smoothOut,
+          )
+          .whenComplete(() {
+            if (_anchorEpoch != epoch) return;
+            final ctx = _itemKeys[imageId]?.currentContext;
+            if (ctx != null && ctx.mounted && scrollController.hasClients) {
+              final renderBox = ctx.findRenderObject() as RenderBox?;
+              final scrollRender =
+                  scrollController.position.context.notificationContext
+                          ?.findRenderObject()
+                      as RenderBox?;
+              if (renderBox != null &&
+                  renderBox.hasSize &&
+                  scrollRender != null &&
+                  scrollRender.hasSize) {
+                final itemCenter = renderBox
+                    .localToGlobal(Offset(0, renderBox.size.height / 2))
+                    .dy;
+                final viewportCenter = scrollRender
+                    .localToGlobal(Offset(0, scrollRender.size.height / 2))
+                    .dy;
+                if ((itemCenter - viewportCenter).abs() > 1.0) {
+                  _ensureItemVisible(
+                    ctx,
+                    duration: Duration.zero,
+                    alignment: 0.5,
+                  ).whenComplete(() {
+                    if (_anchorEpoch == epoch) {
+                      isAdjustingAnchor = false;
+                    }
+                  });
+                  return;
+                }
+              }
+            }
+            isAdjustingAnchor = false;
+          });
+      return;
+    }
+
     final itemContext = _itemKeys[imageId]?.currentContext;
     if (itemContext != null) {
       _animateAnchor(
         _ensureItemVisible(
           itemContext,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOutCubic,
+          duration: AppMotionDurations.medium,
+          curve: AppMotionCurves.smoothOut,
           alignment: 0.5,
         ),
       );
       return;
     }
-    if (!scrollController.hasClients) return;
-    // 目标图在懒加载视口外尚未构建：先按估算高度滚到附近，
-    // 等卡片真实挂载后再二次精准居中 (单靠估算信高度会“只露个头”)
-    final targetOffset = (index * 750.0).clamp(
+    // 布局未附着时的兜底：先按估算高度滚到附近，等卡片挂载后再二次居中
+    final fallbackOffset = (index * 750.0).clamp(
       0.0,
       scrollController.position.maxScrollExtent,
     );
+    final epoch = ++_anchorEpoch;
     isAdjustingAnchor = true;
     scrollController
         .animateTo(
-          targetOffset,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOutCubic,
+          fallbackOffset,
+          duration: AppMotionDurations.medium,
+          curve: AppMotionCurves.smoothOut,
         )
-        .then((_) {
+        .whenComplete(() {
+          if (_anchorEpoch != epoch) return;
           final ctx = _itemKeys[imageId]?.currentContext;
           if (ctx == null || !ctx.mounted) {
             isAdjustingAnchor = false;
@@ -70,15 +277,30 @@ class CanvasStreamController {
           }
           _ensureItemVisible(
             ctx,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutCubic,
+            duration: AppMotionDurations.fast,
+            curve: AppMotionCurves.smoothOut,
             alignment: 0.5,
-          ).then((_) => isAdjustingAnchor = false);
+          ).whenComplete(() {
+            if (_anchorEpoch == epoch) {
+              isAdjustingAnchor = false;
+            }
+          });
         });
   }
 
   /// 无动画锚定到指定图 (保持用户正在浏览的历史图视野不动)
   void anchorToItemSilently(String imageId) {
+    if (!scrollController.hasClients) return;
+    final targetOffset = computeCenterOffsetForImage(imageId);
+    if (targetOffset != null) {
+      isAdjustingAnchor = true;
+      final pos = scrollController.position;
+      scrollController.jumpTo(
+        targetOffset.clamp(pos.minScrollExtent, pos.maxScrollExtent),
+      );
+      isAdjustingAnchor = false;
+      return;
+    }
     final itemContext = _itemKeys[imageId]?.currentContext;
     if (itemContext == null) return;
     isAdjustingAnchor = true;
@@ -106,8 +328,13 @@ class CanvasStreamController {
   }
 
   void _animateAnchor(Future<void> future) {
+    final epoch = ++_anchorEpoch;
     isAdjustingAnchor = true;
-    future.then((_) => isAdjustingAnchor = false);
+    future.whenComplete(() {
+      if (_anchorEpoch == epoch) {
+        isAdjustingAnchor = false;
+      }
+    });
   }
 
   void dispose() {
@@ -121,11 +348,13 @@ class CanvasStreamController {
 class ImageStreamView extends StatefulWidget {
   final StudioViewModel viewModel;
   final CanvasStreamController controller;
+  final bool compact;
 
   const ImageStreamView({
     super.key,
     required this.viewModel,
     required this.controller,
+    this.compact = false,
   });
 
   @override
@@ -169,7 +398,17 @@ class _ImageStreamViewState extends State<ImageStreamView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxCardHeight = (constraints.maxHeight - 64).clamp(240.0, 1600.0);
-        final maxCardWidth = (constraints.maxWidth - 48).clamp(240.0, 1200.0);
+        final rawMaxCardWidth = (constraints.maxWidth - 48).clamp(240.0, 1200.0);
+        final listInnerWidth = math.max(0.0, constraints.maxWidth - 40);
+        final maxCardWidth = math.min(rawMaxCardWidth, listInnerWidth);
+
+        controller.attachLayout(
+          viewModel: viewModel,
+          viewportHeight: constraints.maxHeight,
+          maxCardWidth: maxCardWidth,
+          maxCardHeight: maxCardHeight,
+          compact: widget.compact,
+        );
 
         final firstCardParams = (showGeneratingCard || showPositionPlaceholder)
             ? viewModel.params
@@ -179,18 +418,21 @@ class _ImageStreamViewState extends State<ImageStreamView> {
             : viewModel.params;
 
         // 精准动态上下内边距：使顶部第一张图与底部最后一张图在视口中能够 100% 垂直居中展示
-        final topPadding = _centeringPaddingFor(
+        final topPadding = canvasStreamCenteringPadding(
           constraints.maxHeight,
           firstCardParams,
           maxCardWidth,
           maxCardHeight,
         );
-        final bottomPadding = _centeringPaddingFor(
+        final calculatedBottomPadding = canvasStreamCenteringPadding(
           constraints.maxHeight,
           lastCardParams,
           maxCardWidth,
           maxCardHeight,
         );
+        final bottomPadding = widget.compact
+            ? math.max(76.0, calculatedBottomPadding)
+            : calculatedBottomPadding;
 
         // 占位符与历史图总数 (生成中或比例不匹配的位置编辑模式下头部多一个占位符)
         final totalItemCount =
@@ -238,11 +480,17 @@ class _ImageStreamViewState extends State<ImageStreamView> {
               isSelected: true,
               maxCardWidth: maxCardWidth,
               maxCardHeight: maxCardHeight,
+              compact: widget.compact,
             );
           }
           return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              24,
+              20,
+              widget.compact ? 84 : 24,
+            ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: (constraints.maxHeight - 48).clamp(
@@ -255,7 +503,21 @@ class _ImageStreamViewState extends State<ImageStreamView> {
           );
         }
 
-        // 多张图片 (或已有图片并在生成新图/展示临时位置卡片)：垂直无限滚动瀑布流
+        if (totalItemCount == 0) {
+          return const SizedBox.shrink();
+        }
+        final headerCount =
+            (showGeneratingCard ? 1 : 0) + (showPositionPlaceholder ? 1 : 0);
+        final totalSliverCount = totalItemCount * 2 - 1;
+
+        NaiGenerationParams cardParamsAt(int cardIndex) {
+          if (cardIndex < headerCount) return viewModel.params;
+          return gallery[cardIndex - headerCount].params;
+        }
+
+        // 多张图片 (或已有图片并在生成新图/展示临时位置卡片)：
+        // 使用带精确 itemExtentBuilder 的变高列表，消除混排不同分辨率图片时
+        // 懒加载高度估算失真造成的跳转偏移误差。
         return NotificationListener<ScrollNotification>(
           onNotification: (notification) {
             // 滚动帧只移动画布；停止后才同步选中图与全局面板。
@@ -267,11 +529,9 @@ class _ImageStreamViewState extends State<ImageStreamView> {
             }
             return false;
           },
-          child: ListView.separated(
+          child: ListView.builder(
             controller: controller.scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
-            // 预构建上下各 1200px 的卡片：历史图侧栏点选远端图时目标卡片
-            // 大概率已在缓存内挂载，二次居中修正不再落空
             scrollCacheExtent: const ScrollCacheExtent.pixels(1200),
             addAutomaticKeepAlives: false,
             padding: EdgeInsets.only(
@@ -280,22 +540,37 @@ class _ImageStreamViewState extends State<ImageStreamView> {
               top: topPadding,
               bottom: bottomPadding,
             ),
-            itemCount: totalItemCount,
-            separatorBuilder: (context, _) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: context.colors.textMuted.withValues(alpha: 0.25),
+            itemCount: totalSliverCount,
+            itemExtentBuilder: (sliverIndex, _) {
+              if (sliverIndex < 0 || sliverIndex >= totalSliverCount) {
+                return null;
+              }
+              if (sliverIndex.isOdd) return kCanvasStreamSeparatorExtent;
+              final cardIndex = sliverIndex ~/ 2;
+              return canvasStreamCardHeight(
+                cardParamsAt(cardIndex),
+                maxCardWidth,
+                maxCardHeight,
+              );
+            },
+            itemBuilder: (context, sliverIndex) {
+              if (sliverIndex.isOdd) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: context.colors.textMuted.withValues(alpha: 0.25),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            itemBuilder: (context, index) {
-              var adjustedIndex = index;
+                );
+              }
+              var adjustedIndex = sliverIndex ~/ 2;
+              // 本地 fork：后台生成时不占画布，改由横幅提示恢复
               if (showGeneratingCard) {
                 if (adjustedIndex == 0) {
                   return CanvasGeneratingCard(
@@ -328,6 +603,7 @@ class _ImageStreamViewState extends State<ImageStreamView> {
                 isSelected: isSelected,
                 maxCardWidth: maxCardWidth,
                 maxCardHeight: maxCardHeight,
+                compact: widget.compact,
               );
             },
           ),
@@ -352,36 +628,6 @@ class _ImageStreamViewState extends State<ImageStreamView> {
       }
       _updateActiveVisibleImage(widget.viewModel, widget.viewModel.gallery);
     });
-  }
-
-  /// 依据图片纵横比估算其在瀑布流中的实际卡片高度 (用于视口居中内边距计算)
-  double _estimatedCardHeight(
-    NaiGenerationParams params,
-    double maxCardWidth,
-    double maxCardHeight,
-  ) {
-    final aspect = imageAspectRatioOf(params);
-    if (aspect <= 0) return 400.0;
-    final cardHeight = maxCardWidth / aspect;
-    return cardHeight > maxCardHeight ? maxCardHeight : cardHeight;
-  }
-
-  /// 让某张卡片在视口中垂直居中所需的上下内边距
-  double _centeringPaddingFor(
-    double viewportHeight,
-    NaiGenerationParams params,
-    double maxCardWidth,
-    double maxCardHeight,
-  ) {
-    final cardHeight = _estimatedCardHeight(
-      params,
-      maxCardWidth,
-      maxCardHeight,
-    );
-    return ((viewportHeight - cardHeight) / 2).clamp(
-      24.0,
-      (viewportHeight / 2).clamp(24.0, 500.0),
-    );
   }
 
   /// 新图插入/生成状态切换时自动调整滚动：
@@ -425,6 +671,10 @@ class _ImageStreamViewState extends State<ImageStreamView> {
       }
     }
 
+    if (gallery.length != _lastGalleryLength ||
+        firstImageId != _lastFirstImageId) {
+      controller.pruneKeys(gallery.map((item) => item.id).toSet());
+    }
     _lastGalleryLength = gallery.length;
     _lastFirstImageId = firstImageId;
     _lastIsGenerating = viewModel.isGenerating;
@@ -503,7 +753,8 @@ class CanvasGeneratingCard extends StatelessWidget {
     final displayWidth = maxCardWidth < maxCardHeight * aspectRatio
         ? maxCardWidth
         : maxCardHeight * aspectRatio;
-    final previewCacheWidth = (displayWidth * 1.5).round().clamp(64, 4096);
+    final previewCacheWidth = (((displayWidth * 1.5) / 128.0).ceil() * 128)
+        .clamp(128, 4096);
 
     return Center(
       child: GestureDetector(
@@ -513,85 +764,99 @@ class CanvasGeneratingCard extends StatelessWidget {
             maxWidth: maxCardWidth,
             maxHeight: maxCardHeight,
           ),
+          padding: const EdgeInsets.all(1.0),
           decoration: _canvasCardDecoration(context, isSelected),
-          clipBehavior: Clip.antiAlias,
-          child: AspectRatio(
-            aspectRatio: aspectRatio,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 去噪中间帧仅在本占位卡内部局部重绘，
-                // 生图期间主工作台零重建
-                ListenableBuilder(
-                  listenable: viewModel.liveProgressController,
-                  builder: (context, _) {
-                    final previewBytes = viewModel.livePreviewBytes;
-                    if (previewBytes != null) {
-                      return Image.memory(
-                        previewBytes,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                        cacheWidth: previewCacheWidth,
-                      );
-                    }
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+          foregroundDecoration: _canvasCardForegroundDecoration(
+            context,
+            isSelected,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md - 1.0),
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 去噪中间帧仅在本占位卡内部局部重绘，
+                  // 生图期间主工作台零重建
+                  ListenableBuilder(
+                    listenable: viewModel.liveProgressController,
+                    builder: (context, _) {
+                      final previewBytes = viewModel.livePreviewBytes;
+                      if (previewBytes != null) {
+                        return Image.memory(
+                          previewBytes,
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                          cacheWidth: previewCacheWidth,
+                        );
+                      }
+                      return Stack(
+                        fit: StackFit.expand,
                         children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                context.colors.primary,
-                              ),
+                          const AppSkeletonBox(
+                            width: double.infinity,
+                            height: double.infinity,
+                            radius: 0,
+                          ),
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AppMatrixDotLoader(
+                                  dotSize: 4.0,
+                                  gap: 3.0,
+                                  variant: AppMatrixDotVariant.orbit,
+                                  activeColor: context.colors.primary,
+                                ),
+                                if (viewModel.liveTotalSteps > 0 &&
+                                    viewModel.liveCurrentStep > 0) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    '${viewModel.liveCurrentStep} / ${viewModel.liveTotalSteps}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.colors.textSecondary,
+                                      fontFamily: 'monospace',
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          if (viewModel.liveTotalSteps > 0 &&
-                              viewModel.liveCurrentStep > 0) ...[
-                            const SizedBox(height: 10),
-                            Text(
-                              '${viewModel.liveCurrentStep} / ${viewModel.liveTotalSteps}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: context.colors.textSecondary,
-                                fontFamily: 'monospace',
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
                         ],
-                      ),
-                    );
-                  },
-                ),
-                // 生图进行中的明确出口：丢弃本次生成，或转后台继续跑但不占画布。
-                Positioned(
-                  left: 10,
-                  right: 10,
-                  bottom: 10,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      _GeneratingCardAction(
-                        icon: Icons.visibility_off_outlined,
-                        label: context.l10n.canvasGeneratingBackground,
-                        tooltip: context.l10n.canvasGeneratingBackgroundTooltip,
-                        onPressed: viewModel.backgroundGeneration,
-                      ),
-                      const SizedBox(width: 8),
-                      _GeneratingCardAction(
-                        icon: Icons.delete_outline_rounded,
-                        label: context.l10n.canvasGeneratingDiscard,
-                        tooltip: context.l10n.canvasGeneratingDiscardTooltip,
-                        onPressed: viewModel.abortGeneration,
-                        destructive: true,
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                ),
-              ],
+                  // 本地 fork：生图进行中的明确出口——丢弃本次生成，或转后台继续跑但不占画布
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    bottom: 10,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _GeneratingCardAction(
+                          icon: Icons.visibility_off_outlined,
+                          label: context.l10n.canvasGeneratingBackground,
+                          tooltip:
+                              context.l10n.canvasGeneratingBackgroundTooltip,
+                          onPressed: viewModel.backgroundGeneration,
+                        ),
+                        const SizedBox(width: 8),
+                        _GeneratingCardAction(
+                          icon: Icons.delete_outline_rounded,
+                          label: context.l10n.canvasGeneratingDiscard,
+                          tooltip: context.l10n.canvasGeneratingDiscardTooltip,
+                          onPressed: viewModel.abortGeneration,
+                          destructive: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -824,6 +1089,7 @@ class CanvasImageCard extends StatelessWidget {
   final bool isSelected;
   final double maxCardWidth;
   final double maxCardHeight;
+  final bool compact;
 
   const CanvasImageCard({
     super.key,
@@ -833,6 +1099,7 @@ class CanvasImageCard extends StatelessWidget {
     required this.isSelected,
     required this.maxCardWidth,
     required this.maxCardHeight,
+    this.compact = false,
   });
 
   @override
@@ -852,19 +1119,32 @@ class CanvasImageCard extends StatelessWidget {
         ? maxCardWidth
         : maxCardHeight * itemAspect;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cacheWidth = (displayWidth * dpr).round().clamp(64, 4096);
+    final cacheWidth = (((displayWidth * dpr) / 128.0).ceil() * 128).clamp(
+      128,
+      4096,
+    );
 
     return Center(
       child: StudioContextMenuRegion(
         key: controller.keyFor(item.id),
         onShow: isPositionOverlayActive
             ? null
-            : (position) => showImageContextMenu(
-                context,
-                position: position,
-                viewModel: viewModel,
-                image: item,
-              ),
+            : (position) {
+                if (compact) {
+                  showMobileImageActionSheet(
+                    context,
+                    viewModel: viewModel,
+                    image: item,
+                  );
+                } else {
+                  showImageContextMenu(
+                    context,
+                    position: position,
+                    viewModel: viewModel,
+                    image: item,
+                  );
+                }
+              },
         child: GestureDetector(
           onTap: () => viewModel.selectImage(item),
           onDoubleTap: isPositionOverlayActive
@@ -879,65 +1159,82 @@ class CanvasImageCard extends StatelessWidget {
               maxWidth: maxCardWidth,
               maxHeight: maxCardHeight,
             ),
+            padding: const EdgeInsets.all(1.0),
             decoration: _canvasCardDecoration(context, isSelected),
-            clipBehavior: Clip.antiAlias,
-            child: AspectRatio(
-              aspectRatio: imageAspectRatioOf(item.params),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ValueListenableBuilder<Map<String, Uint8List>>(
-                    valueListenable: viewModel.imageBytesNotifier,
-                    builder: (context, bytesMap, _) {
-                      final fullBytes = item.bytes.isNotEmpty
-                          ? item.bytes
-                          : bytesMap[item.id];
-                      if (fullBytes != null && fullBytes.isNotEmpty) {
-                        return Image.memory(
-                          fullBytes,
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
-                          cacheWidth: cacheWidth,
-                        );
-                      }
+            foregroundDecoration: _canvasCardForegroundDecoration(
+              context,
+              isSelected,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.md - 1.0),
+              child: AspectRatio(
+                aspectRatio: imageAspectRatioOf(item.params),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ValueListenableBuilder<Map<String, Uint8List>>(
+                      valueListenable: viewModel.imageBytesNotifier,
+                      builder: (context, bytesMap, _) {
+                        final fullBytes = item.bytes.isNotEmpty
+                            ? item.bytes
+                            : bytesMap[item.id];
+                        final thumb = item.thumbnailBytes;
+                        final displayBytes =
+                            (fullBytes != null && fullBytes.isNotEmpty)
+                            ? fullBytes
+                            : ((thumb != null && thumb.isNotEmpty)
+                                  ? thumb
+                                  : null);
 
-                      if (isSelected) {
-                        viewModel.ensureImageLoaded(item);
-                      }
+                        if (isSelected &&
+                            (fullBytes == null || fullBytes.isEmpty)) {
+                          viewModel.ensureImageLoaded(item);
+                        }
 
-                      final thumb = item.thumbnailBytes;
-                      if (thumb != null && thumb.isNotEmpty) {
-                        return Image.memory(
-                          thumb,
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
-                          cacheWidth: cacheWidth,
-                        );
-                      }
-
-                      return Container(
-                        color: context.colors.mutedBackground,
-                        child: Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                context.colors.primary,
-                              ),
+                        final hasImage = displayBytes != null;
+                        return AppSkeletonReveal(
+                          isLoaded: hasImage,
+                          enableBlur: false,
+                          skeleton: SizedBox.expand(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                const AppSkeletonBox(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  radius: 0,
+                                ),
+                                Center(
+                                  child: AppMatrixDotLoader(
+                                    dotSize: 3.5,
+                                    gap: 2.5,
+                                    variant: AppMatrixDotVariant.pulse,
+                                    activeColor: context.colors.primary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (isPositionOverlayActive)
-                    if (viewModel.isEditingWatermarkPosition)
-                      WatermarkPositionOverlay(viewModel: viewModel)
-                    else
-                      CharacterPositionOverlay(viewModel: viewModel),
-                ],
+                          child: hasImage
+                              ? SizedBox.expand(
+                                  child: Image.memory(
+                                    displayBytes,
+                                    fit: BoxFit.contain,
+                                    gaplessPlayback: true,
+                                    cacheWidth: cacheWidth,
+                                  ),
+                                )
+                              : const SizedBox.expand(),
+                        );
+                      },
+                    ),
+                    if (isPositionOverlayActive)
+                      if (viewModel.isEditingWatermarkPosition)
+                        WatermarkPositionOverlay(viewModel: viewModel)
+                      else
+                        CharacterPositionOverlay(viewModel: viewModel),
+                  ],
+                ),
               ),
             ),
           ),
@@ -953,10 +1250,6 @@ BoxDecoration _canvasCardDecoration(BuildContext context, bool isSelected) {
   return BoxDecoration(
     color: colors.cardBackground,
     borderRadius: BorderRadius.circular(AppRadius.md),
-    border: Border.all(
-      color: isSelected ? colors.primary : colors.borderDefault,
-      width: 2.0,
-    ),
     boxShadow: [
       BoxShadow(
         color: isSelected
@@ -968,5 +1261,20 @@ BoxDecoration _canvasCardDecoration(BuildContext context, bool isSelected) {
         offset: const Offset(0, 4),
       ),
     ],
+  );
+}
+
+/// 画板流卡片的前景描边装饰 (叠于内层圆角裁剪之上，防止内容区直角覆盖选中圆角边框)
+BoxDecoration _canvasCardForegroundDecoration(
+  BuildContext context,
+  bool isSelected,
+) {
+  final colors = context.colors;
+  return BoxDecoration(
+    borderRadius: BorderRadius.circular(AppRadius.md),
+    border: Border.all(
+      color: isSelected ? colors.primary : colors.borderDefault,
+      width: isSelected ? 2.0 : 1.0,
+    ),
   );
 }

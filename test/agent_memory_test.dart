@@ -24,6 +24,9 @@ class _MockLlmProvider implements LlmProvider {
   String get modelId => 'mock-model';
 
   @override
+  void close() {}
+
+  @override
   Stream<HarnessEvent> streamChat({
     required List<AgentMessage> messages,
     required List<AgentTool> tools,

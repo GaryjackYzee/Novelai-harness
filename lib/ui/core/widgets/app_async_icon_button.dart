@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context_extensions.dart';
 import 'app_icon_button.dart';
+import 'app_transitions.dart';
 
 /// 统一带异步加载与拦截连击指示的图标按钮 (AppAsyncIconButton)
 ///
@@ -10,7 +12,8 @@ import 'app_icon_button.dart';
 /// - `agent_chat_input_bar.dart:525-557` (发送/流式响应终止键)
 ///
 /// 核心职责：
-/// 在 `isLoading == true` 时平滑将图标过渡为 14~16px 的微型 `CircularProgressIndicator` (strokeWidth: 2)，
+/// 在 `isLoading == true` 时通过 [AppIconSwap] (`09-icon-swap`) 平滑将图标过渡为
+/// 14~16px 的微型 `CircularProgressIndicator` (strokeWidth: 2)，
 /// 自动拦截重复连击与并发触发，支持四套与 [AppIconButton] 统一的视觉变体。
 class AppAsyncIconButton extends StatefulWidget {
   /// 是否正在异步执行/加载中
@@ -89,6 +92,15 @@ class _AppAsyncIconButtonState extends State<AppAsyncIconButton> {
   bool _isHovered = false;
 
   @override
+  void didUpdateWidget(covariant AppAsyncIconButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!(widget.enabled && !widget.isLoading && widget.onPressed != null) &&
+        _isHovered) {
+      _isHovered = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isInteractive =
@@ -126,7 +138,7 @@ class _AppAsyncIconButtonState extends State<AppAsyncIconButton> {
         widget.backgroundColor ??
             (_isHovered && isInteractive ? colors.primaryDark : colors.primary),
         widget.borderColor ?? Colors.transparent,
-        widget.iconColor ?? Colors.white,
+        widget.iconColor ?? colors.onPrimary,
         isInteractive && _isHovered
             ? AppShadows.subtle(
                 colors.primary,
@@ -148,8 +160,8 @@ class _AppAsyncIconButtonState extends State<AppAsyncIconButton> {
       ),
     };
 
-    final effectiveBg = isInteractive || widget.isLoading
-        ? bg
+    final Color? effectiveBg = isInteractive || widget.isLoading
+        ? (bg.a == 0 ? null : bg)
         : colors.mutedBackground.withValues(alpha: 0.5);
     final effectiveFg = isInteractive || widget.isLoading
         ? fg
@@ -160,15 +172,13 @@ class _AppAsyncIconButtonState extends State<AppAsyncIconButton> {
     final effectiveLoadingColor =
         widget.loadingColor ??
         (widget.variant == AppIconButtonVariant.primary
-            ? Colors.white
+            ? colors.onPrimary
             : colors.primary);
 
-    Widget innerContent = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: ScaleTransition(scale: anim, child: child),
-      ),
+    final Widget innerContent = AppIconSwap(
+      swapKey: widget.isLoading ? 'loading' : widget.icon,
+      duration: AppMotionDurations.fast,
+      enableBlur: false,
       child: widget.isLoading
           ? SizedBox(
               key: const ValueKey('loading'),
@@ -183,7 +193,7 @@ class _AppAsyncIconButtonState extends State<AppAsyncIconButton> {
             )
           : Icon(
               widget.icon,
-              key: const ValueKey('icon'),
+              key: ValueKey<IconData>(widget.icon),
               size: effectiveIconSize,
               color: effectiveFg,
             ),
@@ -193,16 +203,20 @@ class _AppAsyncIconButtonState extends State<AppAsyncIconButton> {
       onTap: isInteractive ? widget.onPressed : null,
       borderRadius: BorderRadius.circular(widget.radius),
       hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      focusColor: Colors.transparent,
       splashColor: isInteractive
           ? colors.primaryTint.withValues(alpha: 0.3)
           : Colors.transparent,
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.resolveDuration(context, AppMotionDurations.quick),
+        curve: AppMotionCurves.smoothOut,
         width: widget.size,
         height: widget.size,
         decoration: BoxDecoration(
           color: effectiveBg,
           borderRadius: BorderRadius.circular(widget.radius),
-          border: effectiveBorder != Colors.transparent
+          border: effectiveBorder.a > 0
               ? Border.all(color: effectiveBorder)
               : null,
           boxShadow: shadow,

@@ -10,7 +10,7 @@ import 'package:novelai_harness/core/harness/tools/library_tools.dart';
 import 'package:novelai_harness/core/harness/types.dart';
 import 'package:path/path.dart' as p;
 
-class MockLlmProvider implements LlmProvider {
+class MockLlmProvider extends LlmProvider {
   final List<HarnessEvent> Function(
     List<AgentMessage> messages,
     List<AgentTool> tools,
@@ -493,6 +493,39 @@ void main() {
     );
 
     test(
+      'AgentHarness.send injects llmContext into LLM request without mutating user message',
+      () async {
+        List<AgentMessage>? capturedMessages;
+        final provider = MockLlmProvider((messages, tools) {
+          capturedMessages = messages;
+          return [ContentDeltaEvent('Done')];
+        });
+
+        harness = AgentHarness(tools: tools, provider: provider);
+        await harness
+            .send(
+              '让 @[初音未来] 站在樱花树下',
+              llmContext: '<library_characters>\n- 标题: 初音未来\n</library_characters>',
+            )
+            .toList();
+
+        // 对话流中保留干净的用户原文
+        final storedUser = harness.messages.firstWhere(
+          (m) => m.role == AgentRole.user,
+        );
+        expect(storedUser.content, '让 @[初音未来] 站在樱花树下');
+        expect(storedUser.llmContext, contains('<library_characters>'));
+
+        // 发送给 LLM 的用户消息携带关联角色上下文
+        final sentUser = capturedMessages!.firstWhere(
+          (m) => m.role == AgentRole.user,
+        );
+        expect(sentUser.content, contains('让 @[初音未来] 站在樱花树下'));
+        expect(sentUser.content, contains('<library_characters>'));
+      },
+    );
+
+    test(
       'rewindToMessage truncates in-memory messages list accurately',
       () async {
         harness = AgentHarness(tools: tools);
@@ -878,6 +911,55 @@ void main() {
 
       final oldUser = receivedBatches.first.firstWhere(
         (m) => m.content.contains('昨天的图'),
+      );
+      expect(oldUser.images, isEmpty);
+      expect(oldUser.content, contains('图片附件已折叠'));
+    });
+
+    test('persistentImages 开启时历史图片不折叠、每轮原样重发', () async {
+      final receivedBatches = <List<AgentMessage>>[];
+      final provider = MockLlmProvider((messages, toolList) {
+        receivedBatches.add(messages);
+        return [ContentDeltaEvent('OK')];
+      });
+      final harness = AgentHarness(tools: tools, provider: provider)
+        ..persistentImages = true;
+
+      const img = AgentMessageImage(base64: 'aGk=');
+      await harness.send('看这张图', images: [img]).toList();
+      await harness.send('再看一次').toList();
+      await harness.send('还没完').toList();
+
+      // 每一轮请求中旧图片都携带原图 bytes，不再替换为占位符
+      for (final batch in receivedBatches) {
+        final oldUser = batch.firstWhere((m) => m.content == '看这张图');
+        expect(oldUser.images.length, equals(1));
+        expect(oldUser.images.first.base64, equals('aGk='));
+        expect(oldUser.content.contains('图片附件已折叠'), isFalse);
+      }
+
+      // 会话消息流同样保留原图
+      final storedUser = harness.messages.firstWhere(
+        (m) => m.content == '看这张图',
+      );
+      expect(storedUser.images.length, equals(1));
+    });
+
+    test('persistentImages 关闭时回到默认折叠行为', () async {
+      final receivedBatches = <List<AgentMessage>>[];
+      final provider = MockLlmProvider((messages, toolList) {
+        receivedBatches.add(messages);
+        return [ContentDeltaEvent('OK')];
+      });
+      final harness = AgentHarness(tools: tools, provider: provider);
+      expect(harness.persistentImages, isFalse);
+
+      const img = AgentMessageImage(base64: 'aGk=');
+      await harness.send('看这张图', images: [img]).toList();
+      await harness.send('再看一次').toList();
+
+      final oldUser = receivedBatches.last.firstWhere(
+        (m) => m.content.contains('看这张图'),
       );
       expect(oldUser.images, isEmpty);
       expect(oldUser.content, contains('图片附件已折叠'));

@@ -46,7 +46,7 @@ graph TD
     Core --> Data
 ```
 
-- **Core Harness Layer (`lib/core/`)**：轻量级 AI Agent 运行时。不依赖 Flutter UI 控件，通过事件流（Event Stream）驱动，负责对话生命周期、瞬态错误退避重试、Token 驱动的自适应上下文压缩、工具注册与执行、以及技能动态加载。
+- **Core Harness Layer (`lib/core/`)**：轻量级 AI Agent 运行时。完全不含 `package:flutter/` 依赖，通过事件流（Event Stream）驱动，负责对话生命周期、瞬态错误退避重试、Token 驱动的自适应上下文压缩、工具注册与执行、以及技能动态加载。
 - **Data Layer (`lib/data/`)**：负责外部 API 通信、数据持久化、复杂数学/图像处理与底层服务。包含 NovelAI 协议适配、焦点重绘几何算法、DCT 盲水印管道、32万+ Danbooru 离线字典检索等核心服务。
 - **UI Presentation Layer (`lib/ui/`)**：纯声明式 Flutter 界面，严格践行 MVVM 模式。视图（View）只负责布局、用户手势与视觉渲染，所有业务状态与事件分发完全由 `StudioViewModel`（通过 Mixin 分部组合）集中调度。
 
@@ -56,8 +56,14 @@ graph TD
 
 ```text
 Novelai-harness/
+├── .github/workflows/
+│   ├── ci.yml                                  # 日常 PR/Push CI (analyze / flutter test / worker test / gitleaks)
+│   └── release.yml                             # 三端构建与 GitHub Release 自动发布流水线
+├── cloudflare/prompt-library-sync/             # 词库云同步后端 (Cloudflare Workers + D1 SQLite)
+│   ├── src/worker.js                           # 增量合并/分块图床/鉴权路由实现
+│   └── test/worker.test.mjs                    # Node 内置测试 (node:sqlite D1 Mock)
 ├── lib/
-│   ├── main.dart                               # 桌面端初始化、窗口托管与应用启动入口
+│   ├── main.dart                               # 跨平台初始化、桌面窗口托管、启动容错降级与根主题装配
 │   │
 │   ├── core/                                   # 极简 AI Harness 运行时
 │   │   └── harness/
@@ -66,55 +72,73 @@ Novelai-harness/
 │   │       ├── agent_context.dart              # 请求上下文生命周期、回复编号与会话笔记状态
 │   │       ├── agent_compaction.dart           # 单飞后台压缩快照、分批摘要与版本校验提交
 │   │       ├── context_memory.dart             # 会话笔记/请求侧释放与上下文用量快照
+│   │       ├── reply_marker.dart               # `[回复 #N]` 标记剥离单一事实源
 │   │       ├── session_recorder.dart           # 会话记录器抽象接口 (Pi 格式落盘钩子)
 │   │       ├── presets/
 │   │       │   └── agent_preset.dart           # Agent 预设模型 (系统提示词/可用Skills/工具与参数权限白名单)
 │   │       ├── providers/
 │   │       │   ├── llm_provider.dart           # LLM 提供商通用接口抽象
-│   │       │   └── openai_provider.dart        # OpenAI 兼容协议流式实现 (SSE 解析、思考链状态机提取与 Token 统计)
+│   │       │   ├── llm_provider_factory.dart   # 多协议客户端统一装配工厂 (/interactions 与 OpenAI 兼容直出分发)
+│   │       │   ├── openai_provider.dart        # OpenAI Chat 兼容协议与多协议编排入口
+│   │       │   ├── endpoint_capability_cache.dart # 按端点+模型实例隔离的能力降级缓存 (消除全局可变静态集)
+│   │       │   ├── provider_http_transport.dart # 跨协议共享 HTTP/SSE 流式传输、工具 ID 规范化与重试状态机
+│   │       │   ├── protocol_stream_executors.dart # Anthropic Messages 与 OpenAI Responses 独立流式执行器
+│   │       │   ├── openai_responses.dart       # OpenAI Responses API (`/v1/responses`) 编解码
+│   │       │   ├── anthropic_messages.dart     # Anthropic Messages API (`/v1/messages`) 编解码与思考回放
+│   │       │   ├── google_interactions_provider.dart # Google Gemini Interactions API 客户端
+│   │       │   ├── prompt_cache_policy.dart    # Prompt Cache 键与保留策略
+│   │       │   ├── prompt_tool_codec.dart      # 纯聊天渠道提示词工具调用编解码与流式解析
+│   │       │   └── tool_call_ids.dart          # 工具调用 ID 规范化与去重
 │   │       ├── tools/
 │   │       │   ├── agent_tool.dart             # 工具抽象基类、执行上下文与工具注册中心
-│   │       │   ├── annotation_tools.dart       # 画板批注五件套工具与覆盖层离屏绘制 (view/add/update/remove/clear)
+│   │       │   ├── annotation_tools.dart       # 画板批注五件套工具 (view/add/update/remove/clear，覆盖层渲染经回调注入)
 │   │       │   ├── anysearch_tools.dart       # AnySearch 网络搜索三件套工具 (web_search / get_search_domains / web_extract)
 │   │       │   ├── ask_user_tool.dart          # 向用户提出结构化单选/多选/填空问题 (ask_user)
 │   │       │   ├── context_memory_tool.dart    # 会话笔记与请求侧释放 (context_memory)
-│   │       │   ├── canvas_view_tool.dart       # 画板历史图片查看工具 (view_canvas_image，支持索引与覆盖层)
+│   │       │   ├── canvas_view_tool.dart       # 画板历史图片查看工具 (view_canvas_image，覆盖层渲染经回调注入)
 │   │       │   ├── character_prompt_tools.dart  # 多角色提示词增删改查四件套工具
 │   │       │   ├── danbooru_search_tools.dart  # Danbooru 离线/在线语义搜索与 NPMI 画师推荐工具
+│   │       │   ├── describe_tools_tool.dart    # 精简工具表面按需展开 Schema (describe_tools)
 │   │       │   ├── load_skill_tool.dart        # 技能指令、资源清单与包内文件按需加载 (load_skill)
 │   │       │   ├── novelai_tools.dart          # 生图、新版超分、官方标签联想与账号查询工具
 │   │       │   ├── novelai_inpaint_tool.dart   # 局部修复与焦点特写工具 (novelai_inpaint / get_inpaint_geometry)
 │   │       │   ├── ai_edit_image_tool.dart    # AI 整图编辑工具 (ai_edit_image，外部多模态模型整图重绘)
+│   │       │   ├── pipeline_tool.dart          # 双轨 CodeMode 批量编排工具 (run_pipeline)
 │   │       │   ├── prompt_library_tools.dart   # 词组合预设库增删改查与预览图设置工具
 │   │       │   ├── studio_params_tool.dart     # 工作台生图参数查询与批量同步修改工具
 │   │       │   └── vision_image_codec.dart     # 视觉附件压缩 (最长边 1024 等比缩小 PNG) 与 MIME 嗅探
 │   │       └── skills/
-│   │           └── skills.dart                 # 内置技能库 (V5 自然语言架构师、艺术总监、Danbooru 标签大师)
+│   │           ├── skill_format_exception.dart # 技能包导入/解析结构化异常
+│   │           └── skills.dart                 # 内置技能库与 SkillRegistry
 │   │
 │   ├── data/                                   # 数据与服务层
 │   │   ├── models/
 │   │   │   ├── novelai_models.dart             # 聚合导出 barrel 文件 (保持模块引用解耦)
 │   │   │   ├── anysearch_models.dart           # AnySearch 协议实体 (搜索结果/子域目录/正文提取/异常)
+│   │   │   ├── banned_word_sanitizer.dart      # 禁词过滤与规范化引擎
+│   │   │   ├── danbooru_search_models.dart     # 在线 Danbooru 搜索与关联推荐模型
 │   │   │   ├── image_palette.dart              # 图片主色盘模型 (ImagePalette/PaletteColor) 与种子色文本互转
 │   │   │   ├── inpaint_models.dart             # 局部修复与焦点特写模型 (InpaintMode/Geometry/BrushStroke/Params)
+│   │   │   ├── llm_cache_config.dart           # LLM 缓存策略配置模型
 │   │   │   ├── nai_catalog.dart                # NaiModel/采样器/噪声调度/分辨率预设枚举 (含 inpaintModelId)
 │   │   │   ├── nai_character_prompt.dart       # 多角色提示词模型、位置布局与坐标量化
 │   │   │   ├── nai_generation_params.dart      # 生图参数实体与官方 Payload 构建 (含 toInfillApiPayload)
 │   │   │   ├── nai_image_result.dart           # 图片生成结果、流式进度帧与导出标记 (含角标文案)
 │   │   │   ├── nai_account_info.dart           # 账号等级、V5 体力池余量与官方 Tag 联想模型
 │   │   │   ├── nai_prompt_presets.dart         # 质量词/UC 预设与提示词文本后处理
-│   │   │   ├── prompt_library_models.dart     # 词组合预设分类常量与 PromptComboEntry 实体
-│   │   │   ├── skill_package.dart             # 技能包导入预览快照 (Skill + 相对路径文件字节)
-│   │   │   ├── llm_models.dart                # LLM 供应商、模型卡片、思考参数格式与图像输出能力
+│   │   │   ├── prompt_library_models.dart      # 词组合预设分类常量与 PromptComboEntry 实体
+│   │   │   ├── prompt_library_sync_models.dart # 词库云同步配置与状态结果模型
+│   │   │   ├── skill_package.dart              # 技能包导入预览快照 (Skill + 相对路径文件字节)
+│   │   │   ├── llm_models.dart                 # LLM 供应商、模型卡片、思考参数格式与图像输出能力
 │   │   │   ├── tag_models.dart                 # Danbooru 标签分类、联想条目与 NovelAI Token 结构
 │   │   │   ├── nai_special_tags.dart           # NovelAI 官方专属标签事实源 (画质/美学/复杂度/数据集/透明通道/改名/其他 + 年代样例)
 │   │   │   ├── image_annotation.dart           # 图像批注模型 (rect 选区/point 图钉/global，归一化坐标+调色板)
 │   │   │   ├── canvas_board_models.dart        # 自由大画布节点模型 (图片卡/便利贴/连线/视口矩阵，含 JSON 序列化)
 │   │   │   ├── image_metadata_models.dart      # 图像元数据模型与水印配置实体 (WatermarkConfig)
-│   │   │   └── comfyui_models.dart            # ComfyUI 模式实体 (Bridge 状态快照/参数补丁/实时选项清单/图片条目)
+│   │   │   └── comfyui_models.dart             # ComfyUI 模式实体 (Bridge 状态快照/参数补丁/实时选项清单/图片条目)
 │   │   ├── services/
 │   │   │   ├── novelai_service.dart            # NovelAI 官方 HTTP 通信、并发锁与纯内存 ZIP 解包
-│   │   │   ├── anysearch_service.dart           # AnySearch 官方 REST 客户端 (搜索/子域目录/正文提取，信封解析与 Bearer/匿名双模式)
+│   │   │   ├── anysearch_service.dart          # AnySearch 官方 REST 客户端 (搜索/子域目录/正文提取，信封解析与 Bearer/匿名双模式)
 │   │   │   ├── anlas_calculator.dart           # 现代 Anlas 消耗计算单一事实源 (Opus 免费档/分档超分计费)
 │   │   │   ├── inpaint_service.dart            # 焦点特写几何计算 (1MP 潜空间超采样/64 步长)、量化蒙版与无损回贴
 │   │   │   ├── watermark_service.dart          # 图像导出管道单一事实源 (可见水印/自动对比度/智能选位/Koch-Zhao DCT 盲水印)
@@ -125,15 +149,23 @@ Novelai-harness/
 │   │   │   ├── image_edit_service.dart         # 外部绘图模型整图编辑服务 (OpenAI 兼容 /chat/completions 传图返图)
 │   │   │   ├── rtx_upscale_service.dart        # Windows NVIDIA 驱动 VSR 子进程、取消/超时与临时文件清理
 │   │   │   ├── comfyui_service.dart            # ComfyUI PromptToolkit AI Bridge 客户端 (注册表探测/参数下发/采样器选项实时拉取)
+│   │   │   ├── danbooru_search_service.dart    # Danbooru 在线标签语义与共现检索客户端
 │   │   │   ├── image_metadata_service.dart     # PNG Chunks 与 Alpha LSB 隐写读取、元数据脱敏抹除与注入
+│   │   │   ├── media_store_service.dart        # Android MediaStore / SAF 树目录导出与系统剪贴板通道
+│   │   │   ├── notification_history_service.dart # 应用内通知中心持久化记录
 │   │   │   ├── palette_service.dart            # 图片主色盘提取 (MD3 Celebi 量化+Score 打分，后台 Isolate，LRU 缓存)
-│   │   │   ├── tag_dictionary_service.dart     # 32万+ Danbooru 离线词库检索、官方专属词同构合并、年代标签动态合成、多模态反查与缓存服务 (后台 Isolate)
+│   │   │   ├── preset_transfer_service.dart    # Agent 预设安全 JSON 导入导出服务
+│   │   │   ├── tag_dictionary_service.dart     # 32万+ Danbooru 离线词库检索、官方专属词同构合并、年代标签动态合成与缓存服务 (后台 Isolate)
+│   │   │   ├── tag_dictionary_update_service.dart # Danbooru 词库在线热更新检查与校验
 │   │   │   ├── prompt_ast_engine.dart          # NovelAI 提示词 AST 分词、权重增减、注释禁用与 SD 语法转换引擎
 │   │   │   ├── prompt_token_counter_service.dart # 提示词 Token 计数单一事实源 (T5/Qwen 真分词、V3 CLIP 启发式、黄/红双档阈值)
 │   │   │   ├── tokenizers/                     # 分词器实现 (T5 SentencePiece / Qwen3.5 BPE，词表资产 assets/tokenizers/)
 │   │   │   ├── prompt_library_service.dart     # 词组合预设库本地持久化、检索与 JSON 导入导出
+│   │   │   ├── prompt_library_sync_service.dart # 词库云同步双向增量合并与预览图去重传输客户端
 │   │   │   ├── skill_package_service.dart      # 技能目录/ZIP 安全导入、应用托管存储、资源读取与整包导出
-│   │   │   ├── config_service.dart             # 本地配置与 ~/.pi/agent/novelai.json 自动识别与内置预设同步
+│   │   │   ├── annotation_overlay_renderer.dart # 批注与角色锚点覆盖层 Flutter 离屏绘制服务
+│   │   │   ├── secret_store.dart             # API 密钥/云同步令牌存储边界抽象 (SecretStore / SharedPreferencesSecretStore)
+│   │   │   ├── config_service.dart             # 全局协调配置与统一串行写队列 (`ConfigService.shared` + SecretStore)
 │   │   │   ├── session_log_service.dart        # Pi 官方标准 JSONL 格式会话记录与多分支恢复
 │   │   │   ├── usage_ledger_service.dart       # Token 增量账本记录、去重与多维聚合统计
 │   │   │   ├── llm_model_fetcher.dart          # 在线拉取远程 LLM 模型列表与能力元数据自动解析
@@ -175,7 +207,8 @@ Novelai-harness/
 │           │       ├── tool_card.dart           # 工具卡片 (启用开关/Schema 查看)
 │           │       └── tool_editor_dialog.dart  # 自定义模板工具编辑弹窗
 │           └── studio/                         # 核心工作台功能区
-│               ├── view_models/                # Studio 状态管理中枢 (Mixin 分部架构)
+│               ├── view_models/                # Studio 状态管理中枢 (Mixin 分部 + 独立领域控制器)
+│               │   ├── board/board_controller.dart # 自由大画布独立领域控制器 (局部 ChangeNotifier + 外壳广播分级)
 │               │   ├── studio_view_model.dart  # 状态管理中枢：核心状态 Mixin + ViewModel 主体初始化与桥接
 │               │   ├── studio_vm_layout.dart    # 布局分部：三栏分割线拖拽防抖落盘与侧栏页签切换
 │               │   ├── studio_vm_harness.dart   # Harness 分部：工具装配/LLM切换/思考强度切换/预设与技能管理
@@ -184,10 +217,11 @@ Novelai-harness/
 │               │   ├── studio_vm_chat.dart      # 对话分部：多轮对话/图片附件/ask_user提问/付费确认/通知节流
 │               │   ├── studio_vm_sessions.dart  # 会话分部：会话切换/新建/重命名/删除与消息树回溯
 │               │   ├── studio_vm_characters.dart # 角色分部：多角色提示词 CRUD 与画板定位同步
-│               │   ├── studio_vm_slash.dart     # 斜杠分部：斜杠指令分发与参数解析
-│               │   ├── studio_vm_library.dart  # 词库分部：词组合预设库检索/增删改/导入导出与一键应用
-│               │   ├── studio_vm_annotations.dart # 批注分部：自由大画布节点/便利贴 CRUD 与批注持久化同步
+│               │   ├── studio_vm_slash.dart     # 斜杠分部：实现 _StudioSlashHost 最小适配并委托分发器
+│               │   ├── slash_command_dispatcher.dart # 无状态斜杠指令分发器 + SlashCommandHost 最小接口 (解耦环依赖)
+│               │   ├── studio_vm_library.dart  # 词库分部：词组合预设库检索/增删改/云同步与一键应用
 │               │   ├── studio_vm_comfyui.dart  # ComfyUI 分部：Bridge 连接探测/选项清单拉取/参数推送/排队轮询与统一落图
+│               │   ├── streaming_controllers.dart # 高频瞬态控制器 (StreamingTextController / LiveProgressController)
 │               │   ├── chat_checkpoints.dart   # 消息树分支检查点 (回溯视图数据模型)
 │               │   ├── param_snapshot_journal.dart # 生图参数快照日志 (记录 Agent 参数修改差异)
 │               │   └── slash_command_catalog.dart # 内置斜杠指令目录单一事实源 (自动补全与 /help 共享)
@@ -244,8 +278,7 @@ Novelai-harness/
 │                   ├── agent_rewind_view.dart   # 历史时刻回溯视图 (双击 ESC 唤出)
 │                   ├── agent_session_list_view.dart # 会话抽屉列表视图 (管理多会话)
 │                   ├── inline_agent_question_card.dart # ask_user 结构化提问内嵌卡片
-│                   ├── pill_widgets.dart       # 胶囊选择器通用组件 (PillDropdown / ToggleChip)
-│                   ├── editable_slider.dart    # 精准数值微调滑块 (整型与浮点统一封装)
+│                   ├── app_dropdown.dart / app_number_slider.dart / app_segmented_controls.dart / app_toggle_controls.dart # 见 lib/ui/core/widgets/
 │                   └── studio_shared.dart       # 共享原子组件 (分组标题/清空按钮/Token 状态条)
 ```
 
@@ -307,14 +340,14 @@ sequenceDiagram
 - **回复收尾与持久化性能**：流结束先通知最终消息与输入栏状态，再刷新会话列表。`SessionLogService.listSessions()` 异步枚举目录，以文件大小和修改时间缓存轻量元数据，仅将变化文件的读取与 JSONL 解码交给 Isolate，避免每轮在 UI 线程重解析所有含图片的历史。`UsageLedgerService.record()` 立即更新内存，后台单飞合并快照、Isolate 编码并异步原子写盘；退出通过 `flush()` 等待最终快照。
 - **视觉附件单次展示与 1024 像素降采样**：
   - 视觉模型在多轮对话中如果不断重新读取旧大图，会导致上下文迅速爆满并破坏 Prompt Cache。
-  - 系统引入 `imageEpoch` 机制：**图片只给模型看一次**。旧轮次历史图片自动折叠为固定占位文本，仅当前轮新增附件与画板审查结果发送图片数据；
+  - 系统引入 `imageEpoch` 机制：**图片只给模型看一次**（设置 → 默认 → 上下文管理新增「图片持久发送」开关，开启后历史轮次图片不折叠、每轮原样重发，默认关闭）；旧轮次历史图片自动折叠为固定占位文本，仅当前轮新增附件与画板审查结果发送图片数据；
   - `VisionImageCodec` 统一将视觉图片等比缩放至最长边 ≤ 1024px 并转码为 PNG，显著降低多模态 Token 消耗；模型若需查看微观细节，可显式指定 `full_resolution: true` 请求未压缩原图。
 
 ---
 
 ### 3.1.0 工具调用协议与渠道兼容
 
-- **原生协议 ID 修复**：`tool_call_ids.dart` 在请求侧规范化空、非法或重复的工具 ID，同步按原 ID/工具名/顺序配对结果，确保 Claude 中转上游要求的全请求 ID 唯一性。新 SSE 调用也与历史 ID 去重；UI 与磁盘历史不被重写，旧会话无需删除。展示层 `AssistantMessageItem` 以消息 ID + 工具 ID + 调用位置作为组件 Key，兼容旧历史中的重复/空 ID，避免撞键并保留各工具块独立折叠状态；回归见 `agent_chat_tool_identity_test.dart`。
+- **原生协议 ID 修复**：`tool_call_ids.dart` 在请求侧规范化空、非法或重复的工具 ID，同步按原 ID/工具名/顺序配对结果，确保 Claude 中转上游要求的全请求 ID 唯一性。新 SSE 调用也与历史 ID 去重；UI 与磁盘历史不被重写，旧会话无需删除。展示层 `AssistantMessageItem` 以消息 ID + 工具 ID + 调用位置作为组件 Key，兼容旧历史中的重复/空 ID，避免撞键并保留各工具块独立折叠状态；回归见 `agent_composer_stop_and_rewind_test.dart`。
 - **提示词工具调用**：设置 → 模型 → 供应商配置中的开关默认关闭，`LlmProviderConfig.promptToolUse` 随供应商 JSON 持久化。用于 Claude 等渠道原生工具协议不兼容，也适用于只支持聊天的渠道；不是自动失败重试切换。开启后 `PromptToolCodec` 将白名单内的工具 Schema 注入系统文本，历史调用转换为 Hermes 风格 `<tool_call>` JSON，结果转换为用户消息中的不可信 `<tool_response>` JSON；完全不发送 `tools`、`tool_choice`、`tool_calls`、`tool_call_id` 或 `tool` 角色。
 - **解析与执行边界**：仅解析正文里的独立调用块，思考、围栏、引用与行内示例不执行。增量正文保持流式输出，调用需包含严格 JSON 对象与对象类型的 arguments，单块 64 KiB、每条回复最多 32 个调用。完整流结束后才一次性提交；非法/截断/越权调用整组拒绝，格式错误仍消费尾部 usage。实际执行复用 Harness 的串行工具链、预设权限、点数确认、取消及轮数收尾，不执行任意脚本。
 - **图片与上下文**：请求转换发生在 imageEpoch 折叠之后。原生模式对齐 `reference/pi`：`tool` 角色只回传文本与调用 ID，连续工具结果全部配对后，再插入携带来源标识与 `image_url` 的 `user` 多模态消息；不把图片放进网关可能丢弃的 `tool.content` 数组。兼容模式的工具结果本就以 `user` 多模态消息回传，提示词明确文本调用协议不关闭视觉输入。已折叠图片不重新发送，直接用户附件路径不变。`llm_tool_image_request_test.dart` 从 Harness 到实际 HTTP 请求验证两种模式的用户/工具附件、单轮多个工具结果连续配对以及跨轮折叠；额外协议文本通过 `LlmRequestOverhead` 纳入无用量锚点时的上下文估算。压缩模型也沿用所属供应商开关，无工具摘要轮只要求直接回答。
@@ -451,17 +484,18 @@ $$\text{原始原图} \xrightarrow{\text{步骤 1}} \text{可见水印合成} \x
 
 自由大画布支持无限漫游、多图参考、矩形/图钉批注与便利贴动态连线：
 
-- **局部覆盖重绘架构 (`BoardLiveOverrides`)**：
-  - 卡片拖拽、选区调节与手柄拉伸期间，完全通过 `ValueNotifier<BoardLiveOverrides>` 局部驱动，连线层 `BoardWirePainter` 仅重绘连线 CustomPaint，绝不在拖拽过程中频繁触发整个工作台的 `notifyListeners()`，确保 60fps 满帧丝滑交互。
+- **局部通知与覆盖重绘架构 (`BoardController` + `BoardLiveOverrides`)**：
+  - 画板内部节点、便签、连线与批注变更仅经 `BoardController` 自身 `ChangeNotifier` 触发 `FreeformAnnotationBoard` 局部 `ListenableBuilder` 重建，不引发外层工作台全局重建；仅批注模式开关切换或历史选中图批注同步时触发宿主壳全局广播。
+  - 卡片拖拽、选区调节与手柄拉伸期间，完全通过 `ValueNotifier<BoardLiveOverrides>` 局部驱动，连线层 `BoardWirePainter` 仅重绘连线 CustomPaint，绝不在拖拽过程中频繁触发 `notifyListeners()`，确保 60fps 满帧丝滑交互。
 - **分层绘制与命中测试**：
   - 背景网格位于卡片底层（`painter`），动态连线位于卡片顶层（`foregroundPainter`），节点卡片位于中间；
   - 连线端口支持一对多关系，参考图与便利贴连线自动进行锚点边缘回缩，避免遮挡编号徽章。
 
 ---
 
-### 3.6 StudioViewModel MVVM 分部组合架构
+### 3.6 StudioViewModel MVVM 分部组合与领域控制器架构
 
-为了避免单一 ViewModel 文件膨胀为千行上帝类，`StudioViewModel` 采用 Dart `part` 与 `Mixin` 机制解耦组合：
+为了避免单一 ViewModel 文件膨胀为千行上帝类，`StudioViewModel` 采用 Dart `part` + `Mixin` 分部组合，并试点将高内聚的自由大画布状态迁出为独立控制器 `BoardController`（经 `BoardControllerHost` 最小接口与宿主通信）：
 
 ```mermaid
 classDiagram
@@ -469,6 +503,7 @@ classDiagram
         +init()
         +updateConfig()
         +selectModel()
+        +board: BoardController
     }
     class _StudioCore {
         <<Fields>>
@@ -486,8 +521,8 @@ classDiagram
     class _StudioCharactersMixin
     class _StudioSlashMixin
     class _StudioLibraryMixin
-    class _StudioAnnotationsMixin
     class _StudioComfyMixin
+    class BoardController
 
     StudioViewModel --|> _StudioCore
     StudioViewModel ..> _StudioLayoutMixin
@@ -499,12 +534,12 @@ classDiagram
     StudioViewModel ..> _StudioCharactersMixin
     StudioViewModel ..> _StudioSlashMixin
     StudioViewModel ..> _StudioLibraryMixin
-    StudioViewModel ..> _StudioAnnotationsMixin
     StudioViewModel ..> _StudioComfyMixin
+    StudioViewModel *-- BoardController
 ```
 
 - **`_StudioCore`**：统一定义所有私有核心状态字段与数据访问契约；
-- **各领域 Mixin**：将布局、Harness 调度、生图流水线、修复处理、对话与流式节流、会话分支、角色管理、斜杠指令、词库、大画布批注、ComfyUI 桥接等逻辑高内聚拆分到各个独立分部中，保持各业务职责极其明确。
+- **各领域 Mixin 与控制器**：将布局、Harness 调度、生图流水线、修复处理、对话与流式节流、会话分支、角色管理、词库、ComfyUI 桥接等逻辑拆分到独立分部；斜杠指令收口至无状态 `SlashCommandDispatcher` + `SlashCommandHost` 契约以解耦 `chat/sessions` 环依赖，自由大画布批注域独立为 `BoardController`。
 
 ---
 
@@ -585,7 +620,10 @@ Agent 对话可联网检索：AnySearch (`https://api.anysearch.com`) 三端点�
 
 ### 3.10 窄屏布局与二维拖动
 
-- **紧凑布局**：窄屏 `StudioView` 的三卡片仍由横向 `PageView` 承载；移动端顶部导航总高 32 逻辑像素（与桌面标题栏同高），三个页签使用 `AppSegmentedPillBar` 的 `AppPillVariant.underline`（无外框、无装饰图标，仅文字与底部选中细线），桌面窗口内仍用 `soft` 胶囊 + 窗口按键。底部五个快捷入口复用 `AppNavTile(axis: Axis.vertical)`，统一选中底色、边框和圆角。软键盘弹出时隐藏底部快捷栏，换页时释放输入焦点，草稿保留在 ViewModel。
+- **紧凑布局（方案 A：底部主导航 + 顶部语境子导航）**：窄屏（`width < 900`）`StudioView` 的三卡片仍由横向 `PageView` 承载（`生图` / `画板` / `助手`），词库与设置以不卸载 `PageView` 的覆盖层挂载。**底部主导航**收敛为 4 个一级入口（`生图` `segmented_pill_0`、`画板` `segmented_pill_1`、`助手` `segmented_pill_2`、`词库` `mobile_nav_library`），均复用 `AppNavTile(axis: Axis.vertical)`（统一选中底色/边框，支持图标右上状态圆点指示）。**顶部语境子导航**（`_MobileTopBar`）：移动端总高 44 逻辑像素（桌面窄窗仍复用 32px 标题栏样式并保留窗口按键）；生图页左侧渲染 `参数` / `提示词` / `修复` 二级胶囊切换，画板页展示当前画布模式/状态徽章及快捷修图按钮，右侧常驻全局`设置`入口（`mobile_nav_settings`）；位于词库或设置覆盖层时点击底部一级入口会直接退出覆盖层并切至目标页。软键盘弹出时隐藏底部快捷栏，换页时释放输入焦点，草稿保留在 ViewModel。
+- **手机局部修复一体化工作区**：在窄屏工作台切入「局部修复」页时，`ParameterCard(compact: true)` 内置渲染一体化工作区（上方 `InpaintRepairCanvas` 蒙版画板 + 中部 `mobile_inpaint_params_toggle` 可折叠 `InpaintPage` 参数抽屉（`Visibility(maintainState: true)`，发起执行时自动折叠）+ 底部 `GenerateDock`），工具坞窄屏横向自适应滚动不溢出；`ImageCanvasCard(compact: true)` 在第 2 页保持专注作品流浏览，不再跨页被修复蒙版劫持。
+- **跨页自动跳转、手势隔离与批注历史选图**：在工作台（非修复页）点击生成自动跳往画板页，启动角色位置编辑自动跳往画板页并在完成后返回来源页，在画板点选修复自动切回工作台「局部修复」，进入批注模式自动前往画板页、发送批注给 AI 后跳往助手页；批注期间第 3 页仍保持 `AgentChatCard` 与常规助手对话可达。为消除触摸手势冲突：局部修复页、批注模式与画板角色位置编辑期间外层 `PageView` 切为 `NeverScrollableScrollPhysics()` 锁定横向滑页；`PromptExtensionDeck` 在窄屏限定仅顶部 44px 标题栏响应左右滑动切栏；`FreeformAnnotationBoard` + `BoardAnnotationToolbar` 在窄屏新增「历史记录」（`board_pick_history_ref_button`）底部网格选图弹窗，补足无桌面拖放时的参考图添加能力。
+- **手机画板底部统一操作栏与 ActionSheet**：`ImageCanvasCard(compact: true)` 移除原本会碰撞遮挡的左下参数角标与右下悬浮保存键，改用单行 `MobileCanvasActionBar`（左侧分辨率与可点复制 Seed，右侧一键修图、批注、生成后可选保存、更多 `⋯`），并为流式卡片留足底部避让边距；点按`⋯` 或长按卡片均呼出 `showMobileImageActionSheet`（与桌面右键菜单复用 `buildImageContextMenuActions` 与 `saveOrExportSelectedCanvasImage`）。
 - **生成与对话操作区**：`ParameterCard → GenerateDock`、`AgentChatCard → AgentChatInputBar` 透传 `compact`，仅窄屏开启，桌面维持原布局。窄屏触屏控件统一到 48 逻辑像素：账号徽章 + 点数 + 完整 V5 体力条保留原信息密度，刷新与附件/发送/思考/模型选择均改由原子按钮与 `AppDropdown` 的 `pill` 变体承载（不改变桌面尺寸）。
 - **手机对话框分层**：`AgentChatInputBar` 与桌面共用同一编辑器、控制器与按键链，仅重排布局：正文输入保持整行宽度（3 行后内部滚动），卡片内工具栏为「附件 → 模型选择 → 发送」，两者均无外框。思考档位与上下文用量收进输入框**上方的辅助抽屉**（`chat_aux_drawer_toggle`，默认折叠，仅一行「思考 … · 上下文 N%」摘要，展开后才渲染选择器与用量块）。`ChatContextStatus` 是唯一的上下文用量展示组件：桌面为悬停提示，手机为 48 像素可点区域，点按弹出底部抽屉展示模型、估算口径、会话累计用量与压缩状态，不再依赖悬停；流式输出期间发送键切换为停止键，补足手机无 Esc 的终止入口。
 - **手势单一入口**：`lib/ui/core/widgets/app_pan_gesture_region.dart` 的 `AppPanGestureRegion` 不含业务状态，给分辨率画板、角色锚点、水印移动与缩放提供二维拖动。Flutter 默认 Pan 的触摸阈值高于单轴滚动，故按同一 `MediaQuery.gestureSettings` 将 Pan 接受阈值对齐单轴 Drag，使操作面先于祖先翻页/滚动识别；不在按下时独占事件，也不禁用外围滚动。已接受手势收到 `PointerCancel` 时转取消回调，不误走松手提交。

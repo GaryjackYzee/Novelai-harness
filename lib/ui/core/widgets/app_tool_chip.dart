@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context_extensions.dart';
 
@@ -49,6 +50,15 @@ class AppToolChip extends StatefulWidget {
   /// 圆角大小，默认 [AppRadius.sm] (4px) 或 6px
   final double radius;
 
+  /// 可选固定高度 (传入时垂直居中内容，便于与同排按钮等高对齐)
+  final double? height;
+
+  /// 未选中态自定义背景色 (默认为透明)
+  final Color? unselectedBackgroundColor;
+
+  /// 可选描边颜色 (未选中态使用此描边；选中态自动匹配主色)
+  final Color? borderColor;
+
   /// 悬浮提示文案
   final String? tooltip;
 
@@ -63,6 +73,9 @@ class AppToolChip extends StatefulWidget {
     this.fontSize = 12.0,
     this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     this.radius = 6.0,
+    this.height,
+    this.unselectedBackgroundColor,
+    this.borderColor,
     this.tooltip,
   });
 
@@ -74,30 +87,48 @@ class _AppToolChipState extends State<AppToolChip> {
   bool _isHovered = false;
 
   @override
+  void didUpdateWidget(covariant AppToolChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onTap == null && _isHovered) {
+      _isHovered = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isSelected = widget.isSelected;
     final isEnabled = widget.onTap != null;
 
+    final Color baseUnselectedBg =
+        widget.unselectedBackgroundColor ?? Colors.transparent;
+    final Color hoveredUnselectedBg = widget.unselectedBackgroundColor == null
+        ? colors.borderSubtle
+        : Color.alphaBlend(colors.borderSubtle, baseUnselectedBg);
+
     final Color bgColor = switch (widget.variant) {
       AppToolChipVariant.filled =>
         isSelected
             ? colors.primary
-            : (_isHovered && isEnabled
-                  ? colors.borderSubtle
-                  : Colors.transparent),
+            : (_isHovered && isEnabled ? hoveredUnselectedBg : baseUnselectedBg),
       AppToolChipVariant.tinted =>
         isSelected
             ? colors.primaryTint
-            : (_isHovered && isEnabled
-                  ? colors.borderSubtle
-                  : Colors.transparent),
+            : (_isHovered && isEnabled ? hoveredUnselectedBg : baseUnselectedBg),
     };
+
+    final Color? effectiveBorderColor = widget.borderColor == null
+        ? null
+        : (isSelected
+              ? (widget.variant == AppToolChipVariant.filled
+                    ? colors.primary
+                    : colors.primary.withValues(alpha: 0.35))
+              : widget.borderColor);
 
     final Color fgColor = switch (widget.variant) {
       AppToolChipVariant.filled =>
         isSelected
-            ? Colors.white
+            ? colors.onPrimary
             : (isEnabled ? colors.textPrimary : colors.textMuted),
       AppToolChipVariant.tinted =>
         isSelected
@@ -105,14 +136,29 @@ class _AppToolChipState extends State<AppToolChip> {
             : (isEnabled ? colors.textPrimary : colors.textMuted),
     };
 
-    Widget content = Container(
+    final reduceMotion = AppMotion.shouldReduceMotion(context);
+
+    Widget content = AnimatedContainer(
+      duration: AppMotion.resolveDuration(context, AppMotionDurations.quick),
+      curve: AppMotionCurves.smoothOut,
+      height: widget.height,
+      transform: Matrix4.translationValues(
+        0,
+        (_isHovered && isEnabled && !reduceMotion) ? -1.0 : 0.0,
+        0,
+      ),
+      transformAlignment: Alignment.center,
       padding: widget.padding,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: bgColor.a == 0 ? null : bgColor,
         borderRadius: BorderRadius.circular(widget.radius),
+        border: effectiveBorderColor != null
+            ? Border.all(color: effectiveBorderColor)
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (widget.icon != null) ...[
             Icon(widget.icon, size: widget.iconSize, color: fgColor),
@@ -148,7 +194,7 @@ class _AppToolChipState extends State<AppToolChip> {
     if (widget.tooltip != null && widget.tooltip!.isNotEmpty) {
       content = Tooltip(
         message: widget.tooltip!,
-        waitDuration: const Duration(milliseconds: 500),
+        waitDuration: AppMotionDurations.verySlow,
         child: content,
       );
     }

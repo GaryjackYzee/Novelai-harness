@@ -252,8 +252,7 @@ mixin _StudioInpaintMixin on _StudioCore {
 
     final target = inpaintSourceImage;
     if (target == null) {
-      _errorMessage = vmL10n.vmInpaintNoImage;
-      notifyListeners();
+      reportError(vmL10n.vmInpaintNoImage, source: AppNoticeSource.inpaint);
       return;
     }
 
@@ -263,15 +262,13 @@ mixin _StudioInpaintMixin on _StudioCore {
     if (_inpaintParams.mode == InpaintMode.focus &&
         _inpaintParams.selectionRect == null &&
         !_inpaintParams.hasBrushMask) {
-      _errorMessage = vmL10n.vmInpaintNoMask;
-      notifyListeners();
+      reportError(vmL10n.vmInpaintNoMask, source: AppNoticeSource.inpaint);
       return;
     }
 
     final config = _config;
     if (config.novelAiKey.trim().isEmpty) {
-      _errorMessage = vmL10n.vmInpaintNoApiKey;
-      notifyListeners();
+      reportError(vmL10n.vmInpaintNoApiKey, source: AppNoticeSource.inpaint);
       return;
     }
 
@@ -282,11 +279,16 @@ mixin _StudioInpaintMixin on _StudioCore {
     notifyListeners();
 
     try {
-      // 历史快照的 bytes 为空，像素在缓存或文件里；请求前统一取一次原图，
-      // 异步加载期间换图也不会改变这次要修复的图。
+      // 历史/画布快照会清空 bytes，像素在缓存或文件里。
+      // 缓存命中时 ensureImageLoaded 直接返回，不会写回 target.bytes。
+      // 这里固定使用调用开始时的 target，异步加载期间换图也不改这次要修的图。
       final sourceBytes = await ensureImageLoaded(target);
       if (sourceBytes == null || sourceBytes.isEmpty) {
-        _errorMessage = vmL10n.vmInpaintNoImage;
+        reportError(
+          vmL10n.vmInpaintNoImage,
+          source: AppNoticeSource.inpaint,
+          notify: false,
+        );
         _statusMessage = null;
         return;
       }
@@ -346,7 +348,11 @@ mixin _StudioInpaintMixin on _StudioCore {
       _inpaintPreviewBytes = null;
       _statusMessage = vmL10n.vmInpaintDone;
     } catch (e) {
-      _errorMessage = vmL10n.vmInpaintFailed('$e');
+      reportError(
+        vmL10n.vmInpaintFailed('$e'),
+        source: AppNoticeSource.inpaint,
+        notify: false,
+      );
     } finally {
       _isExecutingInpaint = false;
       notifyListeners();
@@ -358,8 +364,7 @@ mixin _StudioInpaintMixin on _StudioCore {
   Future<void> executeAiImageEdit() async {
     final target = inpaintSourceImage;
     if (target == null) {
-      _errorMessage = vmL10n.vmAiEditNoImage;
-      notifyListeners();
+      reportError(vmL10n.vmAiEditNoImage, source: AppNoticeSource.inpaint);
       return;
     }
 
@@ -368,13 +373,14 @@ mixin _StudioInpaintMixin on _StudioCore {
     final config = _config;
     final provider = config.imageEditProvider;
     if (provider == null) {
-      _errorMessage = vmL10n.vmAiEditNoModel;
-      notifyListeners();
+      reportError(vmL10n.vmAiEditNoModel, source: AppNoticeSource.inpaint);
       return;
     }
     if (provider.apiKey.trim().isEmpty) {
-      _errorMessage = vmL10n.vmAiEditNoKey(provider.name);
-      notifyListeners();
+      reportError(
+        vmL10n.vmAiEditNoKey(provider.name),
+        source: AppNoticeSource.inpaint,
+      );
       return;
     }
 
@@ -383,8 +389,7 @@ mixin _StudioInpaintMixin on _StudioCore {
         ? _params.prompt
         : _inpaintParams.customPrompt;
     if (prompt.trim().isEmpty) {
-      _errorMessage = vmL10n.vmAiEditEmptyPrompt;
-      notifyListeners();
+      reportError(vmL10n.vmAiEditEmptyPrompt, source: AppNoticeSource.inpaint);
       return;
     }
 
@@ -419,7 +424,11 @@ mixin _StudioInpaintMixin on _StudioCore {
       _inpaintSourceImage = result;
       _statusMessage = vmL10n.vmAiEditDone;
     } catch (e) {
-      _errorMessage = vmL10n.vmAiEditFailed('$e');
+      reportError(
+        vmL10n.vmAiEditFailed('$e'),
+        source: AppNoticeSource.inpaint,
+        notify: false,
+      );
     } finally {
       _isExecutingAiEdit = false;
       notifyListeners();

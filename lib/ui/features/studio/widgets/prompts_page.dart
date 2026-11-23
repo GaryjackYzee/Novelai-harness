@@ -10,13 +10,14 @@ import '../../../../data/models/style_preset.dart';
 import 'img2img_section.dart';
 import 'precise_reference_section.dart';
 import '../../../core/widgets/app_collapsible_section.dart';
-import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_icon_button.dart';
 import '../../../core/widgets/app_segmented_controls.dart';
-import '../../../core/widgets/app_tool_chip.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../view_models/studio_view_model.dart';
+import 'fixed_affixes_panel.dart';
 import 'prompt_editor_card.dart';
 import 'prompt_extension_deck.dart';
+import 'prompt_panel_shared.dart';
 import 'rich_prompt_text_controller.dart';
 import 'studio_shared.dart';
 
@@ -39,15 +40,11 @@ class _PromptsPageState extends State<PromptsPage> {
 
   bool _isTabbedMode = false;
   int _activeTab = 0; // 0: Prompt, 1: Undesired Content
-  String _qualityPreset = 'Standard';
-  String _ucPreset = 'Heavy';
 
   @override
   void initState() {
     super.initState();
     final params = widget.viewModel.params;
-    _qualityPreset = params.qualityPreset;
-    _ucPreset = params.ucPresetKey;
     _isTabbedMode = widget.viewModel.promptTabbedMode;
     _activeTab = widget.viewModel.promptActiveTab;
     _promptController = RichPromptTextController(text: params.prompt);
@@ -63,18 +60,16 @@ class _PromptsPageState extends State<PromptsPage> {
   @override
   void didUpdateWidget(covariant PromptsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncFromViewModel();
+  }
+
+  void _syncFromViewModel() {
     final params = widget.viewModel.params;
     if (_isTabbedMode != widget.viewModel.promptTabbedMode) {
       _isTabbedMode = widget.viewModel.promptTabbedMode;
     }
     if (_activeTab != widget.viewModel.promptActiveTab) {
       _activeTab = widget.viewModel.promptActiveTab;
-    }
-    if (_qualityPreset != params.qualityPreset) {
-      _qualityPreset = params.qualityPreset;
-    }
-    if (_ucPreset != params.ucPresetKey) {
-      _ucPreset = params.ucPresetKey;
     }
     if (_promptController.text != params.prompt) {
       _promptController.text = params.prompt;
@@ -97,49 +92,6 @@ class _PromptsPageState extends State<PromptsPage> {
     _prefixController.dispose();
     _suffixController.dispose();
     super.dispose();
-  }
-
-  // --- 预设与开关操作 ---
-
-  void _applyQualityPreset(String presetKey) {
-    setState(() => _qualityPreset = presetKey);
-    final viewModel = widget.viewModel;
-    viewModel.updateParams(
-      viewModel.params.copyWith(
-        qualityPreset: presetKey,
-        qualityToggle: presetKey != 'None',
-      ),
-    );
-  }
-
-  void _applyUcPreset(String presetKey) {
-    setState(() => _ucPreset = presetKey);
-    final viewModel = widget.viewModel;
-    viewModel.updateParams(viewModel.params.copyWith(ucPresetKey: presetKey));
-  }
-
-  /// 切换透明背景，并清理输入框中残留的 transparent / simple background 字样
-  void _toggleTransparentBg() {
-    final viewModel = widget.viewModel;
-    final params = viewModel.params;
-    var p = _promptController.text;
-    if (p.contains('transparent background') ||
-        p.contains('simple background')) {
-      p = p.replaceAll(
-        RegExp(r',?\s*transparent background', caseSensitive: false),
-        '',
-      );
-      p = p.replaceAll(
-        RegExp(r',?\s*simple background', caseSensitive: false),
-        '',
-      );
-      p = p.replaceAll(RegExp(r',\s*,\s*'), ', ');
-      p = p.replaceAll(RegExp(r',\s*$'), '').trim();
-      _promptController.text = p;
-    }
-    viewModel.updateParams(
-      params.copyWith(prompt: p, transparentBg: !params.transparentBg),
-    );
   }
 
   void _updatePrompt(String value) {
@@ -175,7 +127,10 @@ class _PromptsPageState extends State<PromptsPage> {
         (params.suffixPrompt?.trim().isNotEmpty ?? false);
     final qualityTags = viewModelIsComfyUi
         ? ''
-        : NovelAiQualityTagsHelper.getQualityTags(params.model, _qualityPreset);
+        : NovelAiQualityTagsHelper.getQualityTags(
+            params.model,
+            resolveQualityPreset(params),
+          );
     return [
       if (hasSuffix)
         GrayTag(context.l10n.promptsSuffixBadge, params.suffixPrompt!.trim()),
@@ -194,176 +149,126 @@ class _PromptsPageState extends State<PromptsPage> {
     if (viewModelIsComfyUi || params.isMediumEffort) return const [];
     final ucPresetStr = NovelAiUndesiredContentHelper.getUndesiredContent(
       params.model,
-      _ucPreset,
+      params.ucPresetKey,
     );
     return [
       if (ucPresetStr.isNotEmpty)
         GrayTag(
-          '${context.l10n.promptsUcPreset}: ${_presetLabel(params.ucPresetKey)}',
+          '${context.l10n.promptsUcPreset}: ${promptPresetLabel(context, params.ucPresetKey)}',
           ucPresetStr,
         ),
     ];
   }
 
-  /// 正向提示词底部工具条：左 Transparent BG (仅 V5 模型)，右 Quality Tags 预设胶囊 (全宽自适应省略)；
-  /// ComfyUI 模式下质量预设与透明背景均不生效，不渲染工具条
-  Widget? _promptToolbar(NaiGenerationParams params) {
-    if (viewModelIsComfyUi) return null;
-    final quality = AppDropdown<String>.simple(
-      value: _currentQualityPreset(params),
-      items: NovelAiQualityTagsHelper.getAvailablePresets(params.model),
-      labelOf: (p) => '${context.l10n.promptsQualityTags}: ${_presetLabel(p)}',
-      variant: AppDropdownVariant.pill,
-      onChanged: _applyQualityPreset,
-    );
-    if (!params.model.isV5) return quality;
-    final transparent = AppToolChip(
-      isSelected: params.transparentBg,
-      icon: params.transparentBg ? Icons.check_rounded : Icons.close_rounded,
-      label: context.l10n.promptsTransparentBackground,
-      onTap: _toggleTransparentBg,
-    );
-    return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth < 420
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(alignment: Alignment.centerLeft, child: transparent),
-                const SizedBox(height: 4),
-                quality,
-              ],
-            )
-          : Row(
-              children: [
-                Flexible(child: transparent),
-                const SizedBox(width: 8),
-                Expanded(child: quality),
-              ],
-            ),
-    );
-  }
+  Widget? _promptToolbar() => buildPositivePromptToolbar(
+    context,
+    widget.viewModel,
+    _promptController,
+  );
 
-  /// 负面提示词底部工具条：UC Preset 下拉 (胶囊全宽右对齐，超长标签自动省略)；
-  /// ComfyUI 模式下 UC 预设不生效，不渲染工具条。
-  /// 节约档固定 Heavy，不提供预设切换。
-  Widget? _negativeToolbar(NaiGenerationParams params) {
-    if (viewModelIsComfyUi || params.isMediumEffort) return null;
-    final presets = NovelAiUndesiredContentHelper.availablePresets;
-    return Row(
-      children: [
-        Expanded(
-          child: AppDropdown<String>.simple(
-            value: presets.contains(_ucPreset) ? _ucPreset : presets.first,
-            items: presets,
-            labelOf: (p) =>
-                '${context.l10n.promptsUcPreset}: ${_presetLabel(p)}',
-            variant: AppDropdownVariant.pill,
-            onChanged: _applyUcPreset,
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _presetLabel(String preset) => switch (preset.toLowerCase()) {
-    'standard' => context.l10n.presetLevelStandard,
-    'light' => context.l10n.presetLevelLight,
-    'heavy' => context.l10n.presetLevelHeavy,
-    'human' || 'human focus' => context.l10n.presetLevelHuman,
-    'none' || 'off' => context.l10n.presetLevelNone,
-    _ => preset,
-  };
-
-  String _currentQualityPreset(NaiGenerationParams params) {
-    final presets = NovelAiQualityTagsHelper.getAvailablePresets(params.model);
-    return presets.contains(_qualityPreset) ? _qualityPreset : 'Standard';
-  }
+  Widget? _negativeToolbar() =>
+      buildNegativePromptToolbar(context, widget.viewModel);
 
   // --- 布局 ---
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final viewModel = widget.viewModel;
+    return ListenableBuilder(
+      // 保活隐藏页暂停订阅；切回提示词页时自动读取最新参数。
+      listenable: Listenable.merge([
+        if (TickerMode.valuesOf(context).enabled) widget.viewModel,
+      ]),
+      builder: (context, _) {
+        final l10n = context.l10n;
+        final viewModel = widget.viewModel;
+        _syncFromViewModel();
 
-    // 同步设置项：标签分类着色开关 (设置弹窗保存后 viewModel 通知重建)
-    final showCategoryColors = viewModel.config.showTagCategoryColors;
-    for (final c in [
-      _promptController,
-      _negativeController,
-      _prefixController,
-      _suffixController,
-    ]) {
-      c.setHighlightOptions(categoryColors: showCategoryColors);
-    }
+        // 同步设置项：标签分类着色开关 (设置弹窗保存后 viewModel 通知重建)
+        final showCategoryColors = viewModel.config.showTagCategoryColors;
+        for (final c in [
+          _promptController,
+          _negativeController,
+          _prefixController,
+          _suffixController,
+        ]) {
+          c.setHighlightOptions(categoryColors: showCategoryColors);
+        }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        return ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Expanded(
-              child: PageHeader(
-                title: l10n.promptsPageTitle,
-                subtitle: l10n.promptsPageSubtitle,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: Text(context.l10n.wd14Title),
-                  content: SizedBox(
-                    width: 480,
-                    child: _Wd14QuickCard(viewModel: viewModel),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: PageHeader(
+                    title: l10n.promptsPageTitle,
+                    subtitle: l10n.promptsPageSubtitle,
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(),
-                      child: Text(dialogContext.l10n.commonClose),
-                    ),
-                  ],
                 ),
-              ),
-              icon: const Icon(Icons.sell_outlined, size: 16),
-              label: const Text('WD14 反推'),
+                // 本地 fork：WD14 在线反推快捷入口
+                TextButton.icon(
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: Text(context.l10n.wd14Title),
+                      content: SizedBox(
+                        width: 480,
+                        child: _Wd14QuickCard(viewModel: viewModel),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: Text(dialogContext.l10n.commonClose),
+                        ),
+                      ],
+                    ),
+                  ),
+                  icon: const Icon(Icons.sell_outlined, size: 16),
+                  label: Text(context.l10n.wd14Title),
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            if (_isTabbedMode)
+              _buildTabbedSection(l10n)
+            else
+              _buildStackedSection(l10n),
+
+            // 提示词扩展甲板：多角色提示词 → 固定词缀左右滑动切换
+            const SizedBox(height: 18),
+            PromptExtensionDeck(
+              viewModel: viewModel,
+              prefixController: _prefixController,
+              suffixController: _suffixController,
+            ),
+
+            const SizedBox(height: 18),
+            AppCollapsibleSection(
+              title: l10n.promptsImg2imgSection,
+              initiallyExpanded: true,
+              child: Img2imgSection(viewModel: viewModel),
+            ),
+
+            const SizedBox(height: 18),
+            AppCollapsibleSection(
+              title: l10n.promptsPreciseReference,
+              initiallyExpanded: true,
+              child: PreciseReferenceSection(viewModel: viewModel),
+            ),
+
+            const SizedBox(height: 18),
+            // 本地 fork：画风串预设与输出选项 (元数据 / 水印开关)
+            _StylePresetCard(viewModel: viewModel),
+            const SizedBox(height: 18),
+            _OutputOptionsCard(viewModel: viewModel),
+
+            // 排除违禁词：作用于全部提示词的助手读取脱敏，独立置于页尾
+            const SizedBox(height: 14),
+            BannedWordsCard(viewModel: viewModel),
           ],
-        ),
-        const SizedBox(height: 16),
-        if (_isTabbedMode)
-          _buildTabbedSection(l10n)
-        else
-          _buildStackedSection(l10n),
-
-        // 提示词扩展甲板：多角色提示词 ↔ 固定词缀左右滑动切换
-        const SizedBox(height: 18),
-        PromptExtensionDeck(
-          viewModel: viewModel,
-          prefixController: _prefixController,
-          suffixController: _suffixController,
-        ),
-
-        const SizedBox(height: 18),
-        AppCollapsibleSection(
-          title: l10n.promptsImg2imgSection,
-          initiallyExpanded: true,
-          child: Img2imgSection(viewModel: viewModel),
-        ),
-
-        const SizedBox(height: 18),
-        AppCollapsibleSection(
-          title: l10n.promptsPreciseReference,
-          initiallyExpanded: true,
-          child: PreciseReferenceSection(viewModel: viewModel),
-        ),
-
-        const SizedBox(height: 18),
-        _StylePresetCard(viewModel: viewModel),
-        const SizedBox(height: 18),
-        _OutputOptionsCard(viewModel: viewModel),
-      ],
+        );
+      },
     );
   }
 
@@ -399,7 +304,7 @@ class _PromptsPageState extends State<PromptsPage> {
           onHeightChanged: viewModel.updatePromptHeightStacked,
           headerTags: _promptHeaderTags(params),
           footerTags: _promptFooterTags(params),
-          toolbar: _promptToolbar(params),
+          toolbar: _promptToolbar(),
           enableAutocomplete: viewModel.config.enableTagAutocomplete,
           showTranslation: viewModel.config.showTagTranslations,
           tokenUsage: viewModelIsComfyUi
@@ -458,7 +363,7 @@ class _PromptsPageState extends State<PromptsPage> {
           initialHeight: viewModel.negativePromptHeightStacked,
           onHeightChanged: viewModel.updateNegativePromptHeightStacked,
           footerTags: _negativeFooterTags(params),
-          toolbar: _negativeToolbar(params),
+          toolbar: _negativeToolbar(),
           enableAutocomplete: viewModel.config.enableTagAutocomplete,
           showTranslation: viewModel.config.showTagTranslations,
           tokenUsage: viewModelIsComfyUi
@@ -484,8 +389,8 @@ class _PromptsPageState extends State<PromptsPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: AppSegmentedPillBar<String>(
+            Flexible(
+              child: AppSegmentedCardBar<String>(
                 scrollable: true,
                 items: [
                   AppSegmentedItem(
@@ -541,44 +446,51 @@ class _PromptsPageState extends State<PromptsPage> {
         ),
         const SizedBox(height: 10),
 
-        if (isPromptTab)
-          PromptEditorCard(
-            controller: _promptController,
-            onChanged: _updatePrompt,
-            hintText: l10n.promptsTabbedPromptHint,
-            minLines: 8,
-            maxLines: 16,
-            initialHeight: viewModel.promptHeightTabbed,
-            onHeightChanged: viewModel.updatePromptHeightTabbed,
-            headerTags: _promptHeaderTags(params),
-            footerTags: _promptFooterTags(params),
-            toolbar: _promptToolbar(params),
-            enableAutocomplete: viewModel.config.enableTagAutocomplete,
-            showTranslation: viewModel.config.showTagTranslations,
-            tokenUsage: viewModelIsComfyUi
-                ? null
-                : PromptTokenCounterService.instance.countPositive(params),
-          )
-        else
-          PromptEditorCard(
-            controller: _negativeController,
-            onChanged: _updateNegative,
-            readOnly: params.isMediumEffort,
-            hintText: params.isMediumEffort
-                ? l10n.promptsMediumUcLocked
-                : l10n.promptsTabbedUndesiredHint,
-            minLines: 8,
-            maxLines: 16,
-            initialHeight: viewModel.negativePromptHeightTabbed,
-            onHeightChanged: viewModel.updateNegativePromptHeightTabbed,
-            footerTags: _negativeFooterTags(params),
-            toolbar: _negativeToolbar(params),
-            enableAutocomplete: viewModel.config.enableTagAutocomplete,
-            showTranslation: viewModel.config.showTagTranslations,
-            tokenUsage: viewModelIsComfyUi
-                ? null
-                : PromptTokenCounterService.instance.countNegative(params),
-          ),
+        AppPageSideBySide(
+          index: activeTab,
+          enableBlur: false,
+          child: isPromptTab
+              ? PromptEditorCard(
+                  controller: _promptController,
+                  onChanged: _updatePrompt,
+                  hintText: l10n.promptsTabbedPromptHint,
+                  minLines: 8,
+                  maxLines: 16,
+                  initialHeight: viewModel.promptHeightTabbed,
+                  onHeightChanged: viewModel.updatePromptHeightTabbed,
+                  headerTags: _promptHeaderTags(params),
+                  footerTags: _promptFooterTags(params),
+                  toolbar: _promptToolbar(),
+                  enableAutocomplete: viewModel.config.enableTagAutocomplete,
+                  showTranslation: viewModel.config.showTagTranslations,
+                  tokenUsage: viewModelIsComfyUi
+                      ? null
+                      : PromptTokenCounterService.instance.countPositive(
+                          params,
+                        ),
+                )
+              : PromptEditorCard(
+                  controller: _negativeController,
+                  onChanged: _updateNegative,
+                  readOnly: params.isMediumEffort,
+                  hintText: params.isMediumEffort
+                      ? l10n.promptsMediumUcLocked
+                      : l10n.promptsTabbedUndesiredHint,
+                  minLines: 8,
+                  maxLines: 16,
+                  initialHeight: viewModel.negativePromptHeightTabbed,
+                  onHeightChanged: viewModel.updateNegativePromptHeightTabbed,
+                  footerTags: _negativeFooterTags(params),
+                  toolbar: _negativeToolbar(),
+                  enableAutocomplete: viewModel.config.enableTagAutocomplete,
+                  showTranslation: viewModel.config.showTagTranslations,
+                  tokenUsage: viewModelIsComfyUi
+                      ? null
+                      : PromptTokenCounterService.instance.countNegative(
+                          params,
+                        ),
+                ),
+        ),
       ],
     );
   }
@@ -677,15 +589,20 @@ class _OutputOptionsCardState extends State<_OutputOptionsCard> {
       children: [
         SectionHeader(l10n.promptOutputTitle),
         const SizedBox(height: 8),
-        CheckboxListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          value: viewModel.effectiveStripAll,
-          onChanged: (value) => viewModel.setStripAll(value ?? false),
-          title: Text(
-            l10n.promptStripAllTitle,
-            style: const TextStyle(fontSize: 12),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.promptStripAllTitle,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            Checkbox(
+              value: viewModel.effectiveStripAll,
+              onChanged: (value) => viewModel.setStripAll(value ?? false),
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Row(
@@ -751,17 +668,26 @@ class _OutputOptionsCardState extends State<_OutputOptionsCard> {
         ),
 
         const SizedBox(height: 12),
-        SwitchListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          value: viewModel.params.stripBannedWords,
-          onChanged: (value) => viewModel.updateParams(
-            viewModel.params.copyWith(stripBannedWords: value),
-          ),
-          title: Text(l10n.bannedWordsTitle,
-              style: const TextStyle(fontSize: 12)),
-          subtitle: Text(l10n.bannedWordsSubtitle,
-              style: const TextStyle(fontSize: 10)),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.bannedWordsTitle,
+                      style: const TextStyle(fontSize: 12)),
+                  Text(l10n.bannedWordsSubtitle,
+                      style: const TextStyle(fontSize: 10)),
+                ],
+              ),
+            ),
+            Switch(
+              value: viewModel.params.stripBannedWords,
+              onChanged: (value) => viewModel.updateParams(
+                viewModel.params.copyWith(stripBannedWords: value),
+              ),
+            ),
+          ],
         ),
         TextField(
           controller: _bannedWordsController,
@@ -1227,24 +1153,28 @@ class _StylePresetCard extends StatelessWidget {
             ),
           ],
         ),
-        CheckboxListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          value: selected != null &&
-              (selected.stripMetadata || selected.stripStealth),
-          onChanged: selected == null
-              ? null
-              : (value) => viewModel.updateStylePreset(
-                    selected.copyWith(
-                      stripMetadata: value ?? false,
-                      stripStealth: value ?? false,
-                    ),
-                  ),
-          title: Text(
-            l10n.styleStripAll,
-            style: const TextStyle(fontSize: 12),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.styleStripAll,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            Checkbox(
+              value: selected != null &&
+                  (selected.stripMetadata || selected.stripStealth),
+              onChanged: selected == null
+                  ? null
+                  : (value) => viewModel.updateStylePreset(
+                        selected.copyWith(
+                          stripMetadata: value ?? false,
+                          stripStealth: value ?? false,
+                        ),
+                      ),
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
         ),
       ],
     );

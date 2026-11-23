@@ -16,6 +16,9 @@ typedef CharacterLimitGetter = int Function();
 typedef CharacterAiPositionGetter = bool Function();
 
 /// 构建角色提示词列表可读报表 (list 工具与参数报表共用)
+///
+/// [sanitizeText] 在开关打开时复用生成参数的 textForAgent。
+/// 不传则原样返回，存档里的角色提示词不受影响。
 String buildCharacterPromptsReport(
   List<NaiCharacterPrompt> characters, {
   bool aiPosition = true,
@@ -28,6 +31,7 @@ String buildCharacterPromptsReport(
   final positionMode = aiPosition
       ? 'AI 自动布局 (官方 AI\'s Choice，不发送位置参数)'
       : '自定义定位 (发送 use_coords 与各角色 center)';
+
   if (characters.isEmpty) {
     return '当前没有角色提示词 (单角色场景无需配置，主提示词即可)。'
         '位置模式: $positionMode。';
@@ -78,7 +82,7 @@ class NovelAiListCharacterPromptsTool extends AgentTool {
   final CharacterPromptsGetter getCharacterPrompts;
   final CharacterAiPositionGetter? getAiPosition;
 
-  /// 返回给 Agent 前处理正负提示词。
+  /// 返回给 Agent 前处理正负提示词。工作台传入当前参数的 textForAgent。
   final String Function(String text)? sanitizeText;
 
   NovelAiListCharacterPromptsTool({
@@ -113,11 +117,13 @@ class NovelAiAddCharacterPromptTool extends AgentTool {
   final CharacterPromptsGetter getCharacterPrompts;
   final CharacterPromptsUpdater updateCharacterPrompts;
   final CharacterLimitGetter? getCharacterLimit;
+  final void Function()? onCustomPositionUsed;
 
   NovelAiAddCharacterPromptTool({
     required this.getCharacterPrompts,
     required this.updateCharacterPrompts,
     this.getCharacterLimit,
+    this.onCustomPositionUsed,
   }) : super(
          name: 'add_character_prompt',
          label: '添加角色',
@@ -242,6 +248,10 @@ class NovelAiAddCharacterPromptTool extends AgentTool {
     }
 
     updateCharacterPrompts([...characters, ...created]);
+    final usedCustomCoords = created.any((c) => c.useCustomPosition);
+    if (usedCustomCoords) {
+      onCustomPositionUsed?.call();
+    }
 
     final total = characters.length + created.length;
     final details = created
@@ -254,9 +264,12 @@ class NovelAiAddCharacterPromptTool extends AgentTool {
               '• 定位: ${c.useCustomPosition ? '手动 (${c.positionX}, ${c.positionY})' : '自动布局 (跟随全局 AI 自动 / 自定义模式)'}',
         )
         .join('\n');
+    final coordNote = usedCustomCoords && onCustomPositionUsed != null
+        ? ' 已自动将全局角色位置模式切换为自定义定位。'
+        : '';
     final tail = batch
-        ? '当前共 $total 个角色。后续修改或删除角色请引用上述 ID。'
-        : '当前共 $total 个角色。后续修改或删除该角色请引用 ID: ${created.first.id}。';
+        ? '当前共 $total 个角色。后续修改或删除角色请引用上述 ID。$coordNote'
+        : '当前共 $total 个角色。后续修改或删除该角色请引用 ID: ${created.first.id}。$coordNote';
     return ToolResult(
       toolCallId: toolCallId,
       content:
@@ -270,10 +283,12 @@ class NovelAiAddCharacterPromptTool extends AgentTool {
 class NovelAiUpdateCharacterPromptTool extends AgentTool {
   final CharacterPromptsGetter getCharacterPrompts;
   final CharacterPromptsUpdater updateCharacterPrompts;
+  final void Function()? onCustomPositionUsed;
 
   NovelAiUpdateCharacterPromptTool({
     required this.getCharacterPrompts,
     required this.updateCharacterPrompts,
+    this.onCustomPositionUsed,
   }) : super(
          name: 'update_character_prompt',
          label: '修改角色',
@@ -361,6 +376,7 @@ class NovelAiUpdateCharacterPromptTool extends AgentTool {
     final newList = [...characters];
     final applied = <String>[];
     final failed = <String>[];
+    var usedCustomCoords = false;
     for (final spec in specs) {
       final id = (spec['id'] as String?)?.trim() ?? '';
       if (id.isEmpty) {
@@ -376,6 +392,10 @@ class NovelAiUpdateCharacterPromptTool extends AgentTool {
       if (result.changes.isEmpty) {
         failed.add('ID $id 未传入有效修改字段');
         continue;
+      }
+      if ((spec['position_x'] != null || spec['position_y'] != null) &&
+          result.character.useCustomPosition) {
+        usedCustomCoords = true;
       }
       newList[index] = result.character;
       applied.add(
@@ -395,7 +415,13 @@ class NovelAiUpdateCharacterPromptTool extends AgentTool {
     }
 
     updateCharacterPrompts(newList);
+    if (usedCustomCoords) {
+      onCustomPositionUsed?.call();
+    }
     final buffer = StringBuffer(applied.join('\n'));
+    if (usedCustomCoords && onCustomPositionUsed != null) {
+      buffer.write('\n已自动将全局角色位置模式切换为自定义定位。');
+    }
     if (failed.isNotEmpty) {
       buffer.write('\n未修改：${failed.join('；')}。');
     }
@@ -523,5 +549,112 @@ class NovelAiRemoveCharacterPromptTool extends AgentTool {
     );
     if (missing.isNotEmpty) buffer.write('未找到 ${missing.join('、')}。');
     return ToolResult(toolCallId: toolCallId, content: buffer.toString());
+  }
+}
+
+/// 统一多角色提示词管理工具（合并 list / add / update / remove 为单工具 action 调度）
+class CharacterPromptsTool extends AgentTool {
+  final NovelAiListCharacterPromptsTool _listTool;
+  final NovelAiAddCharacterPromptTool _addTool;
+  final NovelAiUpdateCharacterPromptTool _updateTool;
+  final NovelAiRemoveCharacterPromptTool _removeTool;
+
+  CharacterPromptsTool({
+    required List<NaiCharacterPrompt> Function() getCharacterPrompts,
+    required void Function(List<NaiCharacterPrompt> next) updateCharacterPrompts,
+    required bool Function() getAiPosition,
+    required int Function() getCharacterLimit,
+    void Function()? onCustomPositionUsed,
+    String Function(String text)? sanitizeText,
+  }) : _listTool = NovelAiListCharacterPromptsTool(
+         getCharacterPrompts: getCharacterPrompts,
+         getAiPosition: getAiPosition,
+         sanitizeText: sanitizeText,
+       ),
+       _addTool = NovelAiAddCharacterPromptTool(
+         getCharacterPrompts: getCharacterPrompts,
+         updateCharacterPrompts: updateCharacterPrompts,
+         getCharacterLimit: getCharacterLimit,
+         onCustomPositionUsed: onCustomPositionUsed,
+       ),
+       _updateTool = NovelAiUpdateCharacterPromptTool(
+         getCharacterPrompts: getCharacterPrompts,
+         updateCharacterPrompts: updateCharacterPrompts,
+         onCustomPositionUsed: onCustomPositionUsed,
+       ),
+       _removeTool = NovelAiRemoveCharacterPromptTool(
+         getCharacterPrompts: getCharacterPrompts,
+         updateCharacterPrompts: updateCharacterPrompts,
+       ),
+       super(
+         name: 'character_prompts',
+         label: '角色提示词管理',
+         description:
+             '统一管理多主体/角色提示词槽位。通过 action 选择操作：\n'
+             '- list: 查看当前全部角色槽位与定位模式；\n'
+             '- add: 新增单个或批量角色槽位（支持 name/prompt/negative_prompt/position_x/y 或 characters 数组）；\n'
+             '- update: 按 id 或 updates 数组批量修改角色槽位；\n'
+             '- remove: 按 id 或 ids 数组批量删除角色槽位。',
+         parameters: const {
+           'type': 'object',
+           'properties': {
+             'action': {
+               'type': 'string',
+               'enum': ['list', 'add', 'update', 'remove'],
+               'description': '操作类型：list / add / update / remove',
+             },
+             'id': {'type': 'string', 'description': '目标角色 ID (update / remove)'},
+             'ids': {
+               'type': 'array',
+               'items': {'type': 'string'},
+               'description': '批量删除的角色 ID 列表 (remove)',
+             },
+             'name': {'type': 'string', 'description': '角色名称/类型 (add / update)'},
+             'prompt': {'type': 'string', 'description': '角色正向提示词 (add / update)'},
+             'negative_prompt': {
+               'type': 'string',
+               'description': '角色负向提示词 (add / update)',
+             },
+             'enabled': {'type': 'boolean', 'description': '是否启用该槽位'},
+             'position_x': {
+               'type': 'number',
+               'description': '水平锚点 0.0~1.0 (0=左, 0.5=中, 1=右)',
+             },
+             'position_y': {
+               'type': 'number',
+               'description': '垂直锚点 0.0~1.0 (0=上, 0.5=中, 1=下)',
+             },
+             'characters': {
+               'type': 'array',
+               'items': {'type': 'object'},
+               'description': '批量新增的角色数组 (add)',
+             },
+             'updates': {
+               'type': 'array',
+               'items': {'type': 'object'},
+               'description': '批量修改的角色数组，每项需含 id (update)',
+             },
+           },
+           'required': ['action'],
+         },
+       );
+
+  @override
+  Future<ToolResult> execute(
+    String toolCallId,
+    Map<String, dynamic> args,
+  ) async {
+    final action = (args['action'] as String?)?.trim().toLowerCase() ?? '';
+    return switch (action) {
+      'list' => _listTool.execute(toolCallId, args),
+      'add' => _addTool.execute(toolCallId, args),
+      'update' => _updateTool.execute(toolCallId, args),
+      'remove' || 'delete' => _removeTool.execute(toolCallId, args),
+      _ => ToolResult(
+        toolCallId: toolCallId,
+        content: '错误：character_prompts 的 action 必须是 list / add / update / remove。',
+        isError: true,
+      ),
+    };
   }
 }

@@ -18,10 +18,13 @@ import 'tool_call_ids.dart';
 /// 原生支持 Gemini 4 Argon / Gemini 3.8 / Gemini 2.5 系列的：
 /// - `input` Step 序列 (`user_input` / `thought` / `model_output` / `function_call` / `function_result`)
 /// - `generation_config` (`thinking_level` / `thinking_summaries` / `tool_choice`)
-/// - `thought_signature` 跨轮次无损回传
+/// - `thought_signature` 跨轮次无损回传 (签名仅存于 thought 步的 signature 字段，
+///   function_call 步携带 thought_signature 会被 400 拒绝)
 /// - SSE 流式事件 (`step.start` / `step.delta` / `step.stop` / `interaction.completed`) 与非流式 JSON 兜底
 class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
-  /// 官方哑值：未捕获真实签名时跳过当前轮校验。
+  /// 官方文档指定的跳过签名校验哑值：客户端未捕获到真实签名时
+  /// (旧历史/异构模型/摘要削减) 填入该值跳过当前轮的签名强制校验。
+  /// 探针实证 (2026-12, gemini-4-hydrogen)：thought 步携带该值可通过校验。
   static const String _kSkipThoughtSignatureValidator =
       'skip_thought_signature_validator';
 
@@ -44,6 +47,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
 
   final LlmCacheConfig cacheConfig;
   final http.Client _client;
+  final bool _ownsClient;
 
   static const Duration _requestStartupTimeout = Duration(seconds: 45);
   static const Duration _streamIdleTimeout = Duration(seconds: 90);
@@ -59,7 +63,13 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     this.streaming = true,
     this.cacheConfig = const LlmCacheConfig(),
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : _client = client ?? http.Client(),
+       _ownsClient = client == null;
+
+  @override
+  void close() {
+    if (_ownsClient) _client.close();
+  }
 
   @override
   String get requestProtocolPrompt =>
@@ -147,6 +157,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
       reasoning: reasoning,
       thinkingEffort: thinkingEffort,
       promptToolUse: promptToolUse,
+      temperature: temperature,
       stream: streaming,
     );
 
@@ -165,8 +176,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     request.headers['x-goog-api-key'] = trimmedKey;
     if (!isOfficialGoogle) {
       request.headers['Authorization'] = 'Bearer $trimmedKey';
+      request.headers.addAll(cachePolicy.headers(promptCacheKey));
     }
-    request.headers.addAll(cachePolicy.headers(promptCacheKey));
     request.body = jsonEncode(requestBody);
 
     try {
@@ -208,6 +219,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     required bool reasoning,
     required String thinkingEffort,
     required bool promptToolUse,
+    double? temperature,
     bool stream = true,
   }) {
     final normalizedMessages = normalizeToolCallIds(messages);
@@ -288,16 +300,21 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
           case AgentRole.assistant:
             final signature = _resolveAssistantThoughtSignature(msg);
             final hasToolCalls = msg.toolCalls?.isNotEmpty ?? false;
+            // Interactions API 无状态模式契约 (探针实证 2026-12):
+            // 签名只能放在 thought 步的 signature 字段里;
+            // function_call 步携带 thought_signature 会被 400 拒绝
+            // (Unknown parameter 'thought_signature' at 'input[N]')。
+            // 含函数调用的回复必须有带签名的 thought 步;
+            // 未捕获到真实签名时回传官方 dummy 值跳过校验。
             final effectiveSignature =
                 (signature != null && signature.isNotEmpty)
-                    ? signature
-                    : (hasToolCalls ? _kSkipThoughtSignatureValidator : null);
+                ? signature
+                : (hasToolCalls ? _kSkipThoughtSignatureValidator : null);
             if (msg.thoughts.isNotEmpty ||
                 (effectiveSignature != null && effectiveSignature.isNotEmpty)) {
               inputSteps.add({
                 'type': 'thought',
-                if (effectiveSignature != null && effectiveSignature.isNotEmpty)
-                  'signature': effectiveSignature,
+                'signature': ?effectiveSignature,
                 if (msg.thoughts.isNotEmpty)
                   'summary': [
                     {'type': 'text', 'text': msg.thoughts},
@@ -314,7 +331,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
               });
             }
             if (hasToolCalls) {
-              for (final tc in msg.toolCalls!) {
+              final calls = msg.toolCalls!;
+              for (final tc in calls) {
                 toolNameByCallId[tc.id] = tc.name;
                 inputSteps.add({
                   'type': 'function_call',
@@ -324,6 +342,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                 });
               }
             }
+
           case AgentRole.tool:
             final callId = msg.toolCallId ?? '';
             final resolvedName =
@@ -357,6 +376,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
         reasoning: reasoning,
       ),
       'thinking_summaries': reasoning ? 'auto' : 'none',
+      'temperature': ?temperature,
       if (tools.isNotEmpty && !promptToolUse) 'tool_choice': 'auto',
     };
 
@@ -417,7 +437,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     TokenUsage? latestUsage;
     final rawLines = <String>[];
     var sawSseData = false;
-    var emittedAnyContentOrThoughts = false;
+    var emittedContent = false;
+    var emittedThoughts = false;
     final rawToolCalls = <ToolCall>[];
     FormatException? promptParseError;
 
@@ -442,7 +463,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
 
     Iterable<ContentDeltaEvent> emitContentText(String text) {
       if (text.isEmpty || promptParseError != null) return const [];
-      emittedAnyContentOrThoughts = true;
+      emittedContent = true;
       if (promptParser != null) {
         try {
           return promptParser.add(text);
@@ -459,11 +480,13 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     try {
       final lines = response.stream
           .timeout(_streamIdleTimeout)
-          .transform(utf8.decoder)
+          .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter());
 
       await for (final line in lines) {
-        rawLines.add(line);
+        if (!sawSseData) {
+          rawLines.add(line);
+        }
         final trimmed = line.trim();
         if (trimmed.isEmpty) {
           currentEventType = null;
@@ -475,7 +498,10 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
         }
         if (!trimmed.startsWith('data:')) continue;
 
-        sawSseData = true;
+        if (!sawSseData) {
+          sawSseData = true;
+          rawLines.clear();
+        }
         final dataStr = trimmed.substring(5).trim();
         if (dataStr.isEmpty || dataStr == '[DONE]') continue;
 
@@ -548,7 +574,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                   _extractBlocksText(stepMap['content']) ??
                   (stepMap['text'] as String? ?? '');
               if (summaryText.isNotEmpty) {
-                emittedAnyContentOrThoughts = true;
+                emittedThoughts = true;
                 yield ThoughtDeltaEvent(summaryText);
               }
             } else if (state.type == 'model_output' || state.type == 'text') {
@@ -596,7 +622,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                   _extractThoughtDeltaText(delta) ??
                   (delta['text'] as String? ?? '');
               if (thoughtText.isNotEmpty) {
-                emittedAnyContentOrThoughts = true;
+                emittedThoughts = true;
                 yield ThoughtDeltaEvent(thoughtText);
               }
 
@@ -607,7 +633,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                   '';
               if (state.type == 'thought') {
                 if (text.isNotEmpty) {
-                  emittedAnyContentOrThoughts = true;
+                  emittedThoughts = true;
                   yield ThoughtDeltaEvent(text);
                 }
               } else {
@@ -636,7 +662,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
               } else if (state.type == 'thought') {
                 final thoughtText = _extractThoughtDeltaText(delta);
                 if (thoughtText != null && thoughtText.isNotEmpty) {
-                  emittedAnyContentOrThoughts = true;
+                  emittedThoughts = true;
                   yield ThoughtDeltaEvent(thoughtText);
                 }
               } else {
@@ -680,10 +706,42 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
           if (uMap != null) {
             latestUsage = parseInteractionsUsage(uMap);
           }
+          final status = interactionMap['status']?.toString();
+          final failed =
+              status == 'failed' ||
+              status == 'cancelled' ||
+              interactionMap['error'] is Map;
+          final incomplete = status == 'incomplete';
+          if (failed || incomplete) {
+            final reason =
+                interactionMap['incomplete_reason'] ??
+                interactionMap['status_reason'] ??
+                _formatErrorObject(interactionMap['error']);
+            final reasonText = '${reason ?? status}';
+            final lowerReason = reasonText.toLowerCase();
+            final transient =
+                lowerReason.contains('rate') ||
+                lowerReason.contains('overload') ||
+                lowerReason.contains('timeout') ||
+                lowerReason.contains('503') ||
+                lowerReason.contains('429');
+            yield ErrorEvent(
+              incomplete
+                  ? 'Interactions API 响应被截断或未完成: $reasonText'
+                  : (_formatErrorObject(interactionMap['error']) ??
+                        'Interactions API 请求失败: $reasonText'),
+              transient: transient,
+            );
+            if (latestUsage != null) {
+              yield UsageEvent(latestUsage);
+            }
+            return;
+          }
           yield* _emitRemainingFromInteractionMap(
             interactionMap,
             stepStates: stepStates,
-            emittedAnyContentOrThoughts: () => emittedAnyContentOrThoughts,
+            emittedContent: () => emittedContent,
+            emittedThoughts: () => emittedThoughts,
             rawToolCalls: rawToolCalls,
             latestThoughtSignature: latestThoughtSignature,
             onSignature: (sig) => latestThoughtSignature = sig,
@@ -732,8 +790,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                   yield* _emitRemainingFromInteractionMap(
                     interactionMap,
                     stepStates: stepStates,
-                    emittedAnyContentOrThoughts: () =>
-                        emittedAnyContentOrThoughts,
+                    emittedContent: () => emittedContent,
+                    emittedThoughts: () => emittedThoughts,
                     rawToolCalls: rawToolCalls,
                     latestThoughtSignature: latestThoughtSignature,
                     onSignature: (sig) => latestThoughtSignature = sig,
@@ -801,7 +859,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
   Stream<HarnessEvent> _emitRemainingFromInteractionMap(
     Map<String, dynamic> interactionMap, {
     required Map<int, _InteractionStepState> stepStates,
-    required bool Function() emittedAnyContentOrThoughts,
+    required bool Function() emittedContent,
+    required bool Function() emittedThoughts,
     required List<ToolCall> rawToolCalls,
     required String? latestThoughtSignature,
     required void Function(String) onSignature,
@@ -810,7 +869,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     final outputs = interactionMap['output'] ?? interactionMap['outputs'];
     if (outputs is! List) return;
 
-    final allowContentEmit = !emittedAnyContentOrThoughts();
+    final allowThoughtEmit = !emittedThoughts();
+    final allowContentEmit = !emittedContent();
     final allowToolEmit = rawToolCalls.isEmpty;
     var currentSignature = latestThoughtSignature;
 
@@ -826,7 +886,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
             onSignature(sig);
             yield ThoughtSignatureEvent(sig);
           }
-          if (allowContentEmit) {
+          if (allowThoughtEmit) {
             final text =
                 _extractBlocksText(item['summary']) ??
                 _extractBlocksText(item['content']) ??
@@ -999,13 +1059,13 @@ class _InteractionStepState {
     Map<String, dynamic> args = parsedArguments ?? <String, dynamic>{};
     if (args.isEmpty && argumentsBuffer.isNotEmpty) {
       final raw = argumentsBuffer.toString().trim();
-      try {
+      if (raw.isNotEmpty) {
         final decoded = jsonDecode(raw);
-        if (decoded is Map<String, dynamic>) {
-          args = decoded;
+        if (decoded is! Map<String, dynamic>) {
+          throw FormatException('工具 "$name" 参数不是 JSON 对象');
         }
-      } catch (error) {
-    debugPrint('[ignored] $error');}
+        args = decoded;
+      }
     }
     final effectiveId = id.isNotEmpty ? id : 'call_${index + 1}';
     return ToolCall(

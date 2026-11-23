@@ -4,7 +4,10 @@ import '../../../core/context_l10n.dart';
 import '../../../core/l10n/model_label_l10n.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/app_icon_button.dart';
+import '../../../core/widgets/app_skeleton.dart';
 import '../../../core/widgets/app_thumbnail_card.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../view_models/studio_view_model.dart';
 import 'image_canvas_actions.dart';
 import 'image_stream_view.dart';
@@ -43,7 +46,8 @@ class CanvasHistorySidebar extends StatelessWidget {
           child: gallery.isEmpty && !isGenerating
               ? const _HistoryEmptyState()
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                  // 本地 fork：头部可能同时有「后台生成横幅」与「实时预览缩略图」
                   itemCount: leadingCount + gallery.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
@@ -90,7 +94,7 @@ class CanvasHistorySidebar extends StatelessWidget {
   }
 }
 
-/// History 标头 (标题 + 数量 + 收起箭头)
+/// History 标头 (标题 + 数量徽章 + 收起按键，42px 高度与右侧会话栏顶栏对齐)
 class HistorySidebarHeader extends StatelessWidget {
   final int galleryCount;
   final VoidCallback? onCollapse;
@@ -101,46 +105,68 @@ class HistorySidebarHeader extends StatelessWidget {
     this.onCollapse,
   });
 
+  void _handleCollapse() {
+    Tooltip.dismissAllToolTips();
+    onCollapse?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onCollapse,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: colors.borderDefault)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                context.l10n.history,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (galleryCount > 0) ...[
-              Text(
-                '$galleryCount',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onCollapse != null ? _handleCollapse : null,
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.fromLTRB(10, 0, 6, 0),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: colors.borderDefault)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        context.l10n.history,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (galleryCount > 0) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '$galleryCount',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(width: 2),
+              AppIconButton(
+                key: const Key('canvas_collapse_history_button'),
+                icon: Icons.keyboard_double_arrow_right_rounded,
+                size: 26,
+                iconSize: 16,
+                variant: AppIconButtonVariant.ghost,
+                tooltip: context.l10n.sidebarCollapse,
+                onPressed: onCollapse != null ? _handleCollapse : null,
+              ),
             ],
-            Icon(
-              Icons.arrow_right_rounded,
-              size: 20,
-              color: colors.textPrimary,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -174,7 +200,11 @@ class _ImageHistoryThumb extends StatelessWidget {
       aspectRatio: imageAspectRatioOf(item.params),
       imageBytes: thumb,
       imageWidget: thumb == null
-          ? Container(color: context.colors.mutedBackground)
+          ? const AppSkeletonBox(
+              width: double.infinity,
+              height: double.infinity,
+              radius: 0,
+            )
           : null,
       cacheWidth: 240,
       badgeLabel: historyBadgeLabelOf(context.l10n, item.provenance),
@@ -229,15 +259,11 @@ class _GeneratingHistoryThumb extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.0,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            context.colors.primary,
-                          ),
-                        ),
+                      AppMatrixDotLoader(
+                        dotSize: 2.5,
+                        gap: 2.0,
+                        variant: AppMatrixDotVariant.pulse,
+                        activeColor: context.colors.primary,
                       ),
                       if (viewModel.liveTotalSteps > 0 &&
                           viewModel.liveCurrentStep > 0) ...[

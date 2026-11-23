@@ -2,10 +2,15 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show Color, Locale, Offset, Rect;
 import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../../../../core/harness/agent_harness.dart';
 import '../../../../core/harness/context_memory.dart';
+import '../../../../core/harness/mcp/mcp_manager.dart';
+import '../../../../core/harness/mcp/mcp_models.dart';
 import '../../../../core/harness/tools/context_memory_tool.dart';
 import '../../../../core/harness/tools/reflection_tools.dart';
 import '../../../../core/harness/tools/wd14_tag_tool.dart';
@@ -13,6 +18,7 @@ import '../../../../core/harness/tools/character_tag_tool.dart';
 import '../../../../core/harness/tools/grep_tool.dart';
 import '../../../../core/harness/tools/memory_tool.dart';
 import '../../../../core/harness/presets/agent_preset.dart';
+import '../../../../core/harness/providers/llm_provider_factory.dart';
 import '../../../../core/harness/providers/openai_provider.dart';
 import '../../../../core/harness/skills/skills.dart';
 import '../../../../core/harness/tools/agent_tool.dart';
@@ -20,6 +26,7 @@ import '../../../../core/harness/tools/agent_tool.dart';
 import '../../../../core/harness/tools/ai_edit_image_tool.dart';
 import '../../../core/locale/app_locale_controller.dart';
 import '../../../core/theme/app_accent_controller.dart';
+import '../../../core/theme/frame_rate_controller.dart';
 import '../../../core/theme/theme_mode_controller.dart';
 import '../../../core/theme/ui_zoom_controller.dart';
 import '../../../../core/harness/tools/annotation_tools.dart';
@@ -29,9 +36,11 @@ import '../../../../core/harness/tools/library_tools.dart';
 import '../../../../core/harness/tools/canvas_view_tool.dart';
 import '../../../../core/harness/tools/character_prompt_tools.dart';
 import '../../../../core/harness/tools/danbooru_search_tools.dart';
+import '../../../../core/harness/tools/describe_tools_tool.dart';
 import '../../../../core/harness/tools/load_skill_tool.dart';
 import '../../../../core/harness/tools/novelai_inpaint_tool.dart';
 import '../../../../core/harness/tools/novelai_tools.dart';
+import '../../../../core/harness/tools/pipeline_tool.dart';
 import '../../../../core/harness/tools/prompt_library_tools.dart';
 import '../../../../core/harness/tools/studio_params_tool.dart';
 import '../../../../core/harness/tools/tool_path_guard.dart';
@@ -41,12 +50,11 @@ import '../../../../data/models/reflection_entry.dart';
 import '../../../../data/models/nai_account_pool.dart';
 import '../../../../data/models/comfyui_models.dart';
 import '../../../../data/models/prompt_library_models.dart';
+import '../../../../data/models/prompt_library_sync_models.dart';
 import '../../../../data/models/skill_package.dart';
 import '../../../../data/repositories/novelai_repository.dart';
 import '../../../../data/services/anlas_calculator.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-
+import '../../../../data/services/annotation_overlay_renderer.dart';
 import '../../../../data/services/config_service.dart';
 import '../../../../data/services/network_proxy_service.dart';
 import '../../../../data/services/novelai_service.dart';
@@ -63,12 +71,15 @@ import '../../../../data/services/image_file_store.dart';
 import '../../../../data/services/image_metadata_service.dart';
 import '../../../../data/services/image_save_path_service.dart';
 import '../../../../data/services/media_store_service.dart';
+import '../../../../data/services/notification_history_service.dart';
 import '../../../../data/services/palette_service.dart';
 import '../../../../data/services/rtx_upscale_service.dart';
 import '../../../../data/services/prompt_token_counter_service.dart';
 import '../../../../data/services/inpaint_service.dart';
 import '../../../../data/services/watermark_service.dart';
+import '../../../../data/services/prompt_library_mention.dart';
 import '../../../../data/services/prompt_library_service.dart';
+import '../../../../data/services/prompt_library_sync_service.dart';
 import '../../../../data/services/session_log_service.dart';
 import '../../../../data/services/skill_package_service.dart';
 import '../../../../data/services/tag_dictionary_service.dart';
@@ -76,9 +87,10 @@ import '../../../../data/services/tag_dictionary_update_service.dart';
 import '../../../../data/services/usage_ledger_service.dart';
 import '../../../../l10n/app_localizations.dart'
     show AppLocalizations, lookupAppLocalizations;
+import '../../../core/widgets/app_toast.dart';
 import 'param_snapshot_journal.dart';
 import 'board/board_controller.dart';
-import 'slash_command_catalog.dart';
+import 'slash_command_dispatcher.dart';
 import 'streaming_controllers.dart';
 
 part 'studio_vm_characters.dart';
@@ -112,16 +124,33 @@ enum StudioSidebarTab { parameters, prompts, inpaint, library, sources }
 mixin _StudioCore on ChangeNotifier {
   late final ConfigService _configService;
   late final NovelAiRepository _repository;
+  late final bool _ownsRepository;
   PromptLibraryService _promptLibraryService = PromptLibraryService.instance;
+  late final PromptLibrarySyncService _promptLibrarySyncService;
   late final SkillPackageService _skillPackageService;
+  late final McpManager _mcpManager;
+  final ValueNotifier<int> mcpStateNotifier = ValueNotifier<int>(0);
   Future<void> _skillWriteQueue = Future<void>.value();
   final SessionLogService _sessionLog = SessionLogService();
   final UsageLedgerService _usageLedger = UsageLedgerService();
+  final NotificationHistoryService _notificationLog =
+      NotificationHistoryService();
+  final AppBannerController bannerController = AppBannerController();
   late final ToolRegistry _toolRegistry;
   late final AgentHarness _harness;
+  final http.Client _llmHttpClient = http.Client();
 
   /// 本地词组合库条目列表
-  List<PromptComboEntry> _promptLibraryEntries = [];
+  List<PromptComboEntry> _promptLibraryEntries = const [];
+
+  /// 词库云同步状态
+  bool _isSyncingPromptLibrary = false;
+  String? _promptSyncStage;
+  DateTime? _lastPromptSyncAt;
+  PromptLibrarySyncResult? _lastPromptSyncResult;
+
+  /// 词库条目列表独立通知器：避免工作台打字、对话流或生图进度触发词库全量重建
+  final ValueNotifier<int> promptLibraryNotifier = ValueNotifier<int>(0);
 
   /// 本会话内各模型 (provider/model) 的累计 Token 用量 (悬停模型选择器时展示)
   Map<String, TokenUsage> _sessionModelUsage = {};
@@ -234,10 +263,12 @@ mixin _StudioCore on ChangeNotifier {
   double _splitLeftWidth = 320.0;
   double _splitRightWidth = 400.0;
   StudioSidebarTab _activeSidebarTab = StudioSidebarTab.parameters;
+  StudioSidebarTab _tabBeforeInpaint = StudioSidebarTab.parameters;
   bool _promptTabbedMode = false;
   int _promptActiveTab = 0;
   int _deckActiveTab = 0;
   bool _canvasHistoryOpen = false;
+  bool _leftSidebarCollapsed = false;
 
   // 提示词输入框高度
   double _promptHeightStacked = 116.0;
@@ -262,6 +293,11 @@ mixin _StudioCore on ChangeNotifier {
   ComposerRestore? _composerRestore;
 
   int _composerRestoreEpoch = 0;
+
+  /// 词库角色快捷插入到输入框的一次文本插入事件。
+  ComposerInsertion? _composerInsertion;
+
+  int _composerInsertionEpoch = 0;
 
   /// 分割线宽度防抖落盘计时器 (拖动过程每帧回调，写盘必须节流)
   Timer? _splitWidthSaveTimer;
@@ -318,11 +354,15 @@ mixin _StudioCore on ChangeNotifier {
 
   @visibleForTesting
   OpenAiCompatibleProvider? get providerForTesting =>
-      _harness.provider as OpenAiCompatibleProvider?;
+      _harness.provider is OpenAiCompatibleProvider
+      ? _harness.provider as OpenAiCompatibleProvider
+      : null;
 
   @visibleForTesting
   OpenAiCompatibleProvider? get compactionProviderForTesting =>
-      _harness.compactionProvider as OpenAiCompatibleProvider?;
+      _harness.compactionProvider is OpenAiCompatibleProvider
+      ? _harness.compactionProvider as OpenAiCompatibleProvider
+      : null;
 
   @visibleForTesting
   void setAccountInfoForTest(NaiAccountInfo? info) {
@@ -403,6 +443,8 @@ mixin _StudioCore on ChangeNotifier {
       _config.presets.isNotEmpty ? _config.presets : BuiltinPresets.all;
   String? get statusMessage => _statusMessage;
   String? get errorMessage => _errorMessage;
+  List<AppNoticeRecord> get notificationHistory => _notificationLog.records;
+  int get unreadNotificationCount => _notificationLog.unreadCount;
 
   /// 实时生图预览 Getters (委托 LiveProgressController)
   Uint8List? get livePreviewBytes => _liveProgressController.previewBytes;
@@ -1341,7 +1383,7 @@ mixin _StudioCore on ChangeNotifier {
   Future<void> upscaleRtx(NaiGeneratedImage image);
 
   /// 刷新账号与体力信息
-  Future<void> refreshAccountInfo();
+  Future<void> refreshAccountInfo({bool showError = false});
 
   /// 获取用于导出/复制的图像字节 (根据全局设置决定是否去元数据或添加水印)
   Future<Uint8List> getExportImageBytes(
@@ -1444,8 +1486,11 @@ mixin _StudioCore on ChangeNotifier {
   /// 发送对话消息 (支持 Slash 命令行；[images] 为用户图片附件)
   Future<void> sendChatMessage(String text, {List<AgentMessageImage>? images});
 
-  /// 切换侧边栏激活页签 (修复分部右键发送后跳转用)
-  void setActiveSidebarTab(StudioSidebarTab tab);
+  /// 切换侧边栏激活页签 (修复分部右键发送后跳转用；expandSidebar=false 可在不展开收起栏时切页)
+  void setActiveSidebarTab(StudioSidebarTab tab, {bool expandSidebar = true});
+
+  /// 退出修复模式并切回进入修复前的主工作台页签
+  void exitInpaintMode({bool expandSidebar = false});
 
   /// 历史大图完整字节缓存通知器：避免大图加载逐帧触发 notifyListeners() 全局重建
   ValueNotifier<Map<String, Uint8List>> get imageBytesNotifier =>
@@ -1478,6 +1523,78 @@ mixin _StudioCore on ChangeNotifier {
     }
     return loaded;
   }
+
+  String _noticeSourceTitle(AppNoticeSource source) => switch (source) {
+    AppNoticeSource.generation => vmL10n.notificationSourceGeneration,
+    AppNoticeSource.inpaint => vmL10n.notificationSourceInpaint,
+    AppNoticeSource.agent => vmL10n.notificationSourceAgent,
+    AppNoticeSource.account => vmL10n.notificationSourceAccount,
+    AppNoticeSource.comfyUi => vmL10n.notificationSourceComfyUi,
+    AppNoticeSource.storage => vmL10n.notificationSourceStorage,
+    AppNoticeSource.system => vmL10n.notificationSourceSystem,
+  };
+
+  /// 统一上报错误/通知：同步更新最新 errorMessage、写入持久化历史，并推送右上角悬浮通知卡片。
+  void reportError(
+    String message, {
+    AppNoticeSource source = AppNoticeSource.system,
+    AppNoticeLevel level = AppNoticeLevel.error,
+    bool notify = true,
+    Duration? autoDismiss = const Duration(seconds: 6),
+  }) {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return;
+    _errorMessage = trimmed;
+    final record = _notificationLog.record(
+      message: trimmed,
+      level: level,
+      source: source,
+    );
+    final tone = switch (level) {
+      AppNoticeLevel.error => AppToastTone.error,
+      AppNoticeLevel.warning => AppToastTone.warning,
+      AppNoticeLevel.info => AppToastTone.info,
+    };
+    bannerController.push(
+      id: record.id,
+      title: _noticeSourceTitle(source),
+      message: trimmed,
+      tone: tone,
+      autoDismiss: autoDismiss,
+    );
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void markAllNotificationsRead() {
+    if (_notificationLog.markAllRead()) {
+      notifyListeners();
+    }
+  }
+
+  void removeNotification(String id) {
+    if (_notificationLog.remove(id)) {
+      bannerController.dismiss(id);
+      notifyListeners();
+    }
+  }
+
+  void clearNotificationHistory() {
+    final hadBanner = bannerController.items.isNotEmpty;
+    final clearedLog = _notificationLog.clear();
+    if (hadBanner) bannerController.clear();
+    if (_errorMessage != null) _errorMessage = null;
+    if (hadBanner || clearedLog) {
+      notifyListeners();
+    }
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    bannerController.clear();
+    notifyListeners();
+  }
 }
 
 /// Studio 状态管理中枢 (MVVM)。
@@ -1505,11 +1622,14 @@ class StudioViewModel extends ChangeNotifier
     ConfigService? configService,
     NovelAiRepository? repository,
     PromptLibraryService? promptLibraryService,
+    PromptLibrarySyncService? promptLibrarySyncService,
     SkillPackageService? skillPackageService,
     String? sessionLogBaseDir,
   }) {
     // Mixin 的 late final 字段无法进初始化列表，统一在构造体内注入
-    _configService = configService ?? ConfigService();
+    _configService = configService ?? ConfigService.shared;
+    _ownsRepository = repository == null;
+    // 本地 fork：NovelAI 请求走可配置网络代理通道
     _repository =
         repository ??
         NovelAiRepository(
@@ -1526,7 +1646,20 @@ class StudioViewModel extends ChangeNotifier
         );
     _promptLibraryService =
         promptLibraryService ?? PromptLibraryService.instance;
+    _promptLibrarySyncService =
+        promptLibrarySyncService ??
+        (promptLibraryService == null
+            ? PromptLibrarySyncService.instance
+            : PromptLibrarySyncService(libraryService: _promptLibraryService));
     _skillPackageService = skillPackageService ?? SkillPackageService();
+    _mcpManager = McpManager(
+      httpClient: _llmHttpClient,
+      onStateChanged: () {
+        if (_disposed) return;
+        _syncMcpToolsToRegistry();
+        mcpStateNotifier.value++;
+      },
+    );
     _sessionLogBaseDir = sessionLogBaseDir;
     _toolRegistry = ToolRegistry();
     _harness = AgentHarness(
@@ -1594,7 +1727,19 @@ class StudioViewModel extends ChangeNotifier
 
   /// 初始化 Studio
   Future<void> init() async {
-    _config = await _configService.loadConfig();
+    // 安卓存储目录探测失败时降级为容错加载，配合下方 storageDegraded 横幅提示，
+    // 而不是在启动阶段直接抛出到 runApp 之前。
+    var storageDegraded = false;
+    try {
+      _config = await _configService.loadConfig();
+    } catch (_) {
+      storageDegraded = true;
+      try {
+        _config = await _configService.loadConfigTolerant();
+      } catch (_) {
+        _config = const AppConfig();
+      }
+    }
     NetworkProxyService.instance.configureFromConfig(_config);
     _favoriteImageIds
       ..clear()
@@ -1709,6 +1854,14 @@ class StudioViewModel extends ChangeNotifier
       }
     }
     _syncVmLocale();
+    if (storageDegraded) {
+      reportError(
+        vmL10n.bootStorageFallbackBanner,
+        source: AppNoticeSource.storage,
+        level: AppNoticeLevel.warning,
+        notify: false,
+      );
+    }
     _syncGalleryExportHook();
     final lastPrompt = await _configService.loadLastPrompt();
     final applyFixed = await _configService.loadApplyFixedPrompts();
@@ -1726,11 +1879,16 @@ class StudioViewModel extends ChangeNotifier
       'sources' => StudioSidebarTab.sources,
       _ => StudioSidebarTab.parameters,
     };
+    if (_activeSidebarTab == StudioSidebarTab.parameters ||
+        _activeSidebarTab == StudioSidebarTab.prompts) {
+      _tabBeforeInpaint = _activeSidebarTab;
+    }
 
     _promptTabbedMode = await _configService.loadPromptTabbedMode();
     _promptActiveTab = await _configService.loadPromptActiveTab();
     _deckActiveTab = await _configService.loadDeckActiveTab();
     _canvasHistoryOpen = await _configService.loadCanvasHistoryOpen();
+    _leftSidebarCollapsed = await _configService.loadLeftSidebarCollapsed();
 
     // 加载提示词输入框高度
     final promptHeights = await _configService.loadPromptFieldHeights();
@@ -1785,29 +1943,35 @@ class StudioViewModel extends ChangeNotifier
     _harness.setPreset(_config.activePreset);
 
     _setupHarnessAndTools();
+    unawaited(_mcpManager.syncConfigs(_config.mcpServers));
 
     // 初始化会话日志并续接上次对话 (Pi --continue 语义)
+    // 本地 fork：会话管理上限与保留天数来自设置页
     _sessionLog
       ..maxSessions = _config.sessionMaxCount
       ..retentionDays = _config.sessionRetentionDays;
-    await _sessionLog.init(baseDir: _sessionLogBaseDir);
-    await _usageLedger.init(baseDir: _sessionLog.baseDirPath);
-    final snapshot = await _sessionLog.loadLatestSessionAsync();
-    if (snapshot != null && snapshot.messages.isNotEmpty) {
-      _harness.restoreMessages(snapshot.messages);
-      _harness.restoreContextState(_sessionLog.loadContextState());
-      _sessionModelUsage = {
-        for (final e in snapshot.sessionUsage.entries)
-          displayNameForModelKey(e.key): e.value,
-      };
+    try {
+      await _sessionLog.init(baseDir: _sessionLogBaseDir);
+      await _usageLedger.init(baseDir: _sessionLog.baseDirPath);
+      await _notificationLog.init(baseDir: _sessionLog.baseDirPath);
+      final snapshot = await _sessionLog.loadLatestSessionAsync();
+      if (snapshot != null && snapshot.messages.isNotEmpty) {
+        _harness.restoreMessages(snapshot.messages);
+        _harness.restoreContextState(_sessionLog.loadContextState());
+        _sessionModelUsage = {
+          for (final e in snapshot.sessionUsage.entries)
+            displayNameForModelKey(e.key): e.value,
+        };
+      }
+      _sessionLog.recordModelChange(
+        _config.activeLlmProvider.id,
+        _config.activeLlmProvider.activeModel.id,
+      );
+      _sessionLog.recordThinkingLevelChange(_currentThinkingEffort.id);
+      await refreshSessions();
+    } catch (_) {
+      if (!storageDegraded) rethrow;
     }
-    _sessionLog.recordModelChange(
-      _config.activeLlmProvider.id,
-      _config.activeLlmProvider.activeModel.id,
-    );
-    _sessionLog.recordThinkingLevelChange(_currentThinkingEffort.id);
-
-    await refreshSessions();
 
     // 加载持久化的图像历史
     if (_config.enableImagePersistence && _config.saveDirectory.isNotEmpty) {
@@ -1824,7 +1988,7 @@ class StudioViewModel extends ChangeNotifier
       );
       if (_repository.history.isNotEmpty && _selectedImage == null) {
         _selectedImage = _repository.history.first;
-        ensureImageLoaded(_selectedImage!);
+        unawaited(ensureImageLoaded(_selectedImage!));
         _scheduleAdaptiveAccent(_selectedImage!);
       }
 
@@ -1841,6 +2005,8 @@ class StudioViewModel extends ChangeNotifier
 
     notifyListeners();
 
+    unawaited(_promptAndroidStoragePermissionOnce());
+
     // 后台加载账号信息
     if (_config.novelAiKey.isNotEmpty) {
       await refreshAccountInfo();
@@ -1853,6 +2019,20 @@ class StudioViewModel extends ChangeNotifier
         enabled: _config.enableTagDictionaryAutoUpdate,
       );
     }());
+  }
+
+  /// Android 首次启动时引导申请图片/存储运行时权限（非阻塞：拒绝仍可正常进入）。
+  Future<void> _promptAndroidStoragePermissionOnce() async {
+    final mediaStore = MediaStoreService.instance;
+    if (!mediaStore.isSupported) return;
+    try {
+      if (await mediaStore.hasStoragePermission()) return;
+      if (await _configService.hasPromptedAndroidStoragePermission()) return;
+      await _configService.markAndroidStoragePermissionPrompted();
+      await mediaStore.requestStoragePermission();
+    } catch (_) {
+      // 权限通道异常不阻塞工作台运行
+    }
   }
 
   void _notifyHistoryThumbnails() {
@@ -1915,6 +2095,8 @@ class StudioViewModel extends ChangeNotifier
     _syncVmLocale();
     // UI 缩放同理：根级 ValueListenableBuilder 局部接管，不全局重绘
     AppUiZoomController.instance.syncFromConfig(newConfig);
+    // 帧率上限同理：AppWidgetsFlutterBinding 监听即时生效，不触发全树重建
+    AppFrameRateController.instance.syncFromConfig(newConfig);
     // ComfyUI 模式：开关或地址变化时刷新 Bridge 连接状态
     if (newConfig.comfyUiEnabled != oldConfig.comfyUiEnabled ||
         newConfig.comfyUiBaseUrl != oldConfig.comfyUiBaseUrl) {
@@ -1942,6 +2124,7 @@ class StudioViewModel extends ChangeNotifier
       _currentThinkingEffort = newActive.activeModel.defaultThinkingEffort;
     }
     _setupHarnessAndTools();
+    unawaited(_mcpManager.syncConfigs(_config.mcpServers));
 
     // 同步图片持久化状态与上限调整
     if (newConfig.enableImagePersistence != oldConfig.enableImagePersistence ||
@@ -1956,7 +2139,7 @@ class StudioViewModel extends ChangeNotifier
           );
           if (_repository.history.isNotEmpty && _selectedImage == null) {
             _selectedImage = _repository.history.first;
-            ensureImageLoaded(_selectedImage!);
+            unawaited(ensureImageLoaded(_selectedImage!));
             _scheduleAdaptiveAccent(_selectedImage!);
           }
         } else {
@@ -1977,9 +2160,14 @@ class StudioViewModel extends ChangeNotifier
     notifyListeners();
 
     // 仅在 NovelAI API Key 发生变更时刷新账号，避免调整参数/水印时频繁请求网络
-    final keyChanged = oldConfig.novelAiKey != newConfig.novelAiKey;
-    if (keyChanged && _config.novelAiKey.isNotEmpty) {
-      await refreshAccountInfo();
+    final keyChanged =
+        oldConfig.novelAiKey.trim() != newConfig.novelAiKey.trim();
+    if (keyChanged) {
+      _accountInfo = null;
+      notifyListeners();
+      if (_config.novelAiKey.trim().isNotEmpty) {
+        await refreshAccountInfo(showError: true);
+      }
     }
   }
 
@@ -2050,6 +2238,7 @@ class StudioViewModel extends ChangeNotifier
     await Future.wait([
       _sessionLog.flush(),
       _usageLedger.flush(),
+      _notificationLog.flush(),
       _repository.flushPendingImageLoads(),
     ]);
   }
@@ -2117,7 +2306,7 @@ class StudioViewModel extends ChangeNotifier
       // 词表资产缺失时不阻断启动，计数保持启发式估算
       return;
     }
-    if (_params.model.tokenizerKind == target.tokenizerKind) {
+    if (!_disposed && _params.model.tokenizerKind == target.tokenizerKind) {
       notifyListeners();
     }
   }
@@ -2165,7 +2354,7 @@ class StudioViewModel extends ChangeNotifier
           cacheKey: image.id,
         );
         if (palette == null) return;
-        if (_selectedImage?.id != image.id) return;
+        if (_disposed || _selectedImage?.id != image.id) return;
         AppAccentController.instance.applyAdaptiveSeed(Color(palette.seed));
       } catch (error) {
     debugPrint('[ignored] $error');
@@ -2211,7 +2400,7 @@ class StudioViewModel extends ChangeNotifier
             ? deletedIndex
             : gallery.length - 1;
         _selectedImage = gallery[nextIndex];
-        ensureImageLoaded(_selectedImage!);
+        unawaited(ensureImageLoaded(_selectedImage!));
         _scheduleAdaptiveAccent(_selectedImage!);
       } else {
         _selectedImage = null;
@@ -2455,11 +2644,6 @@ class StudioViewModel extends ChangeNotifier
 
   // ------------------------- 杂项状态 -------------------------
 
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
-
   /// Ctrl+O: 切换对话卡思考块全局展开/折叠
   void toggleThinkingExpanded() {
     _isThinkingExpanded = !_isThinkingExpanded;
@@ -2504,8 +2688,17 @@ class StudioViewModel extends ChangeNotifier
     _previewDisposed = true;
     inpaintPreviewNotifier.dispose();
     _rtxDisposed = true;
-    _repository.cancelRtxUpscale();
+    if (_ownsRepository) {
+      _repository.dispose();
+    } else {
+      _repository.cancelRtxUpscale();
+    }
+    _comfyService?.close();
+    _comfyService = null;
+    unawaited(_mcpManager.dispose());
+    mcpStateNotifier.dispose();
     _harness.dispose();
+    _llmHttpClient.close();
     _generationSubscription?.cancel();
     _paramSaveDebounceTimer?.cancel();
     _configSaveDebounceTimer?.cancel();
@@ -2517,9 +2710,12 @@ class StudioViewModel extends ChangeNotifier
     // 瞬态控制器随宿主一起释放
     _streamingText.dispose();
     _liveProgressController.dispose();
+    bannerController.dispose();
+    promptLibraryNotifier.dispose();
     // 大画布领域控制器：内部取消防抖并立即落盘一次 (对齐旧 dispose 契约)
     board.dispose();
     unawaited(_sessionLog.flush());
+    unawaited(_notificationLog.flush());
     super.dispose();
   }
 }

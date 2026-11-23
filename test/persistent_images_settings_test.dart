@@ -37,19 +37,19 @@ void main() {
   testWidgets('图片持久发送开关在上下文管理分组渲染', (tester) async {
     await pumpTab(tester);
     expect(find.text('图片持久发送'), findsOneWidget);
-    // 该页 Switch 顺序: 自动压缩(0) → 后台异步压缩(1) → 图片持久发送(2)
+    // 上游合并后压缩开关走 AppSettingTile，原生 Switch 只剩图片持久发送一项
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
-    expect(switches.length, greaterThanOrEqualTo(3));
-    expect(switches[2].value, isFalse); // 默认关闭 = 保持 imageEpoch 折叠现状
+    expect(switches, isNotEmpty);
+    expect(switches.first.value, isFalse); // 默认关闭 = 保持 imageEpoch 折叠现状
   });
 
   testWidgets('切换开关后控件状态翻转', (tester) async {
     await pumpTab(tester);
-    final target = find.byType(Switch).at(2);
+    final target = find.byType(Switch).first;
     await tester.tap(target);
     await tester.pumpAndSettle();
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
-    expect(switches[2].value, isTrue);
+    expect(switches.first.value, isTrue);
   });
 
   test('AppConfig.agentPersistentImages 默认关闭且可持久化往返', () async {

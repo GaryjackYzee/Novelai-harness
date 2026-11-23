@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/novelai_models.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_icon_button.dart';
+import '../../../core/widgets/app_transitions.dart';
 
 /// 模型列表中的单个模型小卡片
 ///
@@ -46,7 +48,12 @@ class ModelCard extends StatelessWidget {
           Row(
             children: [
               // 选中态指示点
-              Container(
+              AnimatedContainer(
+                duration: AppMotion.resolveDuration(
+                  context,
+                  AppMotionDurations.quick,
+                ),
+                curve: AppMotionCurves.smoothOut,
                 width: 14,
                 height: 14,
                 decoration: BoxDecoration(
@@ -55,11 +62,20 @@ class ModelCard extends StatelessWidget {
                     color: isSelected ? colors.primary : colors.borderDefault,
                     width: 1.5,
                   ),
-                  color: isSelected ? colors.primary : Colors.transparent,
+                  color: isSelected ? colors.primary : null,
                 ),
-                child: isSelected
-                    ? const Icon(Icons.check, size: 10, color: Colors.white)
-                    : null,
+                child: AppIconSwap(
+                  swapKey: isSelected,
+                  enableBlur: false,
+                  child: isSelected
+                      ? Icon(
+                          Icons.check,
+                          key: const ValueKey<bool>(true),
+                          size: 10,
+                          color: colors.onPrimary,
+                        )
+                      : const SizedBox.shrink(key: ValueKey<bool>(false)),
+                ),
               ),
               const SizedBox(width: AppSpacing.xs * 2),
               Expanded(
@@ -78,6 +94,7 @@ class ModelCard extends StatelessWidget {
                 icon: Icons.settings_outlined,
                 size: 28,
                 iconSize: 15,
+                variant: AppIconButtonVariant.ghost,
                 tooltip: l10n.settingsModelSettings,
                 onPressed: () => onEdit(model),
               ),
@@ -86,6 +103,7 @@ class ModelCard extends StatelessWidget {
                   icon: Icons.close_rounded,
                   size: 28,
                   iconSize: 15,
+                  variant: AppIconButtonVariant.ghost,
                   tooltip: l10n.settingsDeleteModel,
                   onPressed: onDelete,
                 ),

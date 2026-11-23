@@ -47,8 +47,7 @@ mixin _StudioGenerationMixin on _StudioCore {
         ? customDir
         : _config.saveDirectory;
     if (targetDir.isEmpty) {
-      _errorMessage = vmL10n.vmGenNoSaveDir;
-      notifyListeners();
+      reportError(vmL10n.vmGenNoSaveDir, source: AppNoticeSource.generation);
       return false;
     }
 
@@ -66,8 +65,10 @@ mixin _StudioGenerationMixin on _StudioCore {
         watermarkBytes: _config.watermarkConfig.imageBytes,
       );
       if (saved == null) {
-        _errorMessage = vmL10n.vmGenSaveFailedNoTarget;
-        notifyListeners();
+        reportError(
+          vmL10n.vmGenSaveFailedNoTarget,
+          source: AppNoticeSource.generation,
+        );
         return false;
       }
       await stripStealthFromFile(saved.localFilePath);
@@ -78,8 +79,10 @@ mixin _StudioGenerationMixin on _StudioCore {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = vmL10n.vmGenSaveFailed('$e');
-      notifyListeners();
+      reportError(
+        vmL10n.vmGenSaveFailed('$e'),
+        source: AppNoticeSource.generation,
+      );
       return false;
     }
   }
@@ -109,8 +112,10 @@ mixin _StudioGenerationMixin on _StudioCore {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = vmL10n.vmGenSaveFailed('$e');
-      notifyListeners();
+      reportError(
+        vmL10n.vmGenSaveFailed('$e'),
+        source: AppNoticeSource.generation,
+      );
       return false;
     }
   }
@@ -236,8 +241,7 @@ mixin _StudioGenerationMixin on _StudioCore {
     // 同步占位必须在任何 await 之前，否则双击/斜杠命令会在窗口期重复扣费。
     if (_isGenerating || _isStartingGeneration) return;
     if (_params.prompt.trim().isEmpty) {
-      _errorMessage = vmL10n.vmGenEmptyPrompt;
-      notifyListeners();
+      reportError(vmL10n.vmGenEmptyPrompt, source: AppNoticeSource.generation);
       return;
     }
 
@@ -252,11 +256,11 @@ mixin _StudioGenerationMixin on _StudioCore {
 
     _isStartingGeneration = true;
     try {
+      // 本地 fork：账号池轮转（生图前按账号策略切换活动账号）
       await rotateAccountForGeneration();
 
       if (_config.novelAiKey.trim().isEmpty) {
-        _errorMessage = vmL10n.vmGenNoApiKey;
-        notifyListeners();
+        reportError(vmL10n.vmGenNoApiKey, source: AppNoticeSource.generation);
         return;
       }
 
@@ -307,8 +311,10 @@ mixin _StudioGenerationMixin on _StudioCore {
             (progress) {
               if (progress.errorMessage != null &&
                   progress.errorMessage!.isNotEmpty) {
-                _errorMessage = progress.errorMessage;
-                notifyListeners();
+                reportError(
+                  progress.errorMessage!,
+                  source: AppNoticeSource.generation,
+                );
                 return;
               }
 
@@ -339,7 +345,11 @@ mixin _StudioGenerationMixin on _StudioCore {
               }
             },
             onError: (e) {
-              _errorMessage = vmL10n.vmGenFailed('$e');
+              reportError(
+                vmL10n.vmGenFailed('$e'),
+                source: AppNoticeSource.generation,
+                notify: false,
+              );
               _statusMessage = null;
               if (!completer.isCompleted) completer.complete();
             },
@@ -351,7 +361,11 @@ mixin _StudioGenerationMixin on _StudioCore {
 
           await completer.future;
         } catch (e) {
-          _errorMessage = vmL10n.vmGenFailed('$e');
+          reportError(
+            vmL10n.vmGenFailed('$e'),
+            source: AppNoticeSource.generation,
+            notify: false,
+          );
           _statusMessage = null;
         } finally {
           _generationSubscription = null;
@@ -360,7 +374,7 @@ mixin _StudioGenerationMixin on _StudioCore {
           _generationBackgrounded = false;
           _liveProgressController.clear();
           notifyListeners();
-          refreshAccountInfo();
+          unawaited(refreshAccountInfo());
         }
       } else {
         try {
@@ -390,14 +404,18 @@ mixin _StudioGenerationMixin on _StudioCore {
             }
           }
         } catch (e) {
-          _errorMessage = vmL10n.vmGenFailed('$e');
+          reportError(
+            vmL10n.vmGenFailed('$e'),
+            source: AppNoticeSource.generation,
+            notify: false,
+          );
           _statusMessage = null;
         } finally {
           _isGenerating = false;
           _generationBackgrounded = false;
           _liveProgressController.clear();
           notifyListeners();
-          refreshAccountInfo();
+          unawaited(refreshAccountInfo());
         }
       }
     } finally {
@@ -453,14 +471,18 @@ mixin _StudioGenerationMixin on _StudioCore {
     // /upscale 与画板操作条都可能在生成中被触发；付费操作必须互斥。
     if (_isGenerating || _isStartingGeneration) return;
     if (_selectedImage == null) {
-      _errorMessage = vmL10n.vmUpscaleNoImage;
-      notifyListeners();
+      reportError(
+        vmL10n.vmUpscaleNoImage,
+        source: AppNoticeSource.generation,
+      );
       return;
     }
 
     if (_config.novelAiKey.trim().isEmpty) {
-      _errorMessage = vmL10n.vmUpscaleNoApiKey;
-      notifyListeners();
+      reportError(
+        vmL10n.vmUpscaleNoApiKey,
+        source: AppNoticeSource.generation,
+      );
       return;
     }
 
@@ -500,13 +522,17 @@ mixin _StudioGenerationMixin on _StudioCore {
             )
           : vmL10n.vmUpscaleDone(upscaled.params.width, upscaled.params.height);
     } catch (e) {
-      _errorMessage = vmL10n.vmUpscaleFailed('$e');
+      reportError(
+        vmL10n.vmUpscaleFailed('$e'),
+        source: AppNoticeSource.generation,
+        notify: false,
+      );
       _statusMessage = null;
     } finally {
       _isGenerating = false;
       _generationBackgrounded = false;
       notifyListeners();
-      refreshAccountInfo();
+      unawaited(refreshAccountInfo());
     }
   }
 
@@ -550,12 +576,20 @@ mixin _StudioGenerationMixin on _StudioCore {
       if (e.cancelled) {
         _statusMessage = vmL10n.vmGenAborted;
       } else {
-        _errorMessage = vmL10n.vmUpscaleFailed('$e');
+        reportError(
+          vmL10n.vmUpscaleFailed('$e'),
+          source: AppNoticeSource.generation,
+          notify: false,
+        );
         _statusMessage = null;
       }
     } catch (e) {
       if (_rtxDisposed) return;
-      _errorMessage = vmL10n.vmUpscaleFailed('$e');
+      reportError(
+        vmL10n.vmUpscaleFailed('$e'),
+        source: AppNoticeSource.generation,
+        notify: false,
+      );
       _statusMessage = null;
     } finally {
       _isRtxUpscaling = false;
@@ -582,14 +616,12 @@ mixin _StudioGenerationMixin on _StudioCore {
     return WatermarkService.processExportImage(
       rawBytes: rawBytes,
       stripMetadata: effectiveStripMetadata,
-
       enableWatermark: _config.enableWatermark,
       watermarkConfig: _config.watermarkConfig,
       watermarkBytes: _config.watermarkConfig.imageBytes,
     );
   }
 
-  /// 刷新账号与体力信息
   /// 图生图：设置或清除源图 (null 表示回到纯文生图)。
   @override
   void setImg2imgSource(Uint8List? bytes) {
@@ -720,8 +752,14 @@ mixin _StudioGenerationMixin on _StudioCore {
   }
 
   @override
-  Future<void> refreshAccountInfo() async {
-    if (_config.novelAiKey.trim().isEmpty) return;
+  Future<void> refreshAccountInfo({bool showError = false}) async {
+    if (_config.novelAiKey.trim().isEmpty) {
+      if (_accountInfo != null) {
+        _accountInfo = null;
+        notifyListeners();
+      }
+      return;
+    }
 
     _isLoadingAccount = true;
     notifyListeners();
@@ -730,10 +768,17 @@ mixin _StudioGenerationMixin on _StudioCore {
       _accountInfo = await _repository.fetchAccountInfo(
         apiKey: _config.novelAiKey,
       );
+      // 本地 fork：账号池同步当前账号可用点数等元信息
       await _syncActiveAccountInfo();
-    } catch (error) {
-    debugPrint('[ignored] $error');
-      // ignore
+    } catch (e) {
+      if (showError) {
+        _accountInfo = null;
+        reportError(
+          vmL10n.vmAccountRefreshFailed('$e'),
+          source: AppNoticeSource.account,
+          notify: false,
+        );
+      }
     } finally {
       _isLoadingAccount = false;
       notifyListeners();

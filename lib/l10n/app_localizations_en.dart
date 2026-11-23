@@ -221,6 +221,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Applies in Manual mode: open the picker to choose any color';
 
   @override
+  String get settingsBackgroundMode => 'Background';
+
+  @override
+  String get settingsBackgroundModeSubtitle =>
+      'Customize workspace canvas and surfaces: default, softly tinted by accent, or custom color';
+
+  @override
+  String get backgroundModeDefault => 'Default';
+
+  @override
+  String get backgroundModeFollowAccent => 'Follow Accent';
+
+  @override
+  String get backgroundModeCustom => 'Custom';
+
+  @override
+  String get settingsBackgroundLightColor => 'Light Background';
+
+  @override
+  String get settingsBackgroundDarkColor => 'Dark Background';
+
+  @override
+  String get settingsBackgroundColor => 'Canvas Background';
+
+  @override
+  String get settingsBackgroundReset => 'Reset';
+
+  @override
   String get colorPickerTitle => 'Pick a Color';
 
   @override
@@ -697,13 +725,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSearchModelHint => 'Search model name or ID';
 
   @override
-  String get settingsModelSortDefault => 'Default Order';
+  String get settingsModelSortDefault => 'Original Order';
 
   @override
   String get settingsModelSortNameAsc => 'Name A-Z';
 
   @override
   String get settingsModelSortNameDesc => 'Name Z-A';
+
+  @override
+  String get settingsModelSortContextDesc => 'Context: High to Low';
+
+  @override
+  String get settingsModelSortMaxTokensDesc => 'Max Output: High to Low';
+
+  @override
+  String get settingsModelSortThinkingFirst => 'Thinking First';
+
+  @override
+  String get settingsModelSortMultimodalFirst => 'Multimodal First';
+
+  @override
+  String get settingsModelSortImageOutputFirst => 'Drawing Models First';
 
   @override
   String get settingsFilterImageOnly => 'Drawing Models Only';
@@ -1513,7 +1556,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get charPromptEmptyDescription =>
-      'Click Female / Male / Other preset buttons above to start multi-character generation';
+      'Click Add Character above to choose a preset and start multi-character generation';
 
   @override
   String get charPromptExitCanvasEditTooltip => 'Exit canvas position editing';
@@ -1527,6 +1570,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get charPromptCanvasEdit => 'Canvas Edit';
+
+  @override
+  String get charPromptAddCharacter => 'Add Character';
 
   @override
   String get charPromptAddFemaleTooltip =>
@@ -1602,6 +1648,44 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get affixResizeSuffixTooltip =>
       'Drag to resize suffix height (double-click to reset)';
+
+  @override
+  String get affixSaveStyleLabel => 'Save Style';
+
+  @override
+  String get affixSaveStyleTooltip =>
+      'Save current prefix, suffix, and negative prompt as a style preset';
+
+  @override
+  String get affixStylePresetsLabel => 'Style Library';
+
+  @override
+  String get affixStylePresetsTooltip =>
+      'Fill prefix, suffix, and negative prompt from a saved style preset';
+
+  @override
+  String get affixStylePresetsEmpty =>
+      'No style presets in library yet. Click \"Save Style\" to create one.';
+
+  @override
+  String get affixSaveStyleEmptyNotice =>
+      'Prefix, suffix, and negative prompt are all empty';
+
+  @override
+  String affixAppliedStyleNotice(String title) {
+    return 'Applied style preset: $title';
+  }
+
+  @override
+  String get bannedWordsTitle => 'Strip banned words';
+
+  @override
+  String get bannedWordsSubtitle =>
+      'Hidden from assistant only; still sent to generation';
+
+  @override
+  String get bannedWordsHint =>
+      'Comma-separated terms to hide from assistant...';
 
   @override
   String get annotHistoryTitle => 'History ';
@@ -1999,7 +2083,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get metadataDialogTitle => 'Image Metadata Reader';
 
   @override
-  String get metadataPromptTitle => 'Prompt';
+  String get metadataPromptTitle => 'Positive Prompt';
 
   @override
   String get metadataCopiedPrompt => 'Prompt copied to clipboard';
@@ -2088,7 +2172,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get metadataParamEnabled => 'Enabled';
 
   @override
-  String get metadataRawJsonTitle => 'Raw Metadata (JSON / Text)';
+  String get metadataRawJsonTitle => 'Raw Metadata';
 
   @override
   String get metadataCopyRawTooltip => 'Copy raw text';
@@ -2160,6 +2244,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Global settings (API Key / Storage / LLM)';
 
   @override
+  String get sidebarCollapse => 'Collapse';
+
+  @override
+  String get sidebarCollapseTooltip => 'Collapse left sidebar';
+
+  @override
+  String get sidebarExpandTooltip => 'Expand left sidebar';
+
+  @override
   String get promptResizeTooltip =>
       'Drag to resize height (double-click to reset)';
 
@@ -2191,7 +2284,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardExitAnnotation => 'Exit Annotation';
 
   @override
-  String get boardSendAllToAi => 'Send All Annotations to AI';
+  String get boardSendAllToAi => 'Send Notes';
 
   @override
   String get boardWireMissedTarget =>
@@ -2221,7 +2314,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardToolResetView => 'Reset View';
 
   @override
-  String get boardImageCardMainTitle => 'Main Image (Current Generation)';
+  String get boardImageCardMainTitle => 'Main';
 
   @override
   String boardImageCardRefTitle(int width, int height) {
@@ -2417,6 +2510,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryMenuAddAsCharacter => 'Add as Character Card';
 
   @override
+  String get libraryMenuSendToAgent => 'Send to Assistant Input';
+
+  @override
+  String get libraryMenuApplyStyleReplace =>
+      'Apply Style (Replace Affixes & Negative)';
+
+  @override
+  String get libraryMenuApplyStyleAppend => 'Append to Affixes & Negative';
+
+  @override
   String get libraryMenuCopyPrompt => 'Copy Prompt';
 
   @override
@@ -2424,6 +2527,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryCardApply => 'Apply to Workbench';
+
+  @override
+  String get libraryCardApplyStyle => 'Apply Style';
+
+  @override
+  String get libraryCardSendToAgentTooltip => 'Send to assistant input';
+
+  @override
+  String librarySentCharacterToAgent(String title) {
+    return 'Sent character \"$title\" to assistant input';
+  }
+
+  @override
+  String libraryApplyStyleSuccess(String title) {
+    return 'Applied style preset: $title';
+  }
 
   @override
   String get libraryCardAddAsCharacterTooltip =>
@@ -2510,17 +2629,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter positive prompt (e.g. 1girl, hatsune miku, cybernetic...)';
 
   @override
+  String get libraryEditFieldPrefix => 'Prefix';
+
+  @override
+  String get libraryEditFieldPrefixHint =>
+      'Style/artist tags placed before main prompt (e.g. artist:..., watercolor style...)';
+
+  @override
+  String get libraryEditFieldSuffix => 'Suffix';
+
+  @override
+  String get libraryEditFieldSuffixHint =>
+      'Style suffix placed after main prompt (e.g. very aesthetic, soft lighting...)';
+
+  @override
+  String get libraryEditFillAllStyleFromWorkbench =>
+      'Fill Style from Workbench';
+
+  @override
+  String get libraryEditWorkspaceStyleEmpty =>
+      'Workbench prefix, suffix, and negative prompt are all empty';
+
+  @override
+  String get libraryEditStyleContentEmpty =>
+      'Please enter at least one of prefix, suffix, or negative prompt';
+
+  @override
   String get libraryEditFieldNegative => 'Negative Prompt';
 
   @override
-  String get libraryEditCharacterOnlyBadge => 'Character category only';
+  String get libraryEditCharacterOnlyBadge => 'Character & Style';
 
   @override
   String get libraryEditFillFromNegative => 'Fill from Negative';
 
   @override
   String get libraryEditFieldNegativeHint =>
-      'Character-specific negative tags (e.g. worst quality, bad hands...)';
+      'Character or style negative tags (e.g. worst quality, bad hands...)';
 
   @override
   String get libraryEditFieldTags => 'Search Tags';
@@ -2604,7 +2749,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatInputHint =>
-      'Enter drawing ideas, or type /nai <prompt> for quick generation...';
+      'Enter drawing ideas, @ to link character, or /nai for quick generation...';
+
+  @override
+  String get chatCharacterMentionHeader => 'Library Characters';
+
+  @override
+  String get chatLinkedCharacterRemoveTooltip => 'Remove linked character';
 
   @override
   String get chatSendTooltip => 'Send (Enter)';
@@ -3620,6 +3771,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bootRetry => 'Retry';
 
   @override
+  String get bootGrantPermission => 'Grant storage permission';
+
+  @override
+  String get bootOpenSettings => 'Open app settings';
+
+  @override
+  String get bootContinueAnyway => 'Continue anyway (temporary memory)';
+
+  @override
+  String get bootStorageFallbackBanner =>
+      'Image storage directory unavailable; running in temporary memory mode. Check permissions or free space.';
+
+  @override
   String get settingsSectionContextManagement => 'Context management';
 
   @override
@@ -3635,6 +3799,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsBackgroundCompactionHint =>
       'Start compaction at 70% of the safe context window; wait only when the limit is reached.';
+
+  @override
+  String get settingsAgentPersistentImages => 'Persist image attachments';
+
+  @override
+  String get settingsAgentPersistentImagesHint =>
+      'Image attachments from earlier turns are re-sent to the vision model every turn instead of being collapsed; this noticeably increases token usage and may break prompt caching.';
 
   @override
   String get settingsCompactionProvider => 'Compaction provider';
@@ -3977,6 +4148,642 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toolFallbackName => 'Tool';
+
+  @override
+  String get chatAssistantLabel => 'AI Assistant';
+
+  @override
+  String get chatCopyMessageTooltip => 'Copy message';
+
+  @override
+  String get chatCopiedTooltip => 'Copied';
+
+  @override
+  String get chatEditAndRewindTooltip => 'Edit & rewind following messages';
+
+  @override
+  String get chatRewindToHereTooltip => 'Rewind to this reply';
+
+  @override
+  String get chatScrollToBottomTooltip => 'Scroll to bottom';
+
+  @override
+  String get chatEmptyWelcomeTitle => 'What would you like to create?';
+
+  @override
+  String get chatEmptySuggestionDraw => 'Design a scene and generate an image';
+
+  @override
+  String get chatEmptySuggestionRefine =>
+      'Refine current prompt tags & weights';
+
+  @override
+  String get chatEmptySuggestionAnalyze =>
+      'Analyze the canvas image and suggest edits';
+
+  @override
+  String get chatToolArgsLabel => 'Arguments';
+
+  @override
+  String get chatToolOutputLabel => 'Output';
+
+  @override
+  String get settingsFrameRateLimit => 'Frame Rate Limit';
+
+  @override
+  String get settingsFrameRateLimitSubtitle =>
+      'Cap the maximum render FPS on high-refresh displays to reduce GPU raster load and jank';
+
+  @override
+  String get frameRateUnlimited => 'Uncapped (Display)';
+
+  @override
+  String frameRateFpsOption(int fps) {
+    return '$fps FPS';
+  }
+
+  @override
+  String get inpaintExit => 'Exit Inpaint';
+
+  @override
+  String get canvasQuickGenerate => 'Generate';
+
+  @override
+  String get canvasQuickAbort => 'Stop';
+
+  @override
+  String get libraryReturn => 'Back';
+
+  @override
+  String get canvasActionReadMetadata => 'Read Image Metadata';
+
+  @override
+  String get metadataNoParamsNotice =>
+      'No generation metadata detected. You can try extracting a blind watermark or importing as a reference.';
+
+  @override
+  String metadataPickImageFailed(String error) {
+    return 'Failed to read image: $error';
+  }
+
+  @override
+  String get settingsSectionProviderBehavior => 'Request Behavior';
+
+  @override
+  String get settingsModelSectionCapabilities => 'Capabilities';
+
+  @override
+  String get settingsModelSectionParameters => 'Parameters & Limits';
+
+  @override
+  String get settingsModelSectionCache => 'Prompt Cache';
+
+  @override
+  String get settingsConfirmDeleteProviderTitle => 'Delete Provider';
+
+  @override
+  String settingsConfirmDeleteProviderMessage(String name) {
+    return 'Delete provider \"$name\" and its model configurations?';
+  }
+
+  @override
+  String get settingsEndpointCopied => 'Endpoint URL copied';
+
+  @override
+  String get presetDuplicateToEdit => 'Duplicate to Edit';
+
+  @override
+  String get presetCopyPrompt => 'Copy Prompt';
+
+  @override
+  String get presetCopiedPrompt => 'System prompt copied';
+
+  @override
+  String get presetConfirmDeleteTitle => 'Delete Preset';
+
+  @override
+  String presetConfirmDeleteMessage(String name) {
+    return 'Delete preset \"$name\"?';
+  }
+
+  @override
+  String get presetEnableAll => 'Enable all';
+
+  @override
+  String get presetDisableAll => 'Disable all';
+
+  @override
+  String get skillSearchHint => 'Search skill name, ID, or description';
+
+  @override
+  String get skillNoMatching => 'No matching skills';
+
+  @override
+  String get skillConfirmDeleteTitle => 'Delete Skill';
+
+  @override
+  String skillConfirmDeleteMessage(String name) {
+    return 'Delete custom skill \"$name\"? This takes effect immediately.';
+  }
+
+  @override
+  String get skillImportFileDesc =>
+      'Supports .zip, .skill packages, or a single SKILL.md file';
+
+  @override
+  String get skillImportFolderDesc =>
+      'Import a local folder containing SKILL.md and resources';
+
+  @override
+  String get skillImportPasteDesc => 'Paste SKILL.md text directly and parse';
+
+  @override
+  String get toolSearchHint => 'Search tool name, ID, or description';
+
+  @override
+  String get toolNoMatching => 'No matching tools';
+
+  @override
+  String get toolConfirmDeleteTitle => 'Delete Custom Tool';
+
+  @override
+  String toolConfirmDeleteMessage(String name) {
+    return 'Delete custom tool \"$name\"? This takes effect immediately.';
+  }
+
+  @override
+  String get toolFormatSchema => 'Format JSON';
+
+  @override
+  String get toolFormatSchemaInvalid => 'Invalid JSON; cannot format';
+
+  @override
+  String get settingsSectionLibrarySync => 'Library Cloud Sync';
+
+  @override
+  String get settingsLibrarySyncEndpointTitle => 'Sync Service URL';
+
+  @override
+  String get settingsLibrarySyncEndpointHint =>
+      'https://your-worker.workers.dev';
+
+  @override
+  String get settingsLibrarySyncTokenTitle => 'Access Token';
+
+  @override
+  String get settingsLibrarySyncTokenHint => 'SYNC_TOKEN configured in Worker';
+
+  @override
+  String get settingsLibrarySyncNamespaceTitle => 'Namespace';
+
+  @override
+  String get settingsLibrarySyncNamespaceHint => 'default';
+
+  @override
+  String get librarySyncButton => 'Cloud Sync';
+
+  @override
+  String get librarySyncingLabel => 'Syncing...';
+
+  @override
+  String get librarySyncSettingsMenu => 'Cloud Sync Settings...';
+
+  @override
+  String get librarySyncMergeMenu => 'Sync Now (Two-way Merge)';
+
+  @override
+  String get librarySyncForcePushMenu => 'Force Upload (Overwrite Cloud)';
+
+  @override
+  String get librarySyncForcePullMenu => 'Force Pull (Overwrite Local)';
+
+  @override
+  String get librarySyncDialogTitle => 'Library Cloud Sync';
+
+  @override
+  String get librarySyncDialogSubtitle =>
+      'Sync prompt combos and deduplicated preview images via Cloudflare Workers + D1.';
+
+  @override
+  String get librarySyncTestConnection => 'Test Connection';
+
+  @override
+  String get librarySyncTesting => 'Testing...';
+
+  @override
+  String librarySyncTestSuccess(int entries, int images, int revision) {
+    return 'Connected: $entries cloud entries · $images images (rev r$revision)';
+  }
+
+  @override
+  String librarySyncTestFailed(String error) {
+    return 'Connection failed: $error';
+  }
+
+  @override
+  String get librarySyncSaveConfig => 'Save Config';
+
+  @override
+  String get librarySyncConfigSaved => 'Cloud sync configuration saved';
+
+  @override
+  String librarySyncLastSynced(String time) {
+    return 'Last synced: $time';
+  }
+
+  @override
+  String get librarySyncNeverSynced => 'Not synced yet';
+
+  @override
+  String librarySyncDoneUpToDate(int revision) {
+    return 'Sync complete; local and cloud are up to date (r$revision)';
+  }
+
+  @override
+  String librarySyncDoneSummary(
+    int pushed,
+    int pulled,
+    int deletedLocal,
+    int deletedRemote,
+    int uploadedImages,
+    int downloadedImages,
+  ) {
+    return 'Synced: pushed $pushed · pulled $pulled · local del $deletedLocal · cloud del $deletedRemote · img ↑$uploadedImages/↓$downloadedImages';
+  }
+
+  @override
+  String librarySyncForcePushDone(int count, int images) {
+    return 'Force uploaded $count entries to cloud ($images images uploaded)';
+  }
+
+  @override
+  String librarySyncForcePullDone(int count, int images) {
+    return 'Force pulled $count entries from cloud ($images images downloaded)';
+  }
+
+  @override
+  String librarySyncFailed(String error) {
+    return 'Cloud sync failed: $error';
+  }
+
+  @override
+  String get librarySyncForcePushConfirmTitle => 'Force Upload to Cloud';
+
+  @override
+  String get librarySyncForcePushConfirmMessage =>
+      'This will overwrite the cloud namespace with your current local library (extra cloud entries will be marked deleted). Continue?';
+
+  @override
+  String get librarySyncForcePullConfirmTitle => 'Force Pull from Cloud';
+
+  @override
+  String get librarySyncForcePullConfirmMessage =>
+      'This will replace your local library with the cloud copy. Unsynced local additions or edits will be overwritten. Continue?';
+
+  @override
+  String get librarySyncStatusUnconfigured => 'Not Configured';
+
+  @override
+  String get librarySyncStatusConfigured => 'Configured';
+
+  @override
+  String get librarySyncStatusConnected => 'Connected';
+
+  @override
+  String get librarySyncStatusError => 'Error';
+
+  @override
+  String get librarySyncConfigSection => 'Connection Settings';
+
+  @override
+  String get librarySyncConfigCollapsedHint =>
+      'Expand to edit Worker URL, token, or namespace';
+
+  @override
+  String get librarySyncOverwriteSection => 'Force Overwrite & Recovery';
+
+  @override
+  String get librarySyncOverwriteSectionHint =>
+      'Use only when resolving conflicts or resetting a library';
+
+  @override
+  String get librarySyncForcePushHint =>
+      'Overwrite cloud with local library (extra cloud items will be deleted)';
+
+  @override
+  String get librarySyncForcePullHint =>
+      'Replace local library with cloud copy (unsynced local edits will be lost)';
+
+  @override
+  String get librarySyncOverwriteConfirmButton => 'Confirm Overwrite';
+
+  @override
+  String get librarySyncEndpointSubtitle =>
+      'Your deployed Cloudflare Worker URL';
+
+  @override
+  String get librarySyncTokenSubtitle =>
+      'Matches SYNC_TOKEN Secret configured on the Worker';
+
+  @override
+  String get librarySyncNamespaceSubtitle =>
+      'Isolate multiple libraries (defaults to default)';
+
+  @override
+  String get canvasQuickPromptTooltip => 'Open compact prompt panel';
+
+  @override
+  String get quickPromptOpenFullTooltip => 'Open full prompt panel';
+
+  @override
+  String quickPromptCharactersCount(int enabled, int total) {
+    return '$enabled/$total active';
+  }
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get notificationsTooltip => 'Notifications & error log';
+
+  @override
+  String get notificationCenterTitle => 'Notifications';
+
+  @override
+  String get notificationCenterEmpty => 'No notifications yet';
+
+  @override
+  String get notificationCenterCopyAll => 'Copy all';
+
+  @override
+  String get notificationCenterClearAll => 'Clear all';
+
+  @override
+  String get notificationCenterCopied => 'Copied to clipboard';
+
+  @override
+  String get notificationSourceGeneration => 'Generate';
+
+  @override
+  String get notificationSourceInpaint => 'Inpaint';
+
+  @override
+  String get notificationSourceAgent => 'Agent';
+
+  @override
+  String get notificationSourceAccount => 'Account';
+
+  @override
+  String get notificationSourceComfyUi => 'ComfyUI';
+
+  @override
+  String get notificationSourceStorage => 'Storage';
+
+  @override
+  String get notificationSourceSystem => 'System';
+
+  @override
+  String vmAccountRefreshFailed(String error) {
+    return 'Failed to refresh NovelAI account: $error';
+  }
+
+  @override
+  String get settingsTabExtensions => 'Skills & MCP';
+
+  @override
+  String get settingsSubtitleExtensions =>
+      'Manage skill packages (drag & drop ZIP import) and external MCP servers via CodeMode';
+
+  @override
+  String get extensionsSegmentSkills => 'Skills';
+
+  @override
+  String get extensionsSegmentMcp => 'MCP Servers';
+
+  @override
+  String get skillFilterAll => 'All';
+
+  @override
+  String get skillFilterBuiltin => 'Built-in';
+
+  @override
+  String get skillFilterCustom => 'Custom';
+
+  @override
+  String get skillFilterPackaged => 'Packaged';
+
+  @override
+  String get skillBadgeModified => 'Modified';
+
+  @override
+  String get skillResetDefault => 'Reset to default';
+
+  @override
+  String skillResetDefaultSuccess(String name) {
+    return 'Reset built-in skill \"$name\" to default';
+  }
+
+  @override
+  String get skillBuiltinOverrideHint =>
+      'Editing a built-in skill saves a local override that can be reset at any time.';
+
+  @override
+  String get skillDropHintTitle =>
+      'Drop .zip / .skill / .md or a skill folder here to import';
+
+  @override
+  String get skillDropHintSubtitle =>
+      'Supports standard Agent Skills archives (single or multi-skill bundles) as well as buttons below';
+
+  @override
+  String get skillDropActiveTitle =>
+      'Release to parse and preview skill package';
+
+  @override
+  String get skillImportArchive => 'Import archive / file';
+
+  @override
+  String get skillBatchImportTitle => 'Batch Import Skills';
+
+  @override
+  String skillBatchImportSubtitle(int count) {
+    return 'Found $count skills in the archive. Select the ones to import:';
+  }
+
+  @override
+  String skillBatchImportButton(int count) {
+    return 'Import selected ($count)';
+  }
+
+  @override
+  String get skillBatchImportConflict => 'ID conflict (already exists)';
+
+  @override
+  String skillBatchImportSuccess(int count) {
+    return 'Imported $count skills';
+  }
+
+  @override
+  String get skillResourcePreviewEmpty =>
+      'Click a resource file above to preview its contents';
+
+  @override
+  String skillResourceBinaryHint(int bytes) {
+    return 'Binary resource ($bytes bytes), stored inside the managed skill package.';
+  }
+
+  @override
+  String get skillManageLibraryButton => 'Manage Skills';
+
+  @override
+  String get skillDuplicateAndEnable => 'Duplicate Preset & Enable';
+
+  @override
+  String get presetAllowMcpTools => 'Allow MCP Tools (CodeMode)';
+
+  @override
+  String get presetAllowMcpToolsHint =>
+      'Connected MCP server tools are indexed in CodeMode secondary tools and invoked via describe_tools & run_pipeline without bloating top-level schemas.';
+
+  @override
+  String get mcpCodeModeNotice =>
+      'Connected MCP tools are indexed lazily through CodeMode (describe_tools + run_pipeline), keeping top-level function schemas lean and prompt caches stable.';
+
+  @override
+  String get mcpAddServer => 'Add MCP Server';
+
+  @override
+  String get mcpImportJson => 'Import JSON';
+
+  @override
+  String get mcpExportJson => 'Copy JSON';
+
+  @override
+  String get mcpReconnectAll => 'Reconnect All';
+
+  @override
+  String get mcpEmptyTitle => 'No MCP servers configured';
+
+  @override
+  String get mcpEmptySubtitle =>
+      'Supports Streamable HTTP / SSE (all platforms) and local Stdio commands (desktop), or paste standard mcpServers JSON.';
+
+  @override
+  String get mcpStatusConnected => 'Connected';
+
+  @override
+  String get mcpStatusConnecting => 'Connecting';
+
+  @override
+  String get mcpStatusDisconnected => 'Disconnected';
+
+  @override
+  String get mcpStatusError => 'Error';
+
+  @override
+  String mcpToolsCount(int count) {
+    return '$count tools';
+  }
+
+  @override
+  String get mcpReconnect => 'Reconnect';
+
+  @override
+  String get mcpDialogNewTitle => 'Add MCP Server';
+
+  @override
+  String mcpDialogEditTitle(String name) {
+    return 'Edit MCP Server · $name';
+  }
+
+  @override
+  String get mcpFieldName => 'Server Name';
+
+  @override
+  String get mcpFieldNameHint => 'e.g. Filesystem / Context7 / Local Tools';
+
+  @override
+  String get mcpFieldId => 'Server ID';
+
+  @override
+  String get mcpFieldIdHint =>
+      'Used for tool prefix mcp_<id>_<tool>, auto-generated if empty';
+
+  @override
+  String get mcpFieldTransport => 'Transport';
+
+  @override
+  String get mcpTransportHttp => 'HTTP / SSE';
+
+  @override
+  String get mcpTransportStdio => 'Stdio Command';
+
+  @override
+  String get mcpFieldUrl => 'Endpoint URL';
+
+  @override
+  String get mcpFieldUrlHint =>
+      'https://example.com/mcp or http://127.0.0.1:3000/mcp';
+
+  @override
+  String get mcpFieldHeaders => 'HTTP Headers (Key: Value per line, optional)';
+
+  @override
+  String get mcpFieldHeadersHint => 'Authorization: Bearer your-token';
+
+  @override
+  String get mcpFieldCommand => 'Executable Command';
+
+  @override
+  String get mcpFieldCommandHint => 'e.g. npx / uvx / python / node';
+
+  @override
+  String get mcpFieldArgs => 'Arguments (one per line, optional)';
+
+  @override
+  String get mcpFieldArgsHint =>
+      '-y\n@modelcontextprotocol/server-filesystem\nD:/Workspace';
+
+  @override
+  String get mcpFieldEnv =>
+      'Environment Variables (KEY=VALUE per line, optional)';
+
+  @override
+  String get mcpFieldEnvHint => 'API_KEY=your-key';
+
+  @override
+  String get mcpFieldTimeout => 'Timeout (seconds)';
+
+  @override
+  String get mcpStdioDesktopOnly =>
+      'Stdio commands are only supported on desktop (Windows / macOS / Linux).';
+
+  @override
+  String get mcpImportJsonTitle => 'Import mcpServers JSON';
+
+  @override
+  String get mcpImportJsonHelp =>
+      'Compatible with Claude Desktop / Cursor / Antigravity mcpServers JSON format. Existing IDs will be updated.';
+
+  @override
+  String mcpImportJsonSuccess(int count) {
+    return 'Imported $count MCP server(s)';
+  }
+
+  @override
+  String get mcpExportJsonCopied => 'Copied mcpServers JSON to clipboard';
+
+  @override
+  String get mcpConfirmDeleteTitle => 'Delete MCP Server';
+
+  @override
+  String mcpConfirmDeleteMessage(String name) {
+    return 'Delete MCP server \"$name\" and disconnect it?';
+  }
+
+  @override
+  String get mcpValidationError =>
+      'Please enter a valid server name and endpoint URL (or command).';
 
   @override
   String get type => 'String';
@@ -4693,9 +5500,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsTabExtensions => 'Extensions';
-
-  @override
   String get settingsExtAccounts => 'Account pool';
 
   @override
@@ -4704,23 +5508,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsExtHint =>
       'WD14 tagging and style presets are on the Prompts page.';
-
-  @override
-  String get bannedWordsTitle => 'Hide banned words from agent';
-
-  @override
-  String get bannedWordsSubtitle =>
-      'Only affects parameter text returned to the agent; editors and generation requests keep the original.';
-
-  @override
-  String get bannedWordsHint => 'One per line, or comma separated';
-
-  @override
-  String get settingsAgentPersistentImages => 'Persist historical images';
-
-  @override
-  String get settingsAgentPersistentImagesHint =>
-      'Resend images from earlier turns every round; higher token usage and may break prompt caching.';
 
   @override
   String get settingsSessionMaxCount => 'Sessions to keep';

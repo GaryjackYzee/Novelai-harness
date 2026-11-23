@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context_extensions.dart';
 import 'context_menu.dart';
@@ -118,19 +119,41 @@ class _AppCardState extends State<AppCard> {
       shadows = context.shadowSubtle;
     }
 
-    Widget content = Container(
-      padding: widget.padding,
+    final reduceMotion = AppMotion.shouldReduceMotion(context);
+    final borderRadius = BorderRadius.circular(widget.radius);
+    Widget inner = widget.padding != null
+        ? Padding(padding: widget.padding!, child: widget.child)
+        : widget.child;
+    if (widget.clipBehavior != Clip.none) {
+      // 使用 ClipRRect 生成 ClipRRectLayer，避免 Container(clipBehavior) 触发开销更高的 ClipPathLayer
+      inner = ClipRRect(
+        borderRadius: BorderRadius.circular(
+          (widget.radius - resolvedBorderWidth).clamp(0.0, widget.radius),
+        ),
+        clipBehavior: widget.clipBehavior,
+        child: inner,
+      );
+    }
+
+    Widget content = AnimatedContainer(
+      duration: AppMotion.resolveDuration(context, AppMotionDurations.quick),
+      curve: AppMotionCurves.smoothOut,
+      transform: Matrix4.translationValues(
+        0,
+        (_isHovered && isInteractive && !reduceMotion) ? -2.0 : 0.0,
+        0,
+      ),
+      transformAlignment: Alignment.center,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(widget.radius),
+        borderRadius: borderRadius,
         border: Border.all(
           color: resolvedBorderColor,
           width: resolvedBorderWidth,
         ),
         boxShadow: shadows,
       ),
-      clipBehavior: widget.clipBehavior,
-      child: widget.child,
+      child: inner,
     );
 
     if (isInteractive) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context_extensions.dart';
+import 'app_transitions.dart';
 
 /// [AppIconButton] 的视觉变体
 enum AppIconButtonVariant {
@@ -89,6 +91,14 @@ class _AppIconButtonState extends State<AppIconButton> {
   bool _isHovered = false;
 
   @override
+  void didUpdateWidget(covariant AppIconButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!(widget.enabled && widget.onPressed != null) && _isHovered) {
+      _isHovered = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isInteractive = widget.enabled && widget.onPressed != null;
@@ -126,7 +136,7 @@ class _AppIconButtonState extends State<AppIconButton> {
         widget.backgroundColor ??
             (_isHovered && isInteractive ? colors.primaryDark : colors.primary),
         widget.borderColor ?? Colors.transparent,
-        widget.iconColor ?? Colors.white,
+        widget.iconColor ?? colors.onPrimary,
         isInteractive && _isHovered
             ? AppShadows.subtle(
                 colors.primary,
@@ -148,8 +158,8 @@ class _AppIconButtonState extends State<AppIconButton> {
       ),
     };
 
-    final effectiveBg = isInteractive
-        ? bg
+    final Color? effectiveBg = isInteractive
+        ? (bg.a == 0 ? null : bg)
         : colors.mutedBackground.withValues(alpha: 0.5);
     final effectiveFg = isInteractive
         ? fg
@@ -160,22 +170,35 @@ class _AppIconButtonState extends State<AppIconButton> {
       onTap: isInteractive ? widget.onPressed : null,
       borderRadius: BorderRadius.circular(widget.radius),
       hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      focusColor: Colors.transparent,
       splashColor: isInteractive
           ? colors.primaryTint.withValues(alpha: 0.3)
           : Colors.transparent,
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.resolveDuration(context, AppMotionDurations.quick),
+        curve: AppMotionCurves.smoothOut,
         width: widget.size,
         height: widget.size,
         decoration: BoxDecoration(
           color: effectiveBg,
           borderRadius: BorderRadius.circular(widget.radius),
-          border: effectiveBorder != Colors.transparent
+          border: effectiveBorder.a > 0
               ? Border.all(color: effectiveBorder)
               : null,
           boxShadow: shadow,
         ),
         alignment: Alignment.center,
-        child: Icon(widget.icon, size: effectiveIconSize, color: effectiveFg),
+        child: AppIconSwap(
+          swapKey: widget.icon,
+          enableBlur: false,
+          child: Icon(
+            widget.icon,
+            key: ValueKey<IconData>(widget.icon),
+            size: effectiveIconSize,
+            color: effectiveFg,
+          ),
+        ),
       ),
     );
 

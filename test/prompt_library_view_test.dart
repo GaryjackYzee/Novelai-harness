@@ -57,46 +57,47 @@ void main() {
 
   group('PromptComboEditDialog UI Tests', () {
     testWidgets(
-      'Shows negative prompt for character category and hides for style category',
+      'Shows style affixes & negative prompt for style category and hides for attire category',
       (tester) async {
         await tester.pumpWidget(
           buildTestApp(PromptComboEditDialog(viewModel: viewModel)),
         );
         await tester.pumpAndSettle();
 
-        // 默认选中“角色”，应看到负面提示词区域及“仅角色分类可用”标识
+        // 默认选中“角色”，应看到负面提示词区域及“角色 / 风格可用”标识
         expect(find.text('负面提示词'), findsOneWidget);
-        expect(find.text('仅角色分类可用'), findsOneWidget);
+        expect(find.text('角色 / 风格可用'), findsOneWidget);
         expect(find.text('设置预览图'), findsOneWidget);
         expect(find.text('选择本地图片'), findsOneWidget);
 
-        // 打开分类下拉框并选择“风格”
-        final dropdown = find.byType(DropdownButton<String>);
-        expect(dropdown, findsOneWidget);
-        // 窄窗口为上下分区，表单独立滚动，先滚动到分类控件。
-        await tester.ensureVisible(dropdown);
-        await tester.tap(dropdown);
+        // 切换到“风格”，应出现前置词/后置词并保留负面提示词
+        final styleChip = find.text('风格');
+        await tester.ensureVisible(styleChip);
+        await tester.tap(styleChip);
         await tester.pumpAndSettle();
 
-        final styleItem = find.text('风格').last;
-        await tester.tap(styleItem);
+        expect(find.text('前置词 (Prefix)'), findsOneWidget);
+        expect(find.text('后置词 (Suffix)'), findsOneWidget);
+        expect(find.text('负面提示词'), findsOneWidget);
+
+        // 切换到“服装”，前置词/后置词与负面提示词均隐藏
+        final attireChip = find.text('服装');
+        await tester.ensureVisible(attireChip);
+        await tester.tap(attireChip);
         await tester.pumpAndSettle();
 
-        // 负面提示词输入框应完全消失
+        expect(find.text('前置词 (Prefix)'), findsNothing);
         expect(find.text('负面提示词'), findsNothing);
-        expect(find.text('仅角色分类可用'), findsNothing);
+        expect(find.text('角色 / 风格可用'), findsNothing);
 
         // 重新切回“角色”
-        await tester.ensureVisible(dropdown);
-        await tester.tap(dropdown);
-        await tester.pumpAndSettle();
-
-        final charItem = find.text('角色').last;
-        await tester.tap(charItem);
+        final charChip = find.text('角色');
+        await tester.ensureVisible(charChip);
+        await tester.tap(charChip);
         await tester.pumpAndSettle();
 
         expect(find.text('负面提示词'), findsOneWidget);
-        expect(find.text('仅角色分类可用'), findsOneWidget);
+        expect(find.text('角色 / 风格可用'), findsOneWidget);
       },
     );
   });
@@ -314,9 +315,10 @@ void main() {
       await tester.tap(libraryTab);
       await tester.pumpAndSettle();
 
-      // 现在应渲染全屏 PromptLibraryView（包含新建词组合按钮和侧边标签栏）
+      // 现在应渲染全屏 PromptLibraryView（包含新建词组合按钮和内联分类胶囊）
       expect(find.text('新建词组合'), findsWidgets);
-      expect(find.text('标签分类'), findsOneWidget);
+      expect(find.text('全部'), findsOneWidget);
+      expect(find.text('风格'), findsWidgets);
 
       // 点击常驻侧边栏“参数”按钮切回三栏工作台
       final paramsTab = find.text('参数').first;
@@ -348,7 +350,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Negative Prompt'), findsOneWidget);
-        expect(find.text('Character category only'), findsOneWidget);
+        expect(find.text('Character & Style'), findsOneWidget);
         expect(find.text('Set Preview Image'), findsOneWidget);
         expect(find.text('Choose Local Image'), findsOneWidget);
         expect(find.text('Use Current Canvas Image'), findsOneWidget);
@@ -380,9 +382,36 @@ void main() {
 
       expect(find.text('Library'), findsWidgets);
       expect(find.text('New Prompt Combo'), findsOneWidget);
-      expect(find.text('Categories'), findsOneWidget);
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('Style'), findsWidgets);
       expect(find.text('Apply to Workbench'), findsWidgets);
       expect(find.text('+ Character'), findsWidgets);
     });
+
+    testWidgets(
+      'Narrow mobile PromptLibraryView renders 2-column masonry without overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          buildTestApp(PromptLibraryView(viewModel: viewModel, compact: true)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        final cards = find.byType(PromptComboCard);
+        expect(cards, findsAtLeastNWidgets(2));
+
+        final firstRect = tester.getRect(cards.at(0));
+        final secondRect = tester.getRect(cards.at(1));
+        expect(secondRect.left, greaterThan(firstRect.right));
+        expect(firstRect.width, lessThan(220));
+      },
+    );
   });
 }

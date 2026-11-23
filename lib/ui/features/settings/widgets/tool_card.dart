@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../../core/harness/tools/agent_tool.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_icon_button.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../../../core/context_l10n.dart';
 
 /// 预设配置中的单个 Tool 小卡片 (对齐 ModelCard 设计)
@@ -17,6 +19,7 @@ class ToolCard extends StatelessWidget {
   final ValueChanged<AgentTool> onInspectSchema;
   final ValueChanged<CustomAgentTool>? onEditCustomTool;
   final VoidCallback? onDelete;
+  final double? width;
 
   const ToolCard({
     super.key,
@@ -26,25 +29,21 @@ class ToolCard extends StatelessWidget {
     required this.onInspectSchema,
     this.onEditCustomTool,
     this.onDelete,
+    this.width = 270,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = context.l10n;
-    final properties = (tool.parameters['properties'] is Map)
-        ? (tool.parameters['properties'] as Map).keys.toList()
-        : <dynamic>[];
 
-    return SizedBox(
-      width: 270,
-      child: AppCard(
-        isSelected: isEnabled,
-        onTap: onToggle == null ? null : () => onToggle!(!isEnabled),
-        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-        radius: AppRadius.md,
-        selectedBackgroundColor: colors.primary.withValues(alpha: 0.05),
-        selectedBorderColor: colors.primary.withValues(alpha: 0.55),
+    final card = AppCard(
+      isSelected: isEnabled,
+      onTap: onToggle == null ? null : () => onToggle!(!isEnabled),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      radius: AppRadius.md,
+      selectedBackgroundColor: colors.primary.withValues(alpha: 0.05),
+      selectedBorderColor: colors.primary.withValues(alpha: 0.55),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -52,7 +51,12 @@ class ToolCard extends StatelessWidget {
             Row(
               children: [
                 // 勾选启用状态
-                Container(
+                AnimatedContainer(
+                  duration: AppMotion.resolveDuration(
+                    context,
+                    AppMotionDurations.quick,
+                  ),
+                  curve: AppMotionCurves.smoothOut,
                   width: 15,
                   height: 15,
                   decoration: BoxDecoration(
@@ -61,11 +65,20 @@ class ToolCard extends StatelessWidget {
                       color: isEnabled ? colors.primary : colors.borderDefault,
                       width: 1.5,
                     ),
-                    color: isEnabled ? colors.primary : Colors.transparent,
+                    color: isEnabled ? colors.primary : null,
                   ),
-                  child: isEnabled
-                      ? const Icon(Icons.check, size: 11, color: Colors.white)
-                      : null,
+                  child: AppIconSwap(
+                    swapKey: isEnabled,
+                    enableBlur: false,
+                    child: isEnabled
+                        ? Icon(
+                            Icons.check,
+                            key: const ValueKey<bool>(true),
+                            size: 11,
+                            color: colors.onPrimary,
+                          )
+                        : const SizedBox.shrink(key: ValueKey<bool>(false)),
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.xs * 2),
                 Expanded(
@@ -96,6 +109,7 @@ class ToolCard extends StatelessWidget {
                   icon: tool is CustomAgentTool
                       ? Icons.edit_outlined
                       : Icons.code_rounded,
+                  variant: AppIconButtonVariant.ghost,
                   size: 26,
                   iconSize: 14,
                   tooltip: tool is CustomAgentTool
@@ -113,6 +127,7 @@ class ToolCard extends StatelessWidget {
                 if (onDelete != null && !tool.isBuiltin)
                   AppIconButton(
                     icon: Icons.close_rounded,
+                    variant: AppIconButtonVariant.ghost,
                     size: 26,
                     iconSize: 14,
                     tooltip: l10n.toolTooltipDelete,
@@ -144,36 +159,9 @@ class ToolCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            if (properties.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: properties.take(4).map((p) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.mutedBackground,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      '$p',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontFamily: 'monospace',
-                        color: colors.textMuted,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
           ],
         ),
-      ),
     );
+    return width != null ? SizedBox(width: width, child: card) : card;
   }
 }

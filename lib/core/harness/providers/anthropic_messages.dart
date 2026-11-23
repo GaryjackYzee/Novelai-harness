@@ -101,28 +101,101 @@ class AnthropicMessages {
     return (system: systemParts.join('\n\n'), messages: encoded);
   }
 
-  /// 提示词工具模式把对话收成纯文本，不发送 tool_use。
+  /// 提示词工具模式：保留文本与多模态图片块，不发送原生 tool_use / tool_result。
   static ({String system, List<Map<String, dynamic>> messages})
   encodeChatMessages(List<Map<String, dynamic>> messages) {
     final systemParts = <String>[];
     final encoded = <Map<String, dynamic>>[];
     for (final message in messages) {
       final role = message['role'] as String? ?? '';
-      final text = _plainText(message['content']);
       if (role == 'system' || role == 'developer') {
+        final text = _plainText(message['content']);
         if (text.trim().isNotEmpty) systemParts.add(text);
         continue;
       }
-      if (text.isEmpty) continue;
+      final blocks = _chatContentBlocks(message['content']);
+      if (blocks.isEmpty) continue;
       final anthropicRole = role == 'assistant' ? 'assistant' : 'user';
-      encoded.add({
-        'role': anthropicRole,
-        'content': [
-          {'type': 'text', 'text': text},
-        ],
-      });
+      // 连续同角色用户消息 (如多个工具结果) 合并，符合 Anthropic 轮次交替要求
+      if (anthropicRole == 'user' &&
+          encoded.isNotEmpty &&
+          encoded.last['role'] == 'user') {
+        final prev = encoded.last['content'] as List<Map<String, dynamic>>;
+        prev.addAll(blocks);
+      } else {
+        encoded.add({'role': anthropicRole, 'content': blocks});
+      }
     }
     return (system: systemParts.join('\n\n'), messages: encoded);
+  }
+
+  static List<Map<String, dynamic>> _chatContentBlocks(Object? content) {
+    if (content is String) {
+      return content.isEmpty
+          ? const []
+          : [
+              {'type': 'text', 'text': content},
+            ];
+    }
+    if (content is! List) return const [];
+    final blocks = <Map<String, dynamic>>[];
+    for (final part in content) {
+      if (part is String) {
+        if (part.isNotEmpty) blocks.add({'type': 'text', 'text': part});
+        continue;
+      }
+      if (part is! Map) continue;
+      final type = part['type'] as String? ?? '';
+      if (type == 'image_url' || type == 'image') {
+        final imageBlock = _anthropicImageBlock(part);
+        if (imageBlock != null) blocks.add(imageBlock);
+      } else {
+        final text = part['text'] ?? part['content'];
+        if (text is String && text.isNotEmpty) {
+          blocks.add({'type': 'text', 'text': text});
+        }
+      }
+    }
+    return blocks;
+  }
+
+  static Map<String, dynamic>? _anthropicImageBlock(Map<dynamic, dynamic> part) {
+    if (part['source'] is Map) {
+      return {
+        'type': 'image',
+        'source': Map<String, dynamic>.from(part['source'] as Map),
+      };
+    }
+    final rawUrl = switch (part['image_url']) {
+      final String url => url,
+      final Map m => m['url'] as String?,
+      _ => part['url'] as String?,
+    };
+    if (rawUrl == null || rawUrl.isEmpty) return null;
+    if (rawUrl.startsWith('data:')) {
+      final comma = rawUrl.indexOf(',');
+      if (comma <= 5) return null;
+      final header = rawUrl.substring(5, comma);
+      final data = rawUrl.substring(comma + 1);
+      if (data.isEmpty) return null;
+      final semi = header.indexOf(';');
+      final mime = (semi > 0 ? header.substring(0, semi) : header).trim();
+      return {
+        'type': 'image',
+        'source': {
+          'type': 'base64',
+          'media_type': mime.isEmpty ? 'image/png' : mime,
+          'data': data,
+        },
+      };
+    }
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      return {
+        'type': 'image',
+        'source': {'type': 'url', 'url': rawUrl},
+      };
+    }
+    return null;
   }
 
   /// thinking / redacted_thinking 在 text 与 tool_use 之前，顺序与保存时一致。
@@ -301,11 +374,13 @@ class AnthropicMessages {
         usage: parsedUsage,
       );
     }
-    if (stop == 'refusal' && visible.isEmpty) {
+    if ((stop == 'refusal' || stop == 'content_filter' || stop == 'safety') &&
+        visible.isEmpty &&
+        calls.isEmpty) {
       return AnthropicMessagesCompletion(
         reasoning: reasoning.toString(),
         reasoningRecords: records,
-        error: '模型拒绝回答',
+        error: stop == 'refusal' ? '模型拒绝回答' : '模型响应被安全策略拦截 ($stop)',
         usage: parsedUsage,
       );
     }
@@ -438,6 +513,7 @@ class AnthropicMessagesStreamParser {
   final Map<int, _AnthropicBlock> _blocks = {};
   TokenUsage? _usage;
   bool _usageEmitted = false;
+  String? _stopReason;
 
   List<HarnessEvent> add(Map<String, dynamic> json, {String? eventType}) {
     _captureUsage(json);
@@ -457,7 +533,17 @@ class AnthropicMessagesStreamParser {
           ),
         ];
       case 'message_start':
+        final message = json['message'];
+        if (message is Map && message['stop_reason'] is String) {
+          _stopReason = message['stop_reason'] as String;
+        }
+        return const [];
       case 'message_delta':
+        final delta = json['delta'];
+        if (delta is Map && delta['stop_reason'] is String) {
+          _stopReason = delta['stop_reason'] as String;
+        }
+        return const [];
       case 'message_stop':
       case 'ping':
         return const [];
@@ -478,17 +564,40 @@ class AnthropicMessagesStreamParser {
     final events = <HarnessEvent>[];
     final records = <ReasoningRecord>[];
     final indexes = _blocks.keys.toList()..sort();
+    var hasTextOrTool = false;
     for (final index in indexes) {
       final block = _blocks[index]!;
       final record = block.toRecord();
       if (record != null && !record.isEmpty) records.add(record);
-      if (block.type == 'tool_use' && !block.emitted) {
-        final event = block.emitCall(index, strict: false);
-        if (event != null) events.add(event);
+      if (block.type == 'text' && block.text.isNotEmpty) {
+        hasTextOrTool = true;
+      }
+      if (block.type == 'tool_use') {
+        if (block.emitted) {
+          hasTextOrTool = true;
+        } else {
+          final event = block.emitCall(index, strict: false);
+          if (event != null) {
+            if (event is ToolCallEvent) hasTextOrTool = true;
+            events.add(event);
+          }
+        }
       }
     }
     if (records.isNotEmpty) {
       events.insert(0, ReasoningSnapshotEvent(records));
+    }
+    final stop = _stopReason?.trim();
+    if (!hasTextOrTool &&
+        (stop == 'refusal' || stop == 'content_filter' || stop == 'safety')) {
+      events.add(
+        ErrorEvent(
+          stop == 'refusal' ? '模型拒绝回答' : '模型响应被安全策略拦截 ($stop)',
+          code: HarnessErrorCode.modelRequestFailed,
+        ),
+      );
+    } else if (!hasTextOrTool && records.isEmpty && stop == 'max_tokens') {
+      events.add(const ErrorEvent('Anthropic 响应不完整: max_tokens'));
     }
     if (!_usageEmitted && _usage != null && _usage!.total > 0) {
       _usageEmitted = true;
@@ -557,7 +666,8 @@ class AnthropicMessagesStreamParser {
 class _AnthropicBlock {
   String type = '';
   final StringBuffer text = StringBuffer();
-  String? signature;
+  final StringBuffer _signature = StringBuffer();
+  String? get signature => _signature.isEmpty ? null : _signature.toString();
   String? redactedData;
   String id = '';
   String name = '';
@@ -578,8 +688,8 @@ class _AnthropicBlock {
         }
         final sig = block['signature'];
         if (sig is String && sig.isNotEmpty) {
-          signature = sig;
-          events.add(ThoughtSignatureEvent(sig));
+          _signature.write(sig);
+          events.add(ThoughtSignatureEvent(_signature.toString()));
         }
       case 'redacted_thinking':
         final data = block['data'];
@@ -618,8 +728,8 @@ class _AnthropicBlock {
         type = type.isEmpty ? 'thinking' : type;
         final sig = delta['signature'];
         if (sig is String && sig.isNotEmpty) {
-          signature = sig;
-          return [ThoughtSignatureEvent(sig)];
+          _signature.write(sig);
+          return [ThoughtSignatureEvent(_signature.toString())];
         }
         return const [];
       case 'text_delta':

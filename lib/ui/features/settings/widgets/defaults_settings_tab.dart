@@ -7,6 +7,8 @@ import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_number_slider.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_setting_tile.dart';
+import '../../../core/widgets/app_transitions.dart';
+import '../../../core/widgets/smooth_scroll_controller.dart';
 
 /// Defaults 页草稿状态 (父级 SettingsDialog 持有，保存时统一聚合)
 class DefaultsSettingsDraft {
@@ -20,6 +22,7 @@ class DefaultsSettingsDraft {
       compactionEnabled = config.agentCompactionEnabled,
       backgroundCompaction = config.agentBackgroundCompaction,
       persistentImages = config.agentPersistentImages,
+      // 本地 fork：会话管理上限与保留天数
       sessionMaxCount = config.sessionMaxCount,
       sessionRetentionDays = config.sessionRetentionDays,
       compactionProviderId = config.compactionProviderId,
@@ -36,6 +39,7 @@ class DefaultsSettingsDraft {
   bool compactionEnabled;
   bool backgroundCompaction;
   bool persistentImages;
+  // 本地 fork：会话管理上限与保留天数
   int sessionMaxCount;
   int sessionRetentionDays;
   String compactionProviderId;
@@ -63,6 +67,14 @@ class DefaultsSettingsTab extends StatefulWidget {
 
 class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
   DefaultsSettingsDraft get _draft => widget.draft;
+  late final SmoothWheelScrollController _scrollController =
+      SmoothWheelScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,15 +85,18 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
         .where((p) => p.id == _draft.compactionProviderId)
         .firstOrNull;
     final models = summaryProvider?.models ?? const <LlmModelConfig>[];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 20),
-      child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hPad = constraints.maxWidth < 560 ? 16.0 : 28.0;
+        return SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 20),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppSectionHeader(title: l10n.settingsSectionModelAndSampler),
           AppSettingTile(
             title: l10n.settingsDefaultModelTitle,
-            subtitle: l10n.settingsDefaultModelSubtitle,
             control: AppDropdown.simple(
               value: _draft.model,
               items: NaiModel.values,
@@ -92,7 +107,6 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
           ),
           AppSettingTile(
             title: l10n.settingsDefaultSamplerTitle,
-            subtitle: l10n.settingsDefaultSamplerSubtitle,
             control: AppDropdown.simple(
               value: _draft.sampler,
               items: NaiSampler.values,
@@ -103,7 +117,6 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
           ),
           AppSettingTile(
             title: l10n.settingsDefaultNoiseScheduleTitle,
-            subtitle: l10n.settingsDefaultNoiseScheduleSubtitle,
             control: AppDropdown.simple(
               value: _draft.noiseSchedule,
               items: NoiseSchedule.values,
@@ -117,7 +130,6 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
           AppSectionHeader(title: l10n.settingsSectionDefaultStepsAndScale),
           AppSettingTile(
             title: l10n.settingsDefaultStepsTitle,
-            subtitle: l10n.settingsDefaultStepsSubtitle,
             control: const SizedBox.shrink(),
             bottomChild: AppNumberSlider.integer(
               value: _draft.steps,
@@ -128,9 +140,6 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
           ),
           AppSettingTile(
             title: l10n.settingsDefaultScaleTitle,
-            subtitle: l10n.settingsDefaultScaleSubtitle(
-              _draft.scale.toStringAsFixed(1),
-            ),
             control: const SizedBox.shrink(),
             bottomChild: AppNumberSlider(
               value: _draft.scale,
@@ -144,23 +153,17 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
 
           const SizedBox(height: AppSpacing.lg),
           AppSectionHeader(title: l10n.settingsSectionContextManagement),
-          AppSettingTile(
+          AppSettingTile.switchTile(
             title: l10n.settingsAutoCompaction,
-            subtitle: l10n.settingsAutoCompactionHint,
-            control: Switch(
-              value: _draft.compactionEnabled,
-              onChanged: (v) => setState(() => _draft.compactionEnabled = v),
-            ),
+            value: _draft.compactionEnabled,
+            onChanged: (v) => setState(() => _draft.compactionEnabled = v),
           ),
-          AppSettingTile(
+          AppSettingTile.switchTile(
             title: l10n.settingsBackgroundCompaction,
-            subtitle: l10n.settingsBackgroundCompactionHint,
-            control: Switch(
-              value: _draft.backgroundCompaction,
-              onChanged: _draft.compactionEnabled
-                  ? (v) => setState(() => _draft.backgroundCompaction = v)
-                  : null,
-            ),
+            value: _draft.backgroundCompaction,
+            onChanged: _draft.compactionEnabled
+                ? (v) => setState(() => _draft.backgroundCompaction = v)
+                : null,
           ),
           AppSettingTile(
             title: l10n.settingsSessionMaxCount,
@@ -194,7 +197,6 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
           ),
           AppSettingTile(
             title: l10n.settingsCompactionProvider,
-            subtitle: l10n.settingsCompactionProviderHint,
             control: AppDropdown.simple(
               value: summaryProvider?.id ?? '',
               items: ['', ...providers.map((p) => p.id)],
@@ -208,8 +210,10 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
               }),
             ),
           ),
-          if (summaryProvider != null)
-            AppSettingTile(
+          AppPanelReveal(
+            visible: summaryProvider != null,
+            enableBlur: false,
+            child: AppSettingTile(
               title: l10n.settingsCompactionModel,
               control: AppDropdown.simple(
                 value: models.any((m) => m.id == _draft.compactionModelId)
@@ -224,11 +228,11 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
                     setState(() => _draft.compactionModelId = id),
               ),
             ),
+          ),
           const SizedBox(height: AppSpacing.lg),
           AppSectionHeader(title: l10n.settingsSectionAgentLoop),
           AppSettingTile(
             title: l10n.settingsAgentMaxTurnsTitle,
-            subtitle: l10n.settingsAgentMaxTurnsSubtitle,
             control: const SizedBox.shrink(),
             bottomChild: AppNumberSlider.integer(
               value: _draft.agentMaxTurns,
@@ -239,6 +243,8 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

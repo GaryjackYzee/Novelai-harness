@@ -28,6 +28,7 @@ class ImageEditResult {
 /// 4. 图片为 http(s) 临时链接时自动下载取回字节
 class ImageEditService {
   final http.Client _client;
+  final bool _ownsClient;
 
   /// 429 频控重试前的等待时长 (测试可注入短时长)
   final Duration retryDelay;
@@ -35,7 +36,15 @@ class ImageEditService {
   ImageEditService({
     http.Client? client,
     this.retryDelay = const Duration(milliseconds: 2500),
-  }) : _client = client ?? http.Client();
+  }) : _client = client ?? http.Client(),
+       _ownsClient = client == null;
+
+  /// 关闭内部自建的 HTTP 客户端；外部注入时保持原生命周期不变。
+  void close() {
+    if (_ownsClient) {
+      _client.close();
+    }
+  }
 
   /// 计算 /chat/completions 完整端点 (复用 LlmProviderConfig 的拼接语义)
   static String chatCompletionsEndpoint(String baseUrl) {
@@ -149,10 +158,11 @@ class ImageEditService {
       headers['Authorization'] = 'Bearer $trimmedKey';
     }
 
+    final endpointUri = Uri.parse(endpoint);
     http.Response response;
     try {
       response = await _client
-          .post(Uri.parse(endpoint), headers: headers, body: body)
+          .post(endpointUri, headers: headers, body: body)
           .timeout(timeout);
     } catch (e) {
       throw Exception('网络连接失败 ($endpoint): $e');
@@ -163,7 +173,7 @@ class ImageEditService {
       await Future<void>.delayed(retryDelay);
       try {
         response = await _client
-            .post(Uri.parse(endpoint), headers: headers, body: body)
+            .post(endpointUri, headers: headers, body: body)
             .timeout(timeout);
       } catch (e) {
         throw Exception('网络连接失败 ($endpoint): $e');
@@ -209,7 +219,6 @@ class ImageEditService {
       );
     }
 
-    final endpointUri = Uri.parse(endpoint);
     for (final candidate in candidates) {
       final bytes = await _resolveCandidate(
         candidate,
@@ -276,13 +285,14 @@ class ImageEditService {
     }
     if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
       try {
-        final uri = Uri.parse(candidate);
+        final targetUri = Uri.parse(candidate);
         final sameOrigin =
-            uri.host.toLowerCase() == providerUri.host.toLowerCase() &&
-            uri.port == providerUri.port;
+            targetUri.scheme == providerUri.scheme &&
+            targetUri.host.toLowerCase() == providerUri.host.toLowerCase() &&
+            targetUri.port == providerUri.port;
         if (!sameOrigin) {
-          if (uri.scheme != 'https') return null;
-          if (isPrivateHost(uri.host)) return null;
+          if (targetUri.scheme != 'https') return null;
+          if (isPrivateHost(targetUri.host)) return null;
         }
         final downloadHeaders = <String, String>{'Accept': 'image/*'};
         if (sameOrigin) {
@@ -297,7 +307,7 @@ class ImageEditService {
           }
         }
         final resp = await _client
-            .get(uri, headers: downloadHeaders)
+            .get(targetUri, headers: downloadHeaders)
             .timeout(timeout);
         if (resp.statusCode != 200) return null;
         final body = resp.bodyBytes;

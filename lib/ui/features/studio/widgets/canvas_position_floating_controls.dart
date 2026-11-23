@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart' show GestureBinding, PointerScrollEvent;
 import 'package:flutter/material.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../../data/models/novelai_models.dart';
 import '../view_models/studio_view_model.dart';
@@ -321,7 +322,10 @@ class _FloatingCharacterChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
+        duration: AppMotion.shouldReduceMotion(context)
+            ? Duration.zero
+            : AppMotionDurations.quick,
+        curve: AppMotionCurves.smoothOut,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? colors.primary : colors.mutedBackground,
@@ -335,7 +339,7 @@ class _FloatingCharacterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : colors.textPrimary,
+                color: isSelected ? colors.onPrimary : colors.textPrimary,
               ),
             ),
             if (display.genderIcon != null) ...[
@@ -343,7 +347,7 @@ class _FloatingCharacterChip extends StatelessWidget {
               Icon(
                 display.genderIcon,
                 size: 13,
-                color: isSelected ? Colors.white : display.color,
+                color: isSelected ? colors.onPrimary : display.color,
               ),
             ],
             if (display.label.isNotEmpty) ...[
@@ -359,7 +363,7 @@ class _FloatingCharacterChip extends StatelessWidget {
                     fontWeight: isSelected
                         ? FontWeight.w600
                         : FontWeight.normal,
-                    color: isSelected ? Colors.white : colors.textPrimary,
+                    color: isSelected ? colors.onPrimary : colors.textPrimary,
                   ),
                 ),
               ),

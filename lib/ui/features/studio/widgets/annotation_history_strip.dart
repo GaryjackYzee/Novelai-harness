@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/novelai_models.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/app_skeleton.dart';
 import '../view_models/studio_view_model.dart';
 import 'image_canvas_actions.dart';
 
@@ -16,12 +18,15 @@ class AnnotationHistoryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gallery = viewModel.gallery;
-    final selectedId = viewModel.selectedImage?.id;
-    final colors = context.colors;
-    final l10n = context.l10n;
+    return ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) {
+        final gallery = viewModel.gallery;
+        final selectedId = viewModel.selectedImage?.id;
+        final colors = context.colors;
+        final l10n = context.l10n;
 
-    return Card(
+        return Card(
       margin: EdgeInsets.zero,
       elevation: 0,
       clipBehavior: Clip.antiAlias,
@@ -98,16 +103,16 @@ class AnnotationHistoryStrip extends StatelessWidget {
                         final isSelected = item.id == selectedId;
                         final annCount = item.annotations.length;
 
-                        final thumbnailWidget = Container(
+                        final thumbnailWidget = AnimatedContainer(
+                          duration: AppMotion.shouldReduceMotion(context)
+                              ? Duration.zero
+                              : AppMotionDurations.quick,
+                          curve: AppMotionCurves.smoothOut,
                           width: double.infinity,
+                          padding: const EdgeInsets.all(1.0),
                           decoration: BoxDecoration(
+                            color: colors.mutedBackground,
                             borderRadius: BorderRadius.circular(AppRadius.sm),
-                            border: Border.all(
-                              color: isSelected
-                                  ? colors.primary
-                                  : colors.borderDefault,
-                              width: isSelected ? 2.0 : 1.0,
-                            ),
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
@@ -120,59 +125,73 @@ class AnnotationHistoryStrip extends StatelessWidget {
                                   ]
                                 : null,
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: AspectRatio(
-                            aspectRatio:
-                                (item.params.width / item.params.height).clamp(
-                                  0.5,
-                                  1.8,
-                                ),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Builder(
-                                  builder: (context) {
-                                    final thumb =
-                                        item.thumbnailBytes ??
-                                        (item.bytes.isNotEmpty
-                                            ? item.bytes
-                                            : null);
-                                    if (thumb != null && thumb.isNotEmpty) {
-                                      return Image.memory(
-                                        thumb,
-                                        fit: BoxFit.cover,
-                                        gaplessPlayback: true,
+                          foregroundDecoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            border: Border.all(
+                              color: isSelected
+                                  ? colors.primary
+                                  : colors.borderDefault,
+                              width: isSelected ? 2.0 : 1.0,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.sm - 1.0,
+                            ),
+                            child: AspectRatio(
+                              aspectRatio:
+                                  (item.params.width / item.params.height)
+                                      .clamp(0.5, 1.8),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Builder(
+                                    builder: (context) {
+                                      final thumb =
+                                          item.thumbnailBytes ??
+                                          (item.bytes.isNotEmpty
+                                              ? item.bytes
+                                              : null);
+                                      if (thumb != null && thumb.isNotEmpty) {
+                                        return Image.memory(
+                                          thumb,
+                                          fit: BoxFit.cover,
+                                          gaplessPlayback: true,
+                                          cacheWidth: 240,
+                                        );
+                                      }
+                                      return const AppSkeletonBox(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        radius: 0,
                                       );
-                                    }
-                                    return Container(
-                                      color: colors.mutedBackground,
-                                    );
-                                  },
-                                ),
-                                // 批注条数徽章
-                                if (annCount > 0)
-                                  Positioned(
-                                    top: 4,
-                                    right: 4,
-                                    child: AppBadge(
-                                      label: '$annCount',
-                                      variant: AppBadgeVariant.primary,
-                                      shape: AppBadgeShape.pill,
-                                      fontSize: 10,
-                                    ),
+                                    },
                                   ),
-                                // 外部参考图 REF 标记
-                                if (item.isImportedReference)
-                                  Positioned(
-                                    bottom: 4,
-                                    left: 4,
-                                    child: AppBadge(
-                                      label: l10n.referenceImageBadge,
-                                      variant: AppBadgeVariant.dark,
-                                      fontSize: 9,
+                                  // 批注条数徽章
+                                  if (annCount > 0)
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: AppBadge(
+                                        label: '$annCount',
+                                        variant: AppBadgeVariant.primary,
+                                        shape: AppBadgeShape.pill,
+                                        fontSize: 10,
+                                      ),
                                     ),
-                                  ),
-                              ],
+                                  // 外部参考图 REF 标记
+                                  if (item.isImportedReference)
+                                    Positioned(
+                                      bottom: 4,
+                                      left: 4,
+                                      child: AppBadge(
+                                        label: l10n.referenceImageBadge,
+                                        variant: AppBadgeVariant.dark,
+                                        fontSize: 9,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -197,10 +216,13 @@ class AnnotationHistoryStrip extends StatelessWidget {
                                     return Image.memory(
                                       thumb,
                                       fit: BoxFit.cover,
+                                      cacheWidth: 240,
                                     );
                                   }
-                                  return Container(
-                                    color: colors.mutedBackground,
+                                  return const AppSkeletonBox(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    radius: 0,
                                   );
                                 },
                               ),
@@ -273,6 +295,8 @@ class AnnotationHistoryStrip extends StatelessWidget {
           ],
         ),
       ),
+        );
+      },
     );
   }
 }

@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
-
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
 
 import '../../../data/models/novelai_models.dart';
 import '../../../data/models/prompt_library_models.dart';
@@ -42,8 +42,13 @@ String formatPromptComboEntry(PromptComboEntry entry) {
   final lines = <String>[
     '• [${entry.id}] ${entry.title} (${entry.category})'
         '${entry.isFavorite ? ' [收藏]' : ''}${entry.isBuiltin ? ' [内置]' : ''}',
-    '  提示词: ${entry.prompt}',
-    if (entry.isCharacter && entry.negativePrompt.isNotEmpty)
+    if (entry.isStyle && entry.prefixPrompt.trim().isNotEmpty)
+      '  前置词: ${entry.prefixPrompt}',
+    if (entry.isStyle && entry.suffixPrompt.trim().isNotEmpty)
+      '  后置词: ${entry.suffixPrompt}',
+    if (!entry.isStyle || entry.prompt.trim().isNotEmpty)
+      '  提示词: ${entry.prompt}',
+    if (entry.supportsNegative && entry.negativePrompt.isNotEmpty)
       '  负面提示词: ${entry.negativePrompt}',
     if (entry.previewImagePath != null) '  预览图: 已设置',
     if (entry.tags.isNotEmpty) '  标签: ${entry.tags.join(', ')}',
@@ -125,6 +130,8 @@ class SearchPromptLibraryTool extends AgentTool {
       if (query.isEmpty) return true;
       return entry.title.toLowerCase().contains(query) ||
           entry.prompt.toLowerCase().contains(query) ||
+          entry.prefixPrompt.toLowerCase().contains(query) ||
+          entry.suffixPrompt.toLowerCase().contains(query) ||
           entry.negativePrompt.toLowerCase().contains(query) ||
           entry.tags.any((t) => t.toLowerCase().contains(query)) ||
           entry.category.toLowerCase().contains(query);
@@ -176,26 +183,34 @@ class AddPromptLibraryEntryTool extends AgentTool {
         name: 'add_prompt_library_entry',
         label: '新增词库条目',
         description:
-            '向本地词库新增词组合预设。title 与 prompt 必填；分类建议使用标准分类名 '
-            '(角色/风格/服装/构图/环境/特效/其他)。注意：只有「角色」分类支持负面提示词，'
-            '其他分类的负面提示词会被自动清空。新增成功后返回条目 ID。'
-            '需要一次新增多条时用 entries 数组，不要逐条多次调用。',
+            '向本地词库新增词组合预设。title 必填；分类建议使用标准分类名 '
+            '(角色/风格/服装/构图/环境/特效/其他)。「风格」分类支持 prefix_prompt、suffix_prompt 与 negative_prompt '
+            '(四项提示词字段至少填一项)；「角色」与「风格」分类支持 negative_prompt，其他分类的负面与前后缀会被自动清空。'
+            '新增成功后返回条目 ID。需要一次新增多条时用 entries 数组，不要逐条多次调用。',
         parameters: const {
           'type': 'object',
           'properties': {
             'title': {'type': 'string', 'description': '条目标题 (如「初音未来」「赛博水彩风」)'},
             'prompt': {
               'type': 'string',
-              'description': '正向提示词组合 (Danbooru 标签或自然语言)',
+              'description': '正向提示词组合 (非风格分类必填；风格分类可留空改用前后缀)',
             },
             'category': {
               'type': 'string',
               'enum': ['角色', '风格', '服装', '构图', '环境', '特效', '其他'],
               'description': '分类 (默认 其他)',
             },
+            'prefix_prompt': {
+              'type': 'string',
+              'description': '前置词 (仅风格分类生效，对应工作台固定前置词缀)',
+            },
+            'suffix_prompt': {
+              'type': 'string',
+              'description': '后置词 (仅风格分类生效，对应工作台固定后置词缀)',
+            },
             'negative_prompt': {
               'type': 'string',
-              'description': '负面提示词 (仅角色分类生效)',
+              'description': '负面提示词 (角色与风格分类生效)',
             },
             'tags': {
               'type': 'array',
@@ -206,13 +221,15 @@ class AddPromptLibraryEntryTool extends AgentTool {
             'entries': {
               'type': 'array',
               'description':
-                  '批量新增多个条目：每项字段与顶层同名参数一致 (title 与 prompt 必填)，本次调用内一次全部新增',
+                  '批量新增多个条目：每项字段与顶层同名参数一致 (title 必填)，本次调用内一次全部新增',
               'items': {
                 'type': 'object',
                 'properties': {
                   'title': {'type': 'string'},
                   'prompt': {'type': 'string'},
                   'category': {'type': 'string'},
+                  'prefix_prompt': {'type': 'string'},
+                  'suffix_prompt': {'type': 'string'},
                   'negative_prompt': {'type': 'string'},
                   'tags': {
                     'type': 'array',
@@ -220,7 +237,7 @@ class AddPromptLibraryEntryTool extends AgentTool {
                   },
                   'favorite': {'type': 'boolean'},
                 },
-                'required': ['title', 'prompt'],
+                'required': ['title'],
               },
             },
           },
@@ -260,11 +277,25 @@ class AddPromptLibraryEntryTool extends AgentTool {
     final seen = <String>{};
     for (final spec in specs) {
       final title = (spec['title'] as String?)?.trim() ?? '';
+      final category = (spec['category'] as String?)?.trim().isNotEmpty == true
+          ? (spec['category'] as String).trim()
+          : PromptComboCategories.other;
+      final isStyle = PromptComboEntry.isStyleCategory(category);
       final prompt = (spec['prompt'] as String?)?.trim() ?? '';
-      if (title.isEmpty || prompt.isEmpty) {
+      final prefix = (spec['prefix_prompt'] as String?)?.trim() ?? '';
+      final suffix = (spec['suffix_prompt'] as String?)?.trim() ?? '';
+      final negative = (spec['negative_prompt'] as String?)?.trim() ?? '';
+      final hasStyleContent =
+          prompt.isNotEmpty ||
+          prefix.isNotEmpty ||
+          suffix.isNotEmpty ||
+          negative.isNotEmpty;
+      if (title.isEmpty || (isStyle ? !hasStyleContent : prompt.isEmpty)) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: 'title 与 prompt 为必填项，不能为空。',
+          content: isStyle
+              ? '风格分类下 title 为必填项，且 prompt / prefix_prompt / suffix_prompt / negative_prompt 至少需填一项。'
+              : 'title 与 prompt 为必填项，不能为空。',
           isError: true,
         );
       }
@@ -272,7 +303,7 @@ class AddPromptLibraryEntryTool extends AgentTool {
         return ToolResult(
           toolCallId: toolCallId,
           content:
-              '已存在同名条目「$title」。如需覆盖请先用 search_prompt_library 查到 ID 后调用更新工具。',
+              '已存在同名条目「$title」。如需覆盖请先用 prompt_library(action: "search") 查到 ID 后调用更新。',
           isError: true,
         );
       }
@@ -282,6 +313,11 @@ class AddPromptLibraryEntryTool extends AgentTool {
     for (var i = 0; i < specs.length; i++) {
       final spec = specs[i];
       final now = DateTime.now();
+      final category = (spec['category'] as String?)?.trim().isNotEmpty == true
+          ? (spec['category'] as String).trim()
+          : PromptComboCategories.other;
+      final allowNeg = PromptComboEntry.supportsNegativePrompt(category);
+      final allowStyle = PromptComboEntry.isStyleCategory(category);
       created.add(
         await addEntry(
           PromptComboEntry(
@@ -290,11 +326,17 @@ class AddPromptLibraryEntryTool extends AgentTool {
                 'combo_${now.millisecondsSinceEpoch}'
                 '${specs.length > 1 ? '_$i' : ''}',
             title: (spec['title'] as String).trim(),
-            category: (spec['category'] as String?)?.trim().isNotEmpty == true
-                ? (spec['category'] as String).trim()
-                : PromptComboCategories.other,
-            prompt: (spec['prompt'] as String).trim(),
-            negativePrompt: (spec['negative_prompt'] as String?)?.trim() ?? '',
+            category: category,
+            prompt: (spec['prompt'] as String?)?.trim() ?? '',
+            negativePrompt: allowNeg
+                ? ((spec['negative_prompt'] as String?)?.trim() ?? '')
+                : '',
+            prefixPrompt: allowStyle
+                ? ((spec['prefix_prompt'] as String?)?.trim() ?? '')
+                : '',
+            suffixPrompt: allowStyle
+                ? ((spec['suffix_prompt'] as String?)?.trim() ?? '')
+                : '',
             createdAt: now,
             updatedAt: now,
             isFavorite: spec['favorite'] is bool
@@ -395,7 +437,7 @@ class SetPromptLibraryPreviewTool extends AgentTool {
     if (idx == -1) {
       return ToolResult(
         toolCallId: toolCallId,
-        content: '未找到 ID 为 "$id" 的词库条目。可先调用 search_prompt_library 查询。',
+        content: '未找到 ID 为 "$id" 的词库条目。可先调用 prompt_library(action: "search") 查询。',
         isError: true,
       );
     }
@@ -580,10 +622,14 @@ Future<Uint8List> downscalePreviewBytes(
   Uint8List bytes, {
   int maxDimension = kPromptPreviewMaxDimension,
 }) async {
+  ui.Codec? codec;
+  ui.Image? source;
+  ui.Picture? picture;
+  ui.Image? rendered;
   try {
-    final codec = await ui.instantiateImageCodec(bytes);
+    codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
-    final source = frame.image;
+    source = frame.image;
 
     final longSide = math.max(source.width, source.height);
     if (longSide <= maxDimension) {
@@ -605,14 +651,19 @@ Future<Uint8List> downscalePreviewBytes(
       ui.Rect.fromLTWH(0, 0, outW.toDouble(), outH.toDouble()),
       ui.Paint()..filterQuality = ui.FilterQuality.medium,
     );
-    final picture = recorder.endRecording();
-    final rendered = await picture.toImage(outW, outH);
+    picture = recorder.endRecording();
+    rendered = await picture.toImage(outW, outH);
     final data = await rendered.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) return bytes;
     return data.buffer.asUint8List();
   } catch (error) {
     debugPrint('[ignored] $error');
     return bytes;
+  } finally {
+    rendered?.dispose();
+    picture?.dispose();
+    source?.dispose();
+    codec?.dispose();
   }
 }
 
@@ -642,9 +693,17 @@ class UpdatePromptLibraryEntryTool extends AgentTool {
                'enum': ['角色', '风格', '服装', '构图', '环境', '特效', '其他'],
                'description': '新分类',
              },
+             'prefix_prompt': {
+               'type': 'string',
+               'description': '新前置词 (仅风格分类保留，传入空字符串可清除)',
+             },
+             'suffix_prompt': {
+               'type': 'string',
+               'description': '新后置词 (仅风格分类保留，传入空字符串可清除)',
+             },
              'negative_prompt': {
                'type': 'string',
-               'description': '新负面提示词 (仅角色分类保留，传入空字符串可清除)',
+               'description': '新负面提示词 (角色与风格分类保留，传入空字符串可清除)',
              },
              'tags': {
                'type': 'array',
@@ -663,6 +722,8 @@ class UpdatePromptLibraryEntryTool extends AgentTool {
                    'title': {'type': 'string'},
                    'prompt': {'type': 'string'},
                    'category': {'type': 'string'},
+                   'prefix_prompt': {'type': 'string'},
+                   'suffix_prompt': {'type': 'string'},
                    'negative_prompt': {'type': 'string'},
                    'tags': {
                      'type': 'array',
@@ -719,7 +780,7 @@ class UpdatePromptLibraryEntryTool extends AgentTool {
       if (!getEntries().any((e) => e.id == id)) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: '未找到 ID 为 "$id" 的词库条目。可先调用 search_prompt_library 查询。',
+          content: '未找到 ID 为 "$id" 的词库条目。可先调用 prompt_library(action: "search") 查询。',
           isError: true,
         );
       }
@@ -749,6 +810,12 @@ class UpdatePromptLibraryEntryTool extends AgentTool {
             : null,
         category: (spec['category'] as String?)?.trim().isNotEmpty == true
             ? (spec['category'] as String).trim()
+            : null,
+        prefixPrompt: spec.containsKey('prefix_prompt')
+            ? ((spec['prefix_prompt'] as String?)?.trim() ?? '')
+            : null,
+        suffixPrompt: spec.containsKey('suffix_prompt')
+            ? ((spec['suffix_prompt'] as String?)?.trim() ?? '')
             : null,
         negativePrompt: spec.containsKey('negative_prompt')
             ? ((spec['negative_prompt'] as String?)?.trim() ?? '')
@@ -881,4 +948,124 @@ List<String> _parseTags(dynamic raw) {
         .toList();
   }
   return const [];
+}
+
+/// 统一本地词组合预设库管理工具（合并 search / add / update / delete / set_preview 为单工具）
+class PromptLibraryTool extends AgentTool {
+  final SearchPromptLibraryTool _searchTool;
+  final AddPromptLibraryEntryTool _addTool;
+  final UpdatePromptLibraryEntryTool _updateTool;
+  final DeletePromptLibraryEntryTool _deleteTool;
+  final SetPromptLibraryPreviewTool _previewTool;
+
+  PromptLibraryTool({
+    required PromptLibraryEntriesGetter getEntries,
+    required PromptLibraryAddEntry addEntry,
+    required PromptLibraryUpdateEntry updateEntry,
+    required PromptLibraryDeleteEntry deleteEntry,
+    required PromptLibraryHistoryGetter getHistory,
+    required PromptLibraryImageBytesLoader loadImageBytes,
+    PromptLibraryPreviewBytesSaver? savePreviewBytes,
+    PromptLibraryPreviewPathCopier? copyPreviewFromPath,
+  }) : _searchTool = SearchPromptLibraryTool(getEntries: getEntries),
+       _addTool = AddPromptLibraryEntryTool(
+         getEntries: getEntries,
+         addEntry: addEntry,
+       ),
+       _updateTool = UpdatePromptLibraryEntryTool(
+         getEntries: getEntries,
+         updateEntry: updateEntry,
+       ),
+       _deleteTool = DeletePromptLibraryEntryTool(
+         getEntries: getEntries,
+         deleteEntry: deleteEntry,
+       ),
+       _previewTool = SetPromptLibraryPreviewTool(
+         getEntries: getEntries,
+         updateEntry: updateEntry,
+         getHistory: getHistory,
+         loadImageBytes: loadImageBytes,
+         savePreviewBytes: savePreviewBytes,
+         copyPreviewFromPath: copyPreviewFromPath,
+       ),
+       super(
+         name: 'prompt_library',
+         label: '本地词库管理',
+         description:
+             '统一检索与管理本地词组合预设库（画风/角色/光影/构图/服装等）。通过 action 选择操作：\n'
+             '- search: 按关键词/分类检索条目；\n'
+             '- add: 新增单个或批量词库条目（entries 数组）；\n'
+             '- update: 按 id 或 updates 数组修改条目；\n'
+             '- delete: 按 id 或 ids 数组删除条目；\n'
+             '- set_preview: 为词库条目设置/替换预览图（来自画板历史图或本地路径）。',
+         parameters: const {
+           'type': 'object',
+           'properties': {
+             'action': {
+               'type': 'string',
+               'enum': ['search', 'add', 'update', 'delete', 'set_preview'],
+               'description':
+                   '操作类型：search / add / update / delete / set_preview',
+             },
+             'query': {'type': 'string', 'description': '搜索关键词 (search)'},
+             'category': {'type': 'string', 'description': '条目分类 (search / add / update)'},
+             'limit': {'type': 'integer', 'description': '返回数量上限 (search)'},
+             'id': {'type': 'string', 'description': '条目 ID (update / delete / set_preview)'},
+             'ids': {
+               'type': 'array',
+               'items': {'type': 'string'},
+               'description': '批量删除的条目 ID 列表 (delete)',
+             },
+             'title': {'type': 'string', 'description': '条目标题 (add / update)'},
+             'prompt': {'type': 'string', 'description': '正向提示词 (add / update)'},
+             'negative_prompt': {'type': 'string', 'description': '负向提示词 (add / update)'},
+             'tags': {'description': '标签数组或逗号分隔字符串 (add / update)'},
+             'note': {'type': 'string', 'description': '备注说明 (add / update)'},
+             'entries': {
+               'type': 'array',
+               'items': {'type': 'object'},
+               'description': '批量新增的条目数组 (add)',
+             },
+             'updates': {
+               'type': 'array',
+               'items': {'type': 'object'},
+               'description': '批量修改的条目数组，每项需含 id (update)',
+             },
+             'image_index': {
+               'type': 'integer',
+               'description': '画板历史图索引，0 表示最新图 (set_preview)',
+             },
+             'image_path': {
+               'type': 'string',
+               'description': '本地图片绝对路径 (set_preview)',
+             },
+             'clear_preview': {
+               'type': 'boolean',
+               'description': '是否清除预览图 (set_preview)',
+             },
+           },
+           'required': ['action'],
+         },
+       );
+
+  @override
+  Future<ToolResult> execute(
+    String toolCallId,
+    Map<String, dynamic> args,
+  ) async {
+    final action = (args['action'] as String?)?.trim().toLowerCase() ?? '';
+    return switch (action) {
+      'search' || 'list' => _searchTool.execute(toolCallId, args),
+      'add' => _addTool.execute(toolCallId, args),
+      'update' => _updateTool.execute(toolCallId, args),
+      'delete' || 'remove' => _deleteTool.execute(toolCallId, args),
+      'set_preview' || 'preview' => _previewTool.execute(toolCallId, args),
+      _ => ToolResult(
+        toolCallId: toolCallId,
+        content:
+            '错误：prompt_library 的 action 必须是 search / add / update / delete / set_preview。',
+        isError: true,
+      ),
+    };
+  }
 }

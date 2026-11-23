@@ -1,18 +1,28 @@
+import 'dart:io';
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderEditable;
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
-import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_segmented_controls.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/app_tool_chip.dart';
+import '../../../core/widgets/app_transitions.dart';
+import '../../../core/widgets/overlay_anchor.dart';
 import '../../../../data/models/novelai_models.dart';
+import '../../../../data/models/prompt_library_models.dart';
+import '../../../../data/services/prompt_image_probe.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
 import '../view_models/studio_view_model.dart';
 import 'character_card_item.dart';
 import 'fixed_affixes_panel.dart';
+import 'prompt_combo_edit_dialog.dart';
 
 String _genderLabel(AppLocalizations l10n, NaiCharacterGender gender) =>
     switch (gender) {
@@ -30,13 +40,19 @@ bool _pointerDownHitsEditableText(PointerDownEvent event) {
 
 /// 甲板滑动切页专用横向拖拽识别器。
 ///
-/// 覆写 [addPointer]：指针落点命中可编辑文本 (RenderEditable) 时直接不加入
-/// 手势竞技场，鼠标在输入框内框选文本完全交给输入框自身处理，
-/// 杜绝「拖选文字被抢成滑动切页」的误触。
+/// 覆写 [addPointer]：
+/// 1. 指针落点命中可编辑文本 (RenderEditable) 时直接不加入手势竞技场，
+///    鼠标在输入框内框选文本完全交给输入框自身处理，杜绝「拖选文字被抢成滑动切页」；
+/// 2. 可选提供 [canAcceptPointer]（窄屏下限制仅顶部切换头响应，避免与外层 PageView 横滑冲突）。
 class _DeckSwipeRecognizer extends HorizontalDragGestureRecognizer {
+  bool Function(Offset globalPosition)? canAcceptPointer;
+
   @override
   void addPointer(PointerDownEvent event) {
     if (_pointerDownHitsEditableText(event)) return;
+    if (canAcceptPointer != null && !canAcceptPointer!(event.position)) {
+      return;
+    }
     super.addPointer(event);
   }
 }
@@ -62,7 +78,6 @@ class PromptExtensionDeck extends StatefulWidget {
 
 class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
   int _activeTabIndex = 0; // 0: Character Prompts, 1: Fixed Affixes
-  int _slideDirection = 1; // 1: 从右向左滑动 (切换至右侧页), -1: 从左向右滑动
   double _horizontalDragAccumulated = 0;
 
   @override
@@ -82,7 +97,6 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
   void _switchTab(int index) {
     if (_activeTabIndex == index) return;
     setState(() {
-      _slideDirection = index > _activeTabIndex ? 1 : -1;
       _activeTabIndex = index;
     });
     widget.viewModel.setDeckActiveTab(index);
@@ -104,7 +118,6 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final l10n = context.l10n;
     final viewModel = widget.viewModel;
     final params = viewModel.params;
@@ -113,6 +126,7 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
     final supported = limit > 0;
     final isFull = viewModel.isCharacterPromptFull;
     final isAffixesEnabled = params.applyFixedPrompts;
+    final isNarrow = MediaQuery.sizeOf(context).width < 900;
 
     return RawGestureDetector(
       key: const ValueKey('deck_swipe_detector'),
@@ -123,6 +137,13 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
               () => _DeckSwipeRecognizer(),
               (recognizer) {
                 recognizer
+                  ..canAcceptPointer = isNarrow
+                      ? (globalPos) {
+                          final box = context.findRenderObject() as RenderBox?;
+                          if (box == null || !box.hasSize) return true;
+                          return box.globalToLocal(globalPos).dy <= 44.0;
+                        }
+                      : null
                   ..onStart = (_) {
                     _horizontalDragAccumulated = 0;
                   }
@@ -136,45 +157,37 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. 顶部全宽分段指示栏 (100% 宽度均分，自适应缩放无截断)
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: colors.mutedBackground,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: colors.borderSubtle),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _DeckSegmentTab(
-                    label: l10n.charPromptDeckTabCharacter,
-                    badge: characters.isNotEmpty
-                        ? '${characters.length}/$limit'
-                        : null,
-                    isActive: _activeTabIndex == 0,
-                    onTap: () => _switchTab(0),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: _DeckSegmentTab(
-                    label: l10n.charPromptDeckTabAffixes,
-                    badge: isAffixesEnabled ? l10n.charPromptEnabled : null,
-                    badgeIsActive: isAffixesEnabled,
-                    isActive: _activeTabIndex == 1,
-                    onTap: () => _switchTab(1),
-                  ),
-                ),
-              ],
-            ),
+          // 1. 顶部全宽分段指示栏 (复用 AppSegmentedCardBar，100% 宽度均分)
+          AppSegmentedCardBar<int>(
+            expand: true,
+            selectedValue: _activeTabIndex,
+            onValueChanged: _switchTab,
+            items: [
+              AppSegmentedItem<int>(
+                value: 0,
+                label: l10n.charPromptDeckTabCharacter,
+                badgeLabel: characters.isNotEmpty
+                    ? '${characters.length}/$limit'
+                    : null,
+              ),
+              AppSegmentedItem<int>(
+                value: 1,
+                label: l10n.charPromptDeckTabAffixes,
+                badgeLabel: isAffixesEnabled ? l10n.charPromptEnabled : null,
+              ),
+            ],
           ),
 
           const SizedBox(height: 8),
 
           // 2. 二级动态操作栏 (流式防溢出布局)
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
+            duration: AppMotion.resolveDuration(
+              context,
+              AppMotionDurations.quick,
+            ),
+            switchInCurve: AppMotionCurves.smoothOut,
+            switchOutCurve: AppMotionCurves.smoothOut,
             child: _activeTabIndex == 0
                 ? _buildCharacterPromptsToolbar(
                     viewModel: viewModel,
@@ -188,30 +201,18 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
                     viewModel: viewModel,
                     isAffixesEnabled: isAffixesEnabled,
                     params: params,
-                    l10n: l10n,
                   ),
           ),
 
           const SizedBox(height: 10),
 
           // 3. 左右滑动切换的内容区 (平滑过渡动效)
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) {
-              final isTarget = child.key == ValueKey<int>(_activeTabIndex);
-              final startOffset = isTarget
-                  ? Offset(_slideDirection * 0.25, 0.0)
-                  : Offset(-_slideDirection * 0.25, 0.0);
-              return SlideTransition(
-                position: Tween<Offset>(
-                  begin: startOffset,
-                  end: Offset.zero,
-                ).animate(animation),
-                child: FadeTransition(opacity: animation, child: child),
-              );
-            },
+          AppPageSideBySide(
+            index: _activeTabIndex,
+            duration: AppMotionDurations.fast,
+            curve: AppMotionCurves.smoothOut,
+            slideDistance: AppMotionDistances.base,
+            enableBlur: false,
             child: KeyedSubtree(
               key: ValueKey<int>(_activeTabIndex),
               child: _activeTabIndex == 0
@@ -233,16 +234,25 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
     required NaiGenerationParams params,
     required AppLocalizations l10n,
   }) {
+    final addButton = _buildAddCharacterButtons(viewModel, supported, isFull);
+    if (characters.isEmpty) {
+      return KeyedSubtree(
+        key: const ValueKey('char_toolbar'),
+        child: Align(alignment: Alignment.centerRight, child: addButton),
+      );
+    }
+
     return KeyedSubtree(
       key: const ValueKey('char_toolbar'),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (characters.isNotEmpty) ...[
-            AppSegmentedPillBar<bool>(
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            AppSegmentedCardBar<bool>(
               items: [
                 AppSegmentedItem(
                   value: true,
@@ -256,31 +266,34 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
                 ),
               ],
               selectedValue: params.characterAiPosition,
-              variant: AppPillVariant.soft,
+              fontSize: 12,
+              iconSize: 13,
               itemPadding: const EdgeInsets.symmetric(
-                horizontal: 7,
-                vertical: 3.5,
+                horizontal: 8,
+                vertical: 4,
               ),
               onValueChanged: (isAi) => viewModel.setCharacterAiPosition(isAi),
             ),
-            _CanvasEditDeckButton(
-              isCanvasEditing: viewModel.isEditingCharacterPositions,
-              onTap: () => viewModel.setEditingCharacterPositions(
-                !viewModel.isEditingCharacterPositions,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _CanvasEditDeckButton(
+                  isCanvasEditing: viewModel.isEditingCharacterPositions,
+                  onTap: () => viewModel.setEditingCharacterPositions(
+                    !viewModel.isEditingCharacterPositions,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                addButton,
+              ],
             ),
-          ] else
-            Text(
-              l10n.charPromptIsolationHint,
-              style: TextStyle(fontSize: 12, color: context.colors.textMuted),
-            ),
-          _buildAddCharacterButtons(viewModel, supported, isFull),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  /// 添加角色按钮组：官方三预设 (女/男/其他)，禁用时降级为单个上限胶囊
+  /// 添加角色入口：合并官方三预设 (女/男/其他) 为单个下拉选项按钮，禁用时降级为上限芯片
   Widget _buildAddCharacterButtons(
     StudioViewModel viewModel,
     bool supported,
@@ -290,46 +303,95 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
     if (!enabled) {
       return const _AddCharacterLimitChip();
     }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final gender in NaiCharacterGender.values) ...[
-          _AddGenderDeckButton(
-            gender: gender,
-            onTap: () => viewModel.addCharacterPrompt(gender: gender),
-          ),
-          if (gender != NaiCharacterGender.values.last)
-            const SizedBox(width: 4),
-        ],
-      ],
+    return _AddCharacterMenuButton(
+      onSelected: (gender) => viewModel.addCharacterPrompt(gender: gender),
     );
   }
 
-  /// 固定词缀二级操作工具栏 (左侧说明 + 右侧 Switch，流式排版永不溢出)
+  /// 固定词缀二级操作工具栏 (画风库一键填入 / 存为画风 / 启用开关)
   Widget _buildFixedAffixesToolbar({
     required StudioViewModel viewModel,
     required bool isAffixesEnabled,
     required NaiGenerationParams params,
-    required AppLocalizations l10n,
   }) {
+    final colors = context.colors;
+    final l10n = context.l10n;
     return KeyedSubtree(
       key: const ValueKey('affix_toolbar'),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(
-            l10n.promptsAffixesHint,
-            style: TextStyle(fontSize: 12, color: context.colors.textMuted),
-          ),
-          _AffixToggleSwitch(
-            isEnabled: isAffixesEnabled,
-            onChanged: (val) =>
-                viewModel.updateParams(params.copyWith(applyFixedPrompts: val)),
-          ),
-        ],
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _StyleLibraryPickerButton(viewModel: viewModel),
+                const SizedBox(width: 6),
+                AppToolChip(
+                  icon: Icons.bookmark_add_outlined,
+                  label: l10n.affixSaveStyleLabel,
+                  tooltip: l10n.affixSaveStyleTooltip,
+                  height: 28,
+                  radius: 6,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  unselectedBackgroundColor: colors.cardBackground,
+                  borderColor: colors.borderDefault,
+                  onTap: () => _openSaveStyleDialog(viewModel),
+                ),
+              ],
+            ),
+            AppToolChip(
+              icon: isAffixesEnabled ? Icons.check_rounded : Icons.close_rounded,
+              label:
+                  '${l10n.charPromptDeckTabAffixes}: ${isAffixesEnabled ? l10n.charPromptEnabled : l10n.charPromptDisabled}',
+              isSelected: isAffixesEnabled,
+              height: 28,
+              radius: 6,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              unselectedBackgroundColor: colors.cardBackground,
+              borderColor: colors.borderDefault,
+              onTap: () => viewModel.updateParams(
+                params.copyWith(applyFixedPrompts: !isAffixesEnabled),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openSaveStyleDialog(StudioViewModel viewModel) {
+    final l10n = context.l10n;
+    final params = viewModel.params;
+    final prefix = (params.prefixPrompt ?? '').trim();
+    final suffix = (params.suffixPrompt ?? '').trim();
+    final negative = params.negativePrompt.trim();
+    if (prefix.isEmpty && suffix.isEmpty && negative.isEmpty) {
+      showAppToast(
+        context,
+        message: l10n.affixSaveStyleEmptyNotice,
+        tone: AppToastTone.info,
+        duration: const Duration(milliseconds: 1400),
+      );
+      return;
+    }
+    final now = DateTime.now();
+    PromptComboEditDialog.show(
+      context,
+      viewModel: viewModel,
+      initialEntry: PromptComboEntry(
+        id: '',
+        title: '',
+        category: PromptComboCategories.style,
+        prefixPrompt: prefix,
+        suffixPrompt: suffix,
+        negativePrompt: negative,
+        createdAt: now,
+        updatedAt: now,
       ),
     );
   }
@@ -398,71 +460,7 @@ class _PromptExtensionDeckState extends State<PromptExtensionDeck> {
   }
 }
 
-/// 甲板顶部全宽分段标签 (带自适应缩小，杜绝省略号截断)
-class _DeckSegmentTab extends StatelessWidget {
-  final String label;
-  final String? badge;
-  final bool badgeIsActive;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _DeckSegmentTab({
-    required this.label,
-    this.badge,
-    this.badgeIsActive = false,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md - 2),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5.5),
-        decoration: BoxDecoration(
-          color: isActive ? colors.cardBackground : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.md - 2),
-          boxShadow: isActive ? context.shadowSubtle : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? colors.textPrimary : colors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-            if (badge != null) ...[
-              const SizedBox(width: 4),
-              AppBadge.pill(
-                label: badge!,
-                fontSize: 10,
-                variant: badgeIsActive
-                    ? AppBadgeVariant.primary
-                    : AppBadgeVariant.neutral,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 画板位置编辑独立胶囊按钮 (流式排版自适应)
+/// 画板位置编辑统一芯片按钮 (与其它工具栏芯片等高同圆角)
 class _CanvasEditDeckButton extends StatelessWidget {
   final bool isCanvasEditing;
   final VoidCallback onTap;
@@ -476,108 +474,200 @@ class _CanvasEditDeckButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = context.l10n;
-    return Tooltip(
-      message: isCanvasEditing
+    return AppToolChip(
+      icon: Icons.control_camera_rounded,
+      label: isCanvasEditing
+          ? l10n.charPromptCanvasEditing
+          : l10n.charPromptCanvasEdit,
+      isSelected: isCanvasEditing,
+      height: 28,
+      radius: 6,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      unselectedBackgroundColor: colors.cardBackground,
+      borderColor: colors.borderDefault,
+      tooltip: isCanvasEditing
           ? l10n.charPromptExitCanvasEditTooltip
           : l10n.charPromptEnterCanvasEditTooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: isCanvasEditing ? colors.primary : colors.mutedBackground,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(
-              color: isCanvasEditing ? colors.primary : colors.borderSubtle,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.control_camera_rounded,
-                size: 12,
-                color: isCanvasEditing ? Colors.white : colors.textSecondary,
-              ),
-              const SizedBox(width: 3.5),
-              Text(
-                isCanvasEditing
-                    ? l10n.charPromptCanvasEditing
-                    : l10n.charPromptCanvasEdit,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isCanvasEditing
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  color: isCanvasEditing ? Colors.white : colors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      onTap: onTap,
     );
   }
 }
 
-/// 添加角色胶囊按钮 (官方三预设：女/男/其他，各带性别色)
-///
-/// 性别专属粉/蓝/紫三色为业务身份色 (跨主题恒定)，非主题语义色，故保留字面值。
-class _AddGenderDeckButton extends StatelessWidget {
-  final NaiCharacterGender gender;
-  final VoidCallback onTap;
+/// 合并后的添加角色下拉选项按钮 (点击弹出 女 / 男 / 其他 预设菜单)
+class _AddCharacterMenuButton extends StatefulWidget {
+  final ValueChanged<NaiCharacterGender> onSelected;
 
-  const _AddGenderDeckButton({required this.gender, required this.onTap});
+  const _AddCharacterMenuButton({required this.onSelected});
 
-  Color get _color => switch (gender) {
+  @override
+  State<_AddCharacterMenuButton> createState() =>
+      _AddCharacterMenuButtonState();
+}
+
+class _AddCharacterMenuButtonState extends State<_AddCharacterMenuButton> {
+  bool _isOpen = false;
+
+  static Color _genderColor(NaiCharacterGender gender) => switch (gender) {
     NaiCharacterGender.female => const Color(0xFFEC4899),
     NaiCharacterGender.male => const Color(0xFF3B82F6),
     NaiCharacterGender.other => const Color(0xFF8B5CF6),
   };
 
-  IconData get _icon => switch (gender) {
+  static IconData _genderIcon(NaiCharacterGender gender) => switch (gender) {
     NaiCharacterGender.female => Icons.female_rounded,
     NaiCharacterGender.male => Icons.male_rounded,
     NaiCharacterGender.other => Icons.transgender_rounded,
   };
 
-  String _tooltip(AppLocalizations l10n) => switch (gender) {
+  static String _genderTooltip(
+    AppLocalizations l10n,
+    NaiCharacterGender gender,
+  ) => switch (gender) {
     NaiCharacterGender.female => l10n.charPromptAddFemaleTooltip,
     NaiCharacterGender.male => l10n.charPromptAddMaleTooltip,
     NaiCharacterGender.other => l10n.charPromptAddOtherTooltip,
   };
 
+  Future<void> _openMenu(BuildContext triggerContext) async {
+    final l10n = context.l10n;
+    final renderBox = triggerContext.findRenderObject() as RenderBox?;
+    final triggerWidth = (renderBox != null && renderBox.hasSize)
+        ? renderBox.size.width
+        : 120.0;
+    final menuMinWidth = math.max(triggerWidth, 120.0);
+    final menuMaxWidth = math.max(triggerWidth, 180.0);
+
+    setState(() => _isOpen = true);
+    try {
+      final selected = await showAnchoredPopover<NaiCharacterGender>(
+        context: triggerContext,
+        preferAbove: false,
+        gap: 4,
+        minWidth: menuMinWidth,
+        maxWidth: menuMaxWidth,
+        builder: (popoverContext) {
+          final colors = popoverContext.colors;
+          return Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final gender in NaiCharacterGender.values)
+                  Tooltip(
+                    message: _genderTooltip(l10n, gender),
+                    waitDuration: AppMotionDurations.verySlow,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => Navigator.of(popoverContext).pop(gender),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _genderIcon(gender),
+                                size: 15,
+                                color: _genderColor(gender),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _genderLabel(l10n, gender),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      );
+      if (selected != null) {
+        widget.onSelected(selected);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isOpen = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final l10n = context.l10n;
-    return Tooltip(
-      message: _tooltip(l10n),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(
-            color: _color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: Border.all(color: _color.withValues(alpha: 0.45)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_icon, size: 13, color: _color),
-              const SizedBox(width: 4),
-              Text(
-                _genderLabel(l10n, gender),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: _color,
+    final chevronDuration = AppMotion.resolveDuration(
+      context,
+      AppMotionDurations.dropdownOpen,
+    );
+
+    return Material(
+      color: colors.cardBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: colors.borderDefault),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Builder(
+        builder: (triggerContext) => InkWell(
+          onTap: () => _openMenu(triggerContext),
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.person_add_alt_1_rounded,
+                  size: 14,
+                  color: colors.textMuted,
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Text(
+                  l10n.charPromptAddCharacter,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(end: _isOpen ? -1.0 : 1.0),
+                  duration: chevronDuration,
+                  curve: AppMotionCurves.smoothOut,
+                  builder: (context, scaleY, child) {
+                    return Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.diagonal3Values(1.0, scaleY, 1.0),
+                      child: child,
+                    );
+                  },
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: colors.textMuted,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -585,8 +675,7 @@ class _AddGenderDeckButton extends StatelessWidget {
   }
 }
 
-/// 不支持或已达上限时的禁用胶囊
-
+/// 不支持或已达上限时的禁用芯片 (与添加角色按钮同尺寸同圆角)
 class _AddCharacterLimitChip extends StatelessWidget {
   const _AddCharacterLimitChip();
 
@@ -595,22 +684,23 @@ class _AddCharacterLimitChip extends StatelessWidget {
     final colors = context.colors;
     final l10n = context.l10n;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: colors.mutedBackground,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: colors.borderDefault),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.person_add_alt_rounded, size: 13, color: colors.textMuted),
+          Icon(Icons.person_add_alt_rounded, size: 14, color: colors.textMuted),
           const SizedBox(width: 4),
           Text(
             l10n.charPromptLimitReached,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
               color: colors.textMuted,
             ),
           ),
@@ -620,42 +710,175 @@ class _AddCharacterLimitChip extends StatelessWidget {
   }
 }
 
-/// 词缀总开关控件
-class _AffixToggleSwitch extends StatelessWidget {
-  final bool isEnabled;
-  final ValueChanged<bool> onChanged;
+/// 词库画风快速选择下拉按钮 (点击弹出「风格」条目浮层，一键填入前后缀与负面词)
+class _StyleLibraryPickerButton extends StatelessWidget {
+  final StudioViewModel viewModel;
 
-  const _AffixToggleSwitch({required this.isEnabled, required this.onChanged});
+  const _StyleLibraryPickerButton({required this.viewModel});
+
+  Future<void> _openPopover(BuildContext triggerContext) async {
+    final l10n = triggerContext.l10n;
+    final styleEntries = viewModel.promptLibraryEntries
+        .where((e) => e.isStyle)
+        .toList(growable: false);
+
+    final selected = await showAnchoredPopover<PromptComboEntry>(
+      context: triggerContext,
+      preferAbove: false,
+      gap: 4,
+      minWidth: 220,
+      maxWidth: 320,
+      maxHeight: 340,
+      builder: (popoverContext) {
+        final colors = popoverContext.colors;
+        if (styleEntries.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            child: Text(
+              l10n.affixStylePresetsEmpty,
+              style: TextStyle(fontSize: 12, color: colors.textMuted),
+            ),
+          );
+        }
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final entry in styleEntries)
+                _StylePresetPopoverItem(
+                  entry: entry,
+                  onTap: () => Navigator.of(popoverContext).pop(entry),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected != null && triggerContext.mounted) {
+      viewModel.applyPromptCombo(selected, asStyle: true, replace: true);
+      showAppToast(
+        triggerContext,
+        message: l10n.affixAppliedStyleNotice(selected.title),
+        tone: AppToastTone.success,
+        duration: const Duration(milliseconds: 1400),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final l10n = context.l10n;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          isEnabled ? l10n.charPromptEnabled : l10n.charPromptDisabled,
-          style: TextStyle(
-            fontSize: 12,
-            color: isEnabled ? colors.primary : colors.textMuted,
-            fontWeight: FontWeight.w500,
+    return ListenableBuilder(
+      listenable: viewModel.promptLibraryNotifier,
+      builder: (context, _) {
+        final styleCount = viewModel.promptLibraryEntries
+            .where((e) => e.isStyle)
+            .length;
+        final label = styleCount > 0
+            ? '${l10n.affixStylePresetsLabel} ($styleCount)'
+            : l10n.affixStylePresetsLabel;
+        return Builder(
+          builder: (triggerContext) => AppToolChip(
+            icon: Icons.palette_outlined,
+            label: label,
+            tooltip: l10n.affixStylePresetsTooltip,
+            height: 28,
+            radius: 6,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            unselectedBackgroundColor: colors.cardBackground,
+            borderColor: colors.borderDefault,
+            onTap: () => _openPopover(triggerContext),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StylePresetPopoverItem extends StatelessWidget {
+  final PromptComboEntry entry;
+  final VoidCallback onTap;
+
+  const _StylePresetPopoverItem({required this.entry, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final rawPath = entry.previewImagePath?.trim();
+    final hasThumb =
+        rawPath != null &&
+        rawPath.isNotEmpty &&
+        !PromptImageProbe.isKnownMissing(rawPath);
+    final summary = entry.displayPromptSummary.replaceAll('\n', ' · ');
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          child: Row(
+            children: [
+              if (hasThumb) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: Image(
+                      image: ResizeImage(
+                        FileImage(File(rawPath)),
+                        width: 64,
+                        height: 64,
+                        policy: ResizeImagePolicy.fit,
+                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          Icon(Icons.palette_outlined, size: 16, color: colors.textMuted),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ] else ...[
+                Icon(Icons.palette_outlined, size: 15, color: colors.primary),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      entry.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    if (summary.isNotEmpty)
+                      Text(
+                        summary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: colors.textMuted),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 6),
-        SizedBox(
-          height: 22,
-          width: 38,
-          child: FittedBox(
-            fit: BoxFit.fill,
-            child: Switch(
-              value: isEnabled,
-              activeTrackColor: colors.primary,
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

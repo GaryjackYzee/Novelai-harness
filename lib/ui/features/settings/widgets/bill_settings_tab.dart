@@ -3,12 +3,14 @@ import '../../../../core/harness/types.dart';
 import '../../../../data/services/usage_ledger_service.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_control_flow.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_segmented_controls.dart';
+import '../../../core/widgets/smooth_scroll_controller.dart';
 import '../../studio/view_models/studio_view_model.dart';
 
 /// Bill 页：按周期统计各模型的 Token 用量账单 (只读)
@@ -26,6 +28,14 @@ class BillSettingsTab extends StatefulWidget {
 
 class _BillSettingsTabState extends State<BillSettingsTab> {
   BillPeriod _billPeriod = BillPeriod.today;
+  late final SmoothWheelScrollController _scrollController =
+      SmoothWheelScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   /// 缓存命中率单元格文案 (无数据时显示 -)
   String _hitRateLabel(TokenUsage usage) {
@@ -51,9 +61,13 @@ class _BillSettingsTabState extends State<BillSettingsTab> {
     final l10n = context.l10n;
     final summary = widget.viewModel.buildBillSummary(_billPeriod);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 20),
-      child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hPad = constraints.maxWidth < 560 ? 16.0 : 28.0;
+        return SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 20),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppSectionHeader(title: l10n.settingsSectionUsageBill),
@@ -67,7 +81,7 @@ class _BillSettingsTabState extends State<BillSettingsTab> {
                 spacing: AppSpacing.md,
                 alignment: WrapAlignment.spaceBetween,
                 children: [
-                  AppSegmentedPillBar<BillPeriod>(
+                  AppSegmentedCardBar<BillPeriod>(
                     scrollable: true,
                     items: [
                       for (final period in BillPeriod.values)
@@ -93,16 +107,37 @@ class _BillSettingsTabState extends State<BillSettingsTab> {
           ),
 
           // 账单表格
-          if (summary.models.isEmpty)
-            AppEmptyState(
-              icon: Icons.receipt_long_rounded,
-              title: l10n.billEmptyRecords,
-              isCompact: true,
-            )
-          else
-            _buildBillTable(summary),
+          AnimatedSwitcher(
+            duration: AppMotion.resolveDuration(
+              context,
+              AppMotionDurations.quick,
+            ),
+            switchInCurve: AppMotionCurves.inOut,
+            switchOutCurve: AppMotionCurves.inOut,
+            layoutBuilder: (currentChild, previousChildren) {
+              return Stack(
+                alignment: Alignment.topCenter,
+                children: [...previousChildren, ?currentChild],
+              );
+            },
+            child: summary.models.isEmpty
+                ? KeyedSubtree(
+                    key: const ValueKey<String>('empty'),
+                    child: AppEmptyState(
+                      icon: Icons.receipt_long_rounded,
+                      title: l10n.billEmptyRecords,
+                      isCompact: true,
+                    ),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey<String>('table'),
+                    child: _buildBillTable(summary),
+                  ),
+          ),
         ],
       ),
+    );
+      },
     );
   }
 

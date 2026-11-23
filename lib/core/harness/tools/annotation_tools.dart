@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
-import 'dart:math' as math;
-import 'dart:ui' as ui;
+import 'dart:ui' show Offset, Rect;
 
-import 'package:flutter/painting.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../data/models/novelai_models.dart';
 import '../../../data/services/anlas_calculator.dart';
@@ -33,298 +31,27 @@ class AnnotationOverlayRenderResult {
   });
 }
 
-/// 将批注覆盖层 (选区边框、锚点、编号徽章与标签) 离屏绘制到图像字节上
-Future<AnnotationOverlayRenderResult> renderImageWithAnnotationOverlay(
-  Uint8List imageBytes,
-  List<ImageAnnotation> annotations, {
-  int maxDimension = 1536,
-}) async {
-  final codec = await ui.instantiateImageCodec(imageBytes);
-  final frame = await codec.getNextFrame();
-  final source = frame.image;
-
-  final longSide = math.max(source.width, source.height);
-  final scale = longSide > maxDimension ? maxDimension / longSide : 1.0;
-  final outW = math.max(1, (source.width * scale).round());
-  final outH = math.max(1, (source.height * scale).round());
-
-  final recorder = ui.PictureRecorder();
-  final canvas = ui.Canvas(
-    recorder,
-    ui.Rect.fromLTWH(0, 0, outW.toDouble(), outH.toDouble()),
-  );
-
-  // 1. 绘制底图
-  canvas.drawImageRect(
-    source,
-    ui.Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
-    ui.Rect.fromLTWH(0, 0, outW.toDouble(), outH.toDouble()),
-    ui.Paint()..filterQuality = ui.FilterQuality.medium,
-  );
-
-  final canvasSize = ui.Size(outW.toDouble(), outH.toDouble());
-
-  // 2. 依次绘制各条批注
-  for (var i = 0; i < annotations.length; i++) {
-    final ann = annotations[i];
-    final color = ann.color;
-    final indexNum = i + 1;
-
-    switch (ann.type) {
-      case AnnotationType.rect:
-        if (ann.rect != null) {
-          final r = ann.rect!;
-          final drawRect = ui.Rect.fromLTWH(
-            r.left * canvasSize.width,
-            r.top * canvasSize.height,
-            r.width * canvasSize.width,
-            r.height * canvasSize.height,
-          );
-
-          // 半透明高亮填充
-          canvas.drawRect(
-            drawRect,
-            ui.Paint()
-              ..color = color.withValues(alpha: 0.18)
-              ..style = ui.PaintingStyle.fill,
-          );
-
-          // 矩形边框
-          canvas.drawRect(
-            drawRect,
-            ui.Paint()
-              ..color = color
-              ..style = ui.PaintingStyle.stroke
-              ..strokeWidth = math.max(2.0, canvasSize.shortestSide * 0.0035),
-          );
-
-          // 编号图钉锚点 (绘制在选区左上角)
-          final badgeDiameter = (canvasSize.width * 0.035).clamp(24.0, 52.0);
-          final badgeCenter = ui.Offset(
-            (drawRect.left + badgeDiameter * 0.6).clamp(
-              badgeDiameter / 2,
-              canvasSize.width - badgeDiameter / 2,
-            ),
-            (drawRect.top + badgeDiameter * 0.6).clamp(
-              badgeDiameter / 2,
-              canvasSize.height - badgeDiameter / 2,
-            ),
-          );
-
-          _drawPinBadge(canvas, badgeCenter, badgeDiameter, indexNum, color);
-
-          // 批注简要文字标签 (若有)
-          if (ann.note.trim().isNotEmpty) {
-            _drawNoteLabelBadge(
-              canvas,
-              canvasSize,
-              ann.note.trim(),
-              badgeCenter.dx + badgeDiameter * 0.7,
-              badgeCenter.dy - badgeDiameter * 0.5,
-              color,
-            );
-          }
-        }
-        break;
-
-      case AnnotationType.point:
-        if (ann.point != null) {
-          final p = ann.point!;
-          final badgeDiameter = (canvasSize.width * 0.035).clamp(24.0, 52.0);
-          final center = ui.Offset(
-            p.dx * canvasSize.width,
-            p.dy * canvasSize.height,
-          );
-
-          _drawPinBadge(canvas, center, badgeDiameter, indexNum, color);
-
-          if (ann.note.trim().isNotEmpty) {
-            _drawNoteLabelBadge(
-              canvas,
-              canvasSize,
-              ann.note.trim(),
-              center.dx + badgeDiameter * 0.7,
-              center.dy - badgeDiameter * 0.5,
-              color,
-            );
-          }
-        }
-        break;
-
-      case AnnotationType.global:
-        // 整图全局批注在右上角绘制醒目标签
-        final noteText = ann.note.trim().isNotEmpty ? ann.note.trim() : '整图批注';
-        _drawGlobalBanner(canvas, canvasSize, indexNum, noteText, color, i);
-        break;
-    }
-  }
-
-  final picture = recorder.endRecording();
-  final outImage = await picture.toImage(outW, outH);
-  final data = await outImage.toByteData(format: ui.ImageByteFormat.png);
-  source.dispose();
-  outImage.dispose();
-
-  final bytes = data?.buffer.asUint8List();
-  if (bytes == null || bytes.isEmpty) {
-    throw StateError('批注覆盖层编码失败');
-  }
-
-  return AnnotationOverlayRenderResult(
-    bytes: bytes,
-    width: outW,
-    height: outH,
-    overlayApplied: true,
-  );
-}
-
-void _drawPinBadge(
-  ui.Canvas canvas,
-  ui.Offset center,
-  double diameter,
-  int number,
-  ui.Color color,
-) {
-  // 外阴影白描边
-  canvas.drawCircle(
-    center,
-    diameter / 2 + 2.5,
-    ui.Paint()..color = const ui.Color(0xFFFFFFFF),
-  );
-  // 实色底圆
-  canvas.drawCircle(center, diameter / 2, ui.Paint()..color = color);
-  // 编号数字
-  final fontSize = diameter * 0.48;
-  final painter = TextPainter(
-    text: TextSpan(
-      text: '$number',
-      style: TextStyle(
-        color: const ui.Color(0xFFFFFFFF),
-        fontSize: fontSize,
-        fontWeight: FontWeight.w800,
-      ),
-    ),
-    textAlign: TextAlign.center,
-    textDirection: TextDirection.ltr,
-  )..layout();
-  painter.paint(
-    canvas,
-    center - ui.Offset(painter.width / 2, painter.height / 2),
-  );
-}
-
-void _drawNoteLabelBadge(
-  ui.Canvas canvas,
-  ui.Size canvasSize,
-  String text,
-  double left,
-  double top,
-  ui.Color color,
-) {
-  final singleLineText = text.replaceAll('\n', ' ');
-  final truncated = singleLineText.length > 24
-      ? '${singleLineText.substring(0, 24)}...'
-      : singleLineText;
-
-  final fontSize = (canvasSize.width * 0.015).clamp(11.0, 22.0);
-  final painter = TextPainter(
-    text: TextSpan(
-      text: truncated,
-      style: TextStyle(
-        color: const ui.Color(0xFFFFFFFF),
-        fontSize: fontSize,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-  )..layout();
-
-  const padH = 7.0;
-  const padV = 3.5;
-  final badgeW = painter.width + padH * 2;
-  final badgeH = painter.height + padV * 2;
-
-  final clampedL = left
-      .clamp(0.0, math.max(0.0, canvasSize.width - badgeW))
-      .toDouble();
-  final clampedT = top
-      .clamp(0.0, math.max(0.0, canvasSize.height - badgeH))
-      .toDouble();
-
-  final rrect = ui.RRect.fromRectAndRadius(
-    ui.Rect.fromLTWH(clampedL, clampedT, badgeW, badgeH),
-    const ui.Radius.circular(5),
-  );
-  canvas.drawRRect(rrect, ui.Paint()..color = const ui.Color(0xEB1E1E24));
-  canvas.drawRRect(
-    rrect,
-    ui.Paint()
-      ..color = color.withValues(alpha: 0.8)
-      ..style = ui.PaintingStyle.stroke
-      ..strokeWidth = 1.2,
-  );
-  painter.paint(canvas, ui.Offset(clampedL + padH, clampedT + padV));
-}
-
-void _drawGlobalBanner(
-  ui.Canvas canvas,
-  ui.Size canvasSize,
-  int number,
-  String noteText,
-  ui.Color color,
-  int index,
-) {
-  final text = '#$number 整图: $noteText';
-  final singleLineText = text.replaceAll('\n', ' ');
-  final truncated = singleLineText.length > 32
-      ? '${singleLineText.substring(0, 32)}...'
-      : singleLineText;
-
-  final fontSize = (canvasSize.width * 0.015).clamp(11.0, 20.0);
-  final painter = TextPainter(
-    text: TextSpan(
-      text: truncated,
-      style: TextStyle(
-        color: const ui.Color(0xFFFFFFFF),
-        fontSize: fontSize,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-  )..layout();
-
-  const padH = 10.0;
-  const padV = 5.0;
-  final badgeW = painter.width + padH * 2;
-  final badgeH = painter.height + padV * 2;
-  final top = 12.0 + index * (badgeH + 6.0);
-  final left = (canvasSize.width - badgeW - 12.0).clamp(0.0, canvasSize.width);
-
-  final rrect = ui.RRect.fromRectAndRadius(
-    ui.Rect.fromLTWH(left, top, badgeW, badgeH),
-    const ui.Radius.circular(6),
-  );
-  canvas.drawRRect(rrect, ui.Paint()..color = const ui.Color(0xF018181B));
-  canvas.drawRRect(
-    rrect,
-    ui.Paint()
-      ..color = color
-      ..style = ui.PaintingStyle.stroke
-      ..strokeWidth = 1.5,
-  );
-  painter.paint(canvas, ui.Offset(left + padH, top + padV));
-}
+/// 离屏绘制批注覆盖层的回调签名（由数据/渲染层注入，保持 core 层无 Flutter painting 依赖）。
+typedef AnnotationOverlayRenderFn =
+    Future<AnnotationOverlayRenderResult> Function(
+      Uint8List imageBytes,
+      List<ImageAnnotation> annotations, {
+      int maxDimension,
+      bool whiteBackground,
+    });
 
 /// 查看画板图片批注工具：获取历史图片及其全部圈选批注、锚点与整图备注
 class ViewImageAnnotationsTool extends AgentTool {
   final CanvasHistoryGetter getHistory;
   final ModelVisionChecker isModelMultimodal;
   final CanvasImageBytesLoader? loadImageBytes;
+  final AnnotationOverlayRenderFn? renderOverlay;
 
   ViewImageAnnotationsTool({
     required this.getHistory,
     required this.isModelMultimodal,
     this.loadImageBytes,
+    this.renderOverlay,
   }) : super(
          name: 'view_image_annotations',
          label: '查看图片批注',
@@ -424,11 +151,14 @@ class ViewImageAnnotationsTool extends AgentTool {
     var overlayApplied = false;
 
     if (attachImage) {
-      if (withOverlay && annotations.isNotEmpty) {
+      final renderer = renderOverlay;
+      if (withOverlay && annotations.isNotEmpty && renderer != null) {
         try {
-          final rendered = await renderImageWithAnnotationOverlay(
+          final rendered = await renderer(
             imageBytes,
             annotations,
+            maxDimension: fullResolution ? 1536 : kVisionImageMaxSide,
+            whiteBackground: !fullResolution,
           );
           finalImageBytes = rendered.bytes;
           overlayApplied = true;
@@ -441,12 +171,12 @@ class ViewImageAnnotationsTool extends AgentTool {
       }
     }
 
-    // 视觉附件压缩：默认压到最长边 1024px 控制视觉 Token，
-    // 模型看不清批注细节时可传 full_resolution=true 获取原图
-    String resultMime = finalImageBytes == null
+    // 视觉附件压缩：默认压到最长边 1024px 控制视觉 Token；
+    // 覆盖层已在非原图模式下一次性直出 ≤1024px 白底 PNG，无需二次编解码
+    String resultMime = (finalImageBytes == null || overlayApplied)
         ? 'image/png'
         : sniffImageMimeType(finalImageBytes);
-    if (finalImageBytes != null && !fullResolution) {
+    if (finalImageBytes != null && !fullResolution && !overlayApplied) {
       final compressed = await compressVisionImage(finalImageBytes);
       finalImageBytes = compressed.bytes;
       resultMime = compressed.mimeType;
@@ -490,7 +220,7 @@ class ViewImageAnnotationsTool extends AgentTool {
           final bbox = ann.toBBox();
           final pxR = ann.toPixelRect(width, height);
           lines.add(
-            '• 相对坐标 (归一化，可直接作为 novelai_inpaint / get_inpaint_geometry 的 rect 参数): [${bbox?[0]}, ${bbox?[1]}, ${bbox?[2]}, ${bbox?[3]}] (ymin, xmin, ymax, xmax)',
+            '• 相对坐标 (归一化，可直接作为 novelai_inpaint 的 rect 参数): [${bbox?[0]}, ${bbox?[1]}, ${bbox?[2]}, ${bbox?[3]}] (ymin, xmin, ymax, xmax)',
           );
           lines.add(
             '• 百分比坐标: x: ${(r.left * 100).toStringAsFixed(1)}%, y: ${(r.top * 100).toStringAsFixed(1)}%, w: ${(r.width * 100).toStringAsFixed(1)}%, h: ${(r.height * 100).toStringAsFixed(1)}%',
@@ -998,7 +728,7 @@ class UpdateImageAnnotationTool extends AgentTool {
     final applied = <({int number, String summary})>[];
     final failed = <String>[];
     for (final spec in resolved.specs) {
-      final ann = _findAnnotations(target.annotations, spec).firstOrNull;
+      final ann = _findAnnotations(updatedList, spec).firstOrNull;
       if (ann == null) {
         failed.add(
           '未找到批注 ${spec['annotation_id'] ?? spec['annotation'] ?? '(未指定编号)'}',
@@ -1218,5 +948,125 @@ class ClearImageAnnotationsTool extends AgentTool {
       toolName: 'clear_image_annotations',
       content: '已清空图片 (索引 $index) 的 $count 条批注。',
     );
+  }
+}
+
+/// 统一画板图片批注管理工具（合并 view / add / update / remove / clear 为单工具 action 调度）
+class ImageAnnotationsTool extends AgentTool {
+  final ViewImageAnnotationsTool _viewTool;
+  final AddImageAnnotationTool _addTool;
+  final UpdateImageAnnotationTool _updateTool;
+  final RemoveImageAnnotationTool _removeTool;
+  final ClearImageAnnotationsTool _clearTool;
+
+  ImageAnnotationsTool({
+    required List<NaiGeneratedImage> Function() getHistory,
+    required Future<Uint8List?> Function(NaiGeneratedImage image) loadImageBytes,
+    required bool Function() isModelMultimodal,
+    AnnotationOverlayRenderFn? renderOverlay,
+    required Future<bool> Function(
+      String imageId,
+      List<ImageAnnotation> nextAnnotations,
+    )
+    writeAnnotations,
+  }) : _viewTool = ViewImageAnnotationsTool(
+         getHistory: getHistory,
+         loadImageBytes: loadImageBytes,
+         isModelMultimodal: isModelMultimodal,
+         renderOverlay: renderOverlay,
+       ),
+       _addTool = AddImageAnnotationTool(
+         getHistory: getHistory,
+         writeAnnotations: writeAnnotations,
+       ),
+       _updateTool = UpdateImageAnnotationTool(
+         getHistory: getHistory,
+         writeAnnotations: writeAnnotations,
+       ),
+       _removeTool = RemoveImageAnnotationTool(
+         getHistory: getHistory,
+         writeAnnotations: writeAnnotations,
+       ),
+       _clearTool = ClearImageAnnotationsTool(
+         getHistory: getHistory,
+         writeAnnotations: writeAnnotations,
+       ),
+       super(
+         name: 'image_annotations',
+         label: '图片批注管理',
+         description:
+             '统一查看与管理画板图片上的矩形选区/图钉/全局批注。通过 action 选择操作：\n'
+             '- view: 查看批注清单（可选附带批注叠层图）；\n'
+             '- add: 添加单条或批量批注（annotations 数组）；\n'
+             '- update: 按 id 或 updates 数组批量修改批注；\n'
+             '- remove: 按 id 或 ids 数组批量删除批注；\n'
+             '- clear: 清空目标图片上的全部批注。',
+         parameters: const {
+           'type': 'object',
+           'properties': {
+             'action': {
+               'type': 'string',
+               'enum': ['view', 'add', 'update', 'remove', 'clear'],
+               'description': '操作类型：view / add / update / remove / clear',
+             },
+             'image_index': {
+               'type': 'integer',
+               'description': '历史图片索引（0 表示最新图，默认 0）',
+             },
+             'include_image': {
+               'type': 'boolean',
+               'description': 'view 时是否附带标注叠层图，默认 true',
+             },
+             'id': {'type': 'string', 'description': '批注 ID (update / remove)'},
+             'ids': {
+               'type': 'array',
+               'items': {'type': 'string'},
+               'description': '批量删除的批注 ID 列表 (remove)',
+             },
+             'type': {
+               'type': 'string',
+               'enum': ['rect', 'point', 'global'],
+               'description': '批注形状类型 (add / update)',
+             },
+             'text': {'type': 'string', 'description': '批注说明文本 (add / update)'},
+             'rect': {
+               'description': '矩形选区 [ymin, xmin, ymax, xmax] (0~1 归一化或 0~100 百分比)',
+             },
+             'point': {'description': '图钉锚点 [y, x]'},
+             'color': {'type': 'string', 'description': '批注颜色十六进制'},
+             'annotations': {
+               'type': 'array',
+               'items': {'type': 'object'},
+               'description': '批量新增的批注数组 (add)',
+             },
+             'updates': {
+               'type': 'array',
+               'items': {'type': 'object'},
+               'description': '批量修改的批注数组，每项需含 id (update)',
+             },
+           },
+           'required': ['action'],
+         },
+       );
+
+  @override
+  Future<ToolResult> execute(
+    String toolCallId,
+    Map<String, dynamic> args,
+  ) async {
+    final action = (args['action'] as String?)?.trim().toLowerCase() ?? '';
+    return switch (action) {
+      'view' || 'list' => _viewTool.execute(toolCallId, args),
+      'add' => _addTool.execute(toolCallId, args),
+      'update' => _updateTool.execute(toolCallId, args),
+      'remove' || 'delete' => _removeTool.execute(toolCallId, args),
+      'clear' => _clearTool.execute(toolCallId, args),
+      _ => ToolResult(
+        toolCallId: toolCallId,
+        content:
+            '错误：image_annotations 的 action 必须是 view / add / update / remove / clear。',
+        isError: true,
+      ),
+    };
   }
 }

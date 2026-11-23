@@ -4,24 +4,44 @@ import 'package:flutter/services.dart';
 import 'package:pasteboard/pasteboard.dart';
 import '../../../../core/harness/types.dart';
 import '../../../../data/models/novelai_models.dart';
+import '../../../../data/models/prompt_library_models.dart';
+import '../../../../data/services/prompt_library_mention.dart';
 import '../../../../data/services/usage_ledger_service.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_async_icon_button.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_icon_button.dart';
+import '../../../core/widgets/app_search_field.dart';
+import '../../../core/widgets/app_segmented_controls.dart';
+import '../../../core/widgets/app_toast.dart';
+import '../../../core/widgets/app_transitions.dart';
+import '../../../core/widgets/overlay_anchor.dart';
 import '../../../core/widgets/stable_edge_selection.dart';
+import 'character_mention_overlay.dart';
 import 'chat_context_status.dart';
 import 'chat_image_attachment.dart';
+import 'chat_mention_text_controller.dart';
 import 'slash_command_overlay.dart';
 import '../view_models/studio_view_model.dart';
 import 'chat_queue_dialog.dart';
 
-/// Agent 对话卡底部控制与输入区:
-/// 模型/思考强度一体化胶囊卡片 + 消息输入框与发送按钮
+/// 思考等级档位本地化展示名
+String _localizedEffortLabel(AppLocalizations l10n, ThinkingEffort effort) =>
+    switch (effort) {
+      ThinkingEffort.none => l10n.chatThinkingEffortNone,
+      ThinkingEffort.low => l10n.chatThinkingEffortLow,
+      ThinkingEffort.medium => l10n.chatThinkingEffortMedium,
+      ThinkingEffort.high => l10n.chatThinkingEffortHigh,
+      ThinkingEffort.xhigh => l10n.chatThinkingEffortXHigh,
+      ThinkingEffort.max => l10n.chatThinkingEffortMax,
+    };
+
+/// Agent 对话卡底部一体化输入与控制区 (桌面/移动端统一):
+/// 图片附件预览 + 多行文本输入框 + 底部内嵌工具栏 (附件 / 模型与思考选择器 / 上下文 / 发送停止)
 class AgentChatInputBar extends StatefulWidget {
   final StudioViewModel viewModel;
   final bool compact;
@@ -48,7 +68,7 @@ class _PendingAttachment {
 }
 
 class _AgentChatInputBarState extends State<AgentChatInputBar> {
-  final TextEditingController _inputController = TextEditingController();
+  late final ChatMentionTextController _inputController;
   final ScrollController _inputScrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
   final GlobalKey _inputFieldKey = GlobalKey();
@@ -61,13 +81,20 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
   /// 图片归一化进行中 (缩略图栏显示处理指示)
   bool _processingImage = false;
 
-  /// 当前展示的斜杠指令补全建议
+  /// 当前展示的斜杠指令或 `@` 角色补全建议与面板开关态（支持关闭退场动效）
   List<SlashSuggestion> _suggestions = const [];
+  List<PromptComboEntry> _mentionSuggestions = const [];
+  ActiveCharacterMention? _activeMention;
+  bool _suggestionsVisible = false;
   int _selectedIndex = 0;
+
+  /// 模型与思考档位浮层是否打开（用于驱动触发器箭头翻转）
+  bool _pickerOpen = false;
 
   /// 按 Esc 后记录当前输入，避免同类补全立即重新弹出
   String _dismissedToken = '';
 
+  /// 消息队列悬浮条：流式生成期间用户再按下发送会把消息排入队列。
   Widget _buildQueueBar() {
     final queue = widget.viewModel.queuedChatMessages;
     if (queue.isEmpty) return const SizedBox.shrink();
@@ -101,9 +128,6 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     );
   }
 
-  /// 手机端辅助抽屉（思考档位 / 上下文用量）是否展开，默认折叠隐藏
-  bool _auxDrawerExpanded = false;
-
   /// 输入框实测宽度 (帧后回调中缓存，禁止在 build/layout 阶段读 size)
   double _fieldWidth = 320.0;
 
@@ -113,27 +137,47 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
   /// 已排进帧后回调、尚未写入输入框的回溯代数。
   int? _scheduledRestoreEpoch;
 
+  /// 已套用的词库角色插入代数，避免重复插入。
+  int _appliedInsertionEpoch = 0;
+
+  /// 已排进帧后回调的词库角色插入代数。
+  int? _scheduledInsertionEpoch;
+
   @override
   void initState() {
     super.initState();
+    _inputController = ChatMentionTextController(
+      entriesProvider: () => widget.viewModel.promptLibraryEntries,
+      onChipRemoved: () {
+        if (mounted) _inputFocusNode.requestFocus();
+      },
+    );
     final restore = widget.viewModel.composerRestore;
     if (restore != null) {
       _appliedRestoreEpoch = restore.epoch;
-      _inputController.value = TextEditingValue(
-        text: restore.text,
-        selection: TextSelection.collapsed(offset: restore.text.length),
-      );
+      _inputController.setSerializedText(restore.text);
       _pendingAttachments.addAll(_attachmentsFrom(restore.images));
       widget.viewModel.acknowledgeComposerRestore(restore.epoch);
       _scheduleComposerFocus();
     } else {
-      _inputController.text = widget.viewModel.chatDraft;
+      final draft = widget.viewModel.chatDraft;
+      _inputController.setSerializedText(draft);
+      final insertion = widget.viewModel.composerInsertion;
+      if (insertion != null) {
+        _appliedInsertionEpoch = insertion.epoch;
+        widget.viewModel.acknowledgeComposerInsertion(insertion.epoch);
+        if (insertion.focus) {
+          _scheduleComposerFocus();
+          _scheduleRevealCaret();
+        }
+      }
     }
     _inputController.addListener(_handleDraftChanged);
-    _inputController.addListener(_updateSlashSuggestions);
+    _inputController.addListener(_updateComposerSuggestions);
     _inputFocusNode.addListener(_handleInputFocusChanged);
-    // 焦点节点自身拦截 Ctrl+V：剪贴板无文本时尝试读取图片附件。
-    // 挂在焦点节点 (冒泡链最内层) 保证先于 TextField 默认粘贴快捷键生效。
+    widget.viewModel.promptLibraryNotifier.addListener(_onPromptLibraryChanged);
+    // 焦点节点自身拦截 Ctrl+V / Ctrl+C / Ctrl+X：
+    // 粘贴支持文本角色解码与图片附件，复制/剪切将行内卡片占位符还原为 @[标题]。
     _inputFocusNode.onKeyEvent = _handleInputNodeKeyEvent;
   }
 
@@ -158,17 +202,54 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       }
       return;
     }
+
+    final insertion = widget.viewModel.composerInsertion;
+    if (insertion != null && insertion.epoch != _appliedInsertionEpoch) {
+      if (_scheduledInsertionEpoch != insertion.epoch) {
+        final epoch = insertion.epoch;
+        _scheduledInsertionEpoch = epoch;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _scheduledInsertionEpoch = null;
+          final current = widget.viewModel.composerInsertion;
+          if (current == null || current.epoch != epoch) return;
+          _appliedInsertionEpoch = epoch;
+          _applyComposerInsertion(current);
+        });
+      }
+      return;
+    }
+
     if (widget.viewModel.chatDraft != oldWidget.viewModel.chatDraft &&
-        widget.viewModel.chatDraft != _inputController.text) {
-      _inputController.text = widget.viewModel.chatDraft;
+        widget.viewModel.chatDraft != _inputController.toSerializedText()) {
+      _inputController.setSerializedText(widget.viewModel.chatDraft);
     }
   }
 
+  void _applyComposerInsertion(ComposerInsertion insertion) {
+    final currentText = _inputController.toSerializedText();
+    final draft = widget.viewModel.chatDraft;
+    final nextText = currentText == draft
+        ? currentText
+        : (draft.endsWith(insertion.text)
+              ? draft
+              : '$currentText${insertion.text}');
+    _inputController.setSerializedText(nextText);
+    widget.viewModel.acknowledgeComposerInsertion(insertion.epoch);
+    if (insertion.focus) {
+      _scheduleComposerFocus();
+    }
+    _scheduleRevealCaret();
+  }
+
+  void _onPromptLibraryChanged() {
+    if (!mounted) return;
+    _inputController.upgradeRawMentions();
+    _updateComposerSuggestions();
+  }
+
   void _applyComposerRestore(ComposerRestore restore) {
-    _inputController.value = TextEditingValue(
-      text: restore.text,
-      selection: TextSelection.collapsed(offset: restore.text.length),
-    );
+    _inputController.setSerializedText(restore.text);
     setState(() {
       _pendingAttachments
         ..clear()
@@ -176,12 +257,15 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     });
     widget.viewModel.acknowledgeComposerRestore(restore.epoch);
     _scheduleComposerFocus();
+    _scheduleRevealCaret();
   }
 
   List<_PendingAttachment> _attachmentsFrom(List<AgentMessageImage> images) {
     final result = <_PendingAttachment>[];
+    final seen = <String>{};
     for (final image in images) {
       if (image.base64.isEmpty) continue;
+      if (!seen.add(image.base64)) continue;
       if (result.length >= kMaxChatImageAttachments) break;
       result.add(_PendingAttachment(bytes: image.bytes, image: image));
     }
@@ -197,8 +281,11 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
   @override
   void dispose() {
     _inputController.removeListener(_handleDraftChanged);
-    _inputController.removeListener(_updateSlashSuggestions);
+    _inputController.removeListener(_updateComposerSuggestions);
     _inputFocusNode.removeListener(_handleInputFocusChanged);
+    widget.viewModel.promptLibraryNotifier.removeListener(
+      _onPromptLibraryChanged,
+    );
     _inputController.dispose();
     _inputScrollController.dispose();
     _inputFocusNode.dispose();
@@ -206,13 +293,13 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
   }
 
   void _handleDraftChanged() {
-    widget.viewModel.updateChatDraft(_inputController.text);
+    widget.viewModel.updateChatDraft(_inputController.toSerializedText());
   }
 
   /// 失焦时收起补全面板，重新聚焦时按当前文本重算
   void _handleInputFocusChanged() {
     if (_inputFocusNode.hasFocus) {
-      _updateSlashSuggestions();
+      _updateComposerSuggestions();
     } else {
       _hideSuggestions();
     }
@@ -247,23 +334,22 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
 
   void _handleSend() {
     if (_isComposing) return;
+    // 本地 fork：流式生成中再次发送 = 入队（消息队列），不打断当前回复
     if (widget.viewModel.isChatStreaming) {
-      final queued = _inputController.text.trim();
-      final attachments = List<_PendingAttachment>.of(_pendingAttachments);
-      if (queued.isEmpty && attachments.isEmpty) return;
+      final queued = _inputController.toSerializedText().trim();
+      final pending = List<_PendingAttachment>.of(_pendingAttachments);
+      if (queued.isEmpty && pending.isEmpty) return;
       _inputController.clear();
       widget.viewModel.updateChatDraft('');
       setState(() => _pendingAttachments.clear());
       widget.viewModel.queueChatMessage(
         queued,
-        images: attachments.isEmpty
-            ? null
-            : [for (final a in attachments) a.image],
+        images: pending.isEmpty ? null : [for (final a in pending) a.image],
       );
       _showNotice(context.l10n.queueQueuedToast);
       return;
     }
-    final text = _inputController.text.trim();
+    final text = _inputController.toSerializedText().trim();
     final attachments = List<_PendingAttachment>.of(_pendingAttachments);
     if (text.isEmpty && attachments.isEmpty) return;
 
@@ -273,7 +359,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       return;
     }
 
-    _inputController.clear();
+    _inputController.clearAll();
     widget.viewModel.updateChatDraft('');
     setState(() => _pendingAttachments.clear());
     widget.viewModel.sendChatMessage(
@@ -290,35 +376,71 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       widget.viewModel.config.activeLlmProvider.activeModel.isMultimodal;
 
   void _showNotice(String message) {
-    final colors = context.colors;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: TextStyle(fontSize: 13, color: colors.cardBackground),
-          ),
-          backgroundColor: colors.textPrimary,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    showAppToast(
+      context,
+      message: message,
+      tone: AppToastTone.warning,
+      duration: const Duration(seconds: 2),
+      enableBlur: false,
+    );
   }
 
   // ------------------ 图片附件 (粘贴 / 选择文件) ------------------
 
-  /// 焦点节点按键拦截：仅拦截 Ctrl+V，其余交给默认链路
+  /// 焦点节点按键拦截：处理 Ctrl+V（含图片/角色解码）以及含角色卡片选区的 Ctrl+C / Ctrl+X
   KeyEventResult _handleInputNodeKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.keyV &&
-        (Theme.of(context).platform == TargetPlatform.macOS
-            ? HardwareKeyboard.instance.isMetaPressed
-            : HardwareKeyboard.instance.isControlPressed)) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final isPrimary = Theme.of(context).platform == TargetPlatform.macOS
+        ? HardwareKeyboard.instance.isMetaPressed
+        : HardwareKeyboard.instance.isControlPressed;
+    if (!isPrimary) return KeyEventResult.ignored;
+
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.keyV) {
       _handlePaste();
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.keyC || key == LogicalKeyboardKey.keyX) {
+      final sel = _inputController.selection;
+      if (sel.isValid &&
+          !sel.isCollapsed &&
+          _inputController.containsMentionInRange(sel.start, sel.end)) {
+        final serialized = _inputController.serializeRange(sel.start, sel.end);
+        Clipboard.setData(ClipboardData(text: serialized));
+        if (key == LogicalKeyboardKey.keyX) {
+          _insertTextAtSelection('');
+        }
+        return KeyEventResult.handled;
+      }
+    }
     return KeyEventResult.ignored;
+  }
+
+  EditableTextState? _findEditableText() {
+    final root = _inputFieldKey.currentContext;
+    if (root is! Element) return null;
+    EditableTextState? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element is StatefulElement && element.state is EditableTextState) {
+        found = element.state as EditableTextState;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    visit(root);
+    return found;
+  }
+
+  void _scheduleRevealCaret() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_inputScrollController.hasClients) return;
+      final editable = _findEditableText();
+      final selection = _inputController.selection;
+      if (editable == null || !editable.mounted || !selection.isValid) return;
+      editable.bringIntoView(selection.extent);
+    });
   }
 
   void _insertTextAtSelection(String text) {
@@ -326,10 +448,20 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     final selection = value.selection;
     final start = selection.isValid ? selection.start : value.text.length;
     final end = selection.isValid ? selection.end : value.text.length;
-    _inputController.value = TextEditingValue(
+    final nextValue = TextEditingValue(
       text: value.text.replaceRange(start, end, text),
       selection: TextSelection.collapsed(offset: start + text.length),
     );
+    final editable = _findEditableText();
+    if (editable != null && editable.mounted) {
+      editable.userUpdateTextEditingValue(
+        nextValue,
+        SelectionChangedCause.keyboard,
+      );
+    } else {
+      _inputController.value = nextValue;
+    }
+    _scheduleRevealCaret();
   }
 
   /// 粘贴：剪贴板有文本时按默认行为插入光标处；
@@ -339,7 +471,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     if (!mounted) return;
     final text = textData?.text;
     if (text != null && text.isNotEmpty) {
-      _insertTextAtSelection(text);
+      _insertTextAtSelection(_inputController.encodeSerializedText(text));
       return;
     }
 
@@ -391,82 +523,134 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     }
   }
 
-  /// 待发送附件缩略图栏 (输入框上方，有附件或处理中才显示)
+  /// 待发送附件缩略图栏 (输入框内部顶部，有附件或处理中时平滑展开)
   Widget _buildAttachmentPreview() {
-    if (_pendingAttachments.isEmpty && !_processingImage) {
-      return const SizedBox.shrink();
-    }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: SizedBox(
-        height: 72,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            for (final attachment in _pendingAttachments)
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: ChatImageThumbnail(
-                  bytes: attachment.bytes,
-                  onRemove: () {
-                    setState(() => _pendingAttachments.remove(attachment));
-                  },
-                ),
-              ),
-            if (_processingImage)
-              const SizedBox(
-                width: 64,
-                height: 64,
-                child: Center(
-                  child: SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+    final colors = context.colors;
+    final hasContent = _pendingAttachments.isNotEmpty || _processingImage;
+    return AppPanelReveal(
+      visible: hasContent,
+      openDuration: AppMotionDurations.fast,
+      closeDuration: AppMotionDurations.quick,
+      slideOffset: AppMotionDistances.base,
+      enableBlur: false,
+      animateSize: true,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.xs,
+        ),
+        child: SizedBox(
+          height: 72,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              for (final attachment in _pendingAttachments)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: ChatImageThumbnail(
+                    bytes: attachment.bytes,
+                    onRemove: () {
+                      setState(() => _pendingAttachments.remove(attachment));
+                    },
                   ),
                 ),
-              ),
-          ],
+              if (_processingImage)
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Center(
+                    child: AppMatrixDotLoader(
+                      variant: AppMatrixDotVariant.pulse,
+                      rounded: true,
+                      dotSize: 2.5,
+                      gap: 2.0,
+                      baseColor: colors.primary.withValues(alpha: 0.25),
+                      activeColor: colors.primary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ------------------ 斜杠指令自动补全 ------------------
+  // ------------------ 斜杠指令与 @ 角色自动补全 ------------------
 
-  /// 文本或光标变化时重算补全建议 (仅光标位于末尾时展示，避免编辑中段干扰)
-  void _updateSlashSuggestions() {
+  /// 文本或光标变化时重算补全建议 (支持 `/` 斜杠指令与 `@` 词库角色)
+  void _updateComposerSuggestions() {
     if (!mounted) return;
     final text = _inputController.text;
-    final cursor = _inputController.selection.baseOffset;
-    if (!text.startsWith('/') || cursor != text.length) {
+    final selection = _inputController.selection;
+    final cursor = selection.isValid && selection.isCollapsed
+        ? selection.baseOffset
+        : -1;
+
+    if (text == _dismissedToken) {
       _hideSuggestions();
       return;
     }
 
-    final suggestions = buildSlashSuggestions(
-      text: text,
-      skills: widget.viewModel.availableSkills,
-      presets: widget.viewModel.presets,
-      l10n: context.maybeL10n,
-    );
-    if (suggestions.isEmpty || text == _dismissedToken) {
-      _hideSuggestions();
-      return;
-    }
-
-    final width = _inputFieldKey.currentContext?.size?.width;
-    setState(() {
-      _suggestions = suggestions;
-      if (width != null && width > 0) {
-        _fieldWidth = width;
+    // 1. 斜杠指令补全 (仅光标位于末尾时展示)
+    if (text.startsWith('/') && cursor == text.length) {
+      final suggestions = buildSlashSuggestions(
+        text: text,
+        skills: widget.viewModel.availableSkills,
+        presets: widget.viewModel.presets,
+        l10n: context.maybeL10n,
+      );
+      if (suggestions.isNotEmpty) {
+        final width = _inputFieldKey.currentContext?.size?.width;
+        setState(() {
+          _suggestions = suggestions;
+          _mentionSuggestions = const [];
+          _activeMention = null;
+          _suggestionsVisible = true;
+          if (width != null && width > 0) {
+            _fieldWidth = width;
+          }
+          if (_selectedIndex >= suggestions.length) _selectedIndex = 0;
+        });
+        _measureFieldWidth();
+        if (!_overlayController.isShowing) _overlayController.show();
+        return;
       }
-      if (_selectedIndex >= suggestions.length) _selectedIndex = 0;
-    });
-    _measureFieldWidth();
-    if (!_overlayController.isShowing) _overlayController.show();
+    }
+
+    // 2. `@` 词库角色补全
+    if (cursor >= 1) {
+      final mention = extractActiveCharacterMention(text, cursor);
+      if (mention != null) {
+        final matched = matchCharacterMentionSuggestions(
+          mention.query,
+          widget.viewModel.promptLibraryEntries,
+        );
+        if (matched.isNotEmpty) {
+          final width = _inputFieldKey.currentContext?.size?.width;
+          setState(() {
+            _suggestions = const [];
+            _mentionSuggestions = matched;
+            _activeMention = mention;
+            _suggestionsVisible = true;
+            if (width != null && width > 0) {
+              _fieldWidth = width;
+            }
+            if (_selectedIndex >= matched.length) _selectedIndex = 0;
+          });
+          _measureFieldWidth();
+          if (!_overlayController.isShowing) _overlayController.show();
+          return;
+        }
+      }
+    }
+
+    _hideSuggestions();
   }
 
-  /// 帖后回调里测量输入框宽度并缓存 (size 只能在布局完成后读取)
+  /// 帧后回调里测量输入框宽度并缓存 (size 只能在布局完成后读取)
   void _measureFieldWidth() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -479,16 +663,40 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
 
   void _hideSuggestions() {
     if (!mounted) return;
+    if (!_suggestionsVisible && !_overlayController.isShowing) return;
+    if (AppMotion.shouldReduceMotion(context) || !_overlayController.isShowing) {
+      if (_overlayController.isShowing) _overlayController.hide();
+      if (_suggestions.isNotEmpty ||
+          _mentionSuggestions.isNotEmpty ||
+          _suggestionsVisible) {
+        setState(() {
+          _suggestions = const [];
+          _mentionSuggestions = const [];
+          _activeMention = null;
+          _suggestionsVisible = false;
+          _selectedIndex = 0;
+        });
+      }
+      return;
+    }
+    setState(() => _suggestionsVisible = false);
+  }
+
+  void _handleSlashOverlayDismissed() {
+    if (!mounted || _suggestionsVisible) return;
     if (_overlayController.isShowing) _overlayController.hide();
-    if (_suggestions.isEmpty) return;
-    setState(() {
-      _suggestions = const [];
-      _selectedIndex = 0;
-    });
+    if (_suggestions.isNotEmpty || _mentionSuggestions.isNotEmpty) {
+      setState(() {
+        _suggestions = const [];
+        _mentionSuggestions = const [];
+        _activeMention = null;
+        _selectedIndex = 0;
+      });
+    }
   }
 
   /// 补全面板打开时拦截方向键/Tab/Enter/Esc
-  KeyEventResult _handleSlashKey(FocusNode node, KeyEvent event) {
+  KeyEventResult _handleComposerSuggestionKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent || _isComposing) return KeyEventResult.ignored;
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isShiftPressed ||
@@ -497,24 +705,30 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
         keyboard.isAltPressed) {
       return KeyEventResult.ignored;
     }
-    if (_suggestions.isEmpty) return KeyEventResult.ignored;
+    final activeCount = _suggestions.isNotEmpty
+        ? _suggestions.length
+        : _mentionSuggestions.length;
+    if (activeCount == 0) return KeyEventResult.ignored;
 
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.arrowDown) {
       setState(() {
-        _selectedIndex = (_selectedIndex + 1) % _suggestions.length;
+        _selectedIndex = (_selectedIndex + 1) % activeCount;
       });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowUp) {
       setState(() {
-        _selectedIndex =
-            (_selectedIndex - 1 + _suggestions.length) % _suggestions.length;
+        _selectedIndex = (_selectedIndex - 1 + activeCount) % activeCount;
       });
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.tab || key == LogicalKeyboardKey.enter) {
-      _applySuggestion(_suggestions[_selectedIndex]);
+      if (_suggestions.isNotEmpty) {
+        _applySuggestion(_suggestions[_selectedIndex]);
+      } else if (_mentionSuggestions.isNotEmpty) {
+        _applyCharacterMention(_mentionSuggestions[_selectedIndex]);
+      }
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.escape) {
@@ -525,7 +739,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     return KeyEventResult.ignored;
   }
 
-  /// 应用补全: 替换指令名或第一个参数，并在末尾追加空格
+  /// 应用斜杠补全: 替换指令名或第一个参数，并在末尾追加空格
   void _applySuggestion(SlashSuggestion suggestion) {
     final text = _inputController.text;
     final spaceIdx = text.indexOf(' ');
@@ -539,11 +753,58 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     _dismissedToken = '';
     _hideSuggestions();
     _inputFocusNode.requestFocus();
+    _scheduleRevealCaret();
+  }
+
+  /// 应用 `@` 词库角色补全: 将 `@查询` 替换为行内角色卡片并附带空格
+  void _applyCharacterMention(PromptComboEntry entry) {
+    final text = _inputController.text;
+    final cursor = _inputController.selection.isValid
+        ? _inputController.selection.baseOffset
+        : text.length;
+    final mention =
+        _activeMention ?? extractActiveCharacterMention(text, cursor);
+    if (mention == null) return;
+
+    _inputController.insertMention(
+      entry.title,
+      replaceStart: mention.atIndex,
+      replaceEnd: mention.cursorOffset,
+    );
+    _dismissedToken = '';
+    _hideSuggestions();
+    _inputFocusNode.requestFocus();
+    _scheduleRevealCaret();
   }
 
   /// 悬浮于输入框上方的补全面板 (Overlay + Follower 锚定)
   Widget _buildSlashOverlay(BuildContext overlayContext) {
-    if (_suggestions.isEmpty) return const SizedBox.shrink();
+    if (_suggestions.isEmpty && _mentionSuggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final Widget panel = _suggestions.isNotEmpty
+        ? SlashSuggestionPanel(
+            suggestions: _suggestions,
+            selectedIndex: _selectedIndex,
+            onSelected: (index) => _applySuggestion(_suggestions[index]),
+            onHovered: (index) {
+              if (index != _selectedIndex) {
+                setState(() => _selectedIndex = index);
+              }
+            },
+          )
+        : CharacterMentionPanel(
+            entries: _mentionSuggestions,
+            selectedIndex: _selectedIndex,
+            onSelected: (index) =>
+                _applyCharacterMention(_mentionSuggestions[index]),
+            onHovered: (index) {
+              if (index != _selectedIndex) {
+                setState(() => _selectedIndex = index);
+              }
+            },
+          );
+
     return Align(
       alignment: Alignment.topLeft,
       child: CompositedTransformFollower(
@@ -554,15 +815,10 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
         showWhenUnlinked: false,
         child: SizedBox(
           width: _fieldWidth,
-          child: SlashSuggestionPanel(
-            suggestions: _suggestions,
-            selectedIndex: _selectedIndex,
-            onSelected: (index) => _applySuggestion(_suggestions[index]),
-            onHovered: (index) {
-              if (index != _selectedIndex) {
-                setState(() => _selectedIndex = index);
-              }
-            },
+          child: SlashCommandOverlayShell(
+            visible: _suggestionsVisible,
+            onDismissComplete: _handleSlashOverlayDismissed,
+            child: panel,
           ),
         ),
       ),
@@ -571,7 +827,6 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final activeProvider = widget.viewModel.config.activeLlmProvider;
     final activeModel = activeProvider.activeModel;
     final currentEffort = widget.viewModel.currentThinkingEffort;
@@ -582,171 +837,92 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       compact: widget.compact,
     );
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.cardBackground,
-        border: Border(top: BorderSide(color: colors.borderDefault)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.compact) ...[
-            // 辅助区在输入框上方，默认折叠为一行摘要
-            _buildAuxDrawer(activeModel, currentEffort, contextStatus),
-            const SizedBox(height: AppSpacing.sm),
-          ] else ...[
-            _buildCombinedModelThinkingCard(
-              activeProvider,
-              activeModel,
-              currentEffort,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            contextStatus,
-            const SizedBox(height: AppSpacing.sm),
-          ],
           // 斜杠指令补全悬浮层 (渲染到根 Overlay，锚定在输入框上方)
           OverlayPortal(
             controller: _overlayController,
             overlayChildBuilder: _buildSlashOverlay,
           ),
 
+          // 待发送图片附件在 _buildMessageComposer 内统一渲染
+
           // 待发送图片附件缩略图栏 (粘贴/选择文件后显示)
-          _buildAttachmentPreview(),
+          // 本地 fork：排队消息悬浮条
           _buildQueueBar(),
 
-          _buildMessageComposer(),
+          _buildMessageComposer(
+            activeProvider: activeProvider,
+            activeModel: activeModel,
+            currentEffort: currentEffort,
+            contextStatus: contextStatus,
+          ),
         ],
       ),
     );
   }
 
-  /// 手机端辅助抽屉：思考档位与上下文用量默认隐藏，仅在输入框上方留一条
-  /// 可点击摘要；展开后按顺序落下选择器与用量详情，全部无外框。
-  Widget _buildAuxDrawer(
-    LlmModelConfig activeModel,
-    ThinkingEffort currentEffort,
-    Widget contextStatus,
-  ) {
-    final colors = context.colors;
-    final l10n = context.l10n;
-    final usage = widget.viewModel.contextUsage;
-    // 折叠摘要固定为「思考 <档位> · 上下文 <百分比>」，不携带容量与笔记明细
-    final summary = [
-      if (activeModel.supportsThinking)
-        '${l10n.chatThinkingLabel} ${_effortLabel(currentEffort)}',
-      l10n.chatContextShort((usage.fraction * 100).round()),
-    ].join(' · ');
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          button: true,
-          expanded: _auxDrawerExpanded,
-          child: InkWell(
-            key: const ValueKey('chat_aux_drawer_toggle'),
-            onTap: () =>
-                setState(() => _auxDrawerExpanded = !_auxDrawerExpanded),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 32),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xs,
-                  vertical: AppSpacing.xs,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        summary,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, color: colors.textMuted),
-                      ),
-                    ),
-                    AnimatedRotation(
-                      turns: _auxDrawerExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 150),
-                      child: Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 18,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        if (_auxDrawerExpanded) ...[
-          if (activeModel.supportsThinking) ...[
-            SizedBox(
-              height: 48,
-              child: _buildInlineThinkingDropdown(activeModel, currentEffort),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-          ],
-          contextStatus,
-        ],
-      ],
-    );
-  }
-
-  /// 全宽正文 + 独立工具行；手机模型选择嵌入附件与发送之间，避免多层卡片。
-  /// 两种布局复用同一个编辑器、控制器和按键链，切换不丢草稿或附件。
-  Widget _buildMessageComposer() {
+  /// 一体化现代聊天输入容器 (桌面/移动端统一): 附件预览 + 多行文本域 + 底部单一聚合工具栏
+  /// (附件、合并模型/思考选择器、上下文、发送/停止)。
+  Widget _buildMessageComposer({
+    required LlmProviderConfig activeProvider,
+    required LlmModelConfig activeModel,
+    required ThinkingEffort currentEffort,
+    required Widget contextStatus,
+  }) {
     final colors = context.colors;
     final l10n = context.l10n;
     final field = _buildMessageField();
-    final activeProvider = widget.viewModel.config.activeLlmProvider;
-    final attachment = AppIconButton(
+    final attachment = AppAsyncIconButton(
+      isLoading: _processingImage,
       icon: Icons.attach_file_rounded,
-      size: widget.compact ? 48 : 28,
-      iconSize: widget.compact ? 20 : 17,
+      size: 28,
+      iconSize: 16,
       tooltip: l10n.chatAddAttachmentTooltip,
+      loadingTooltip: l10n.chatAddAttachmentTooltip,
       variant: AppIconButtonVariant.ghost,
       onPressed: _pickImageFiles,
     );
-    final size = widget.compact ? 48.0 : 28.0;
-    final iconSize = widget.compact ? 20.0 : 17.0;
-    // 生成中发送键原位变成停止键；空闲时恢复发送。顶栏不再另放一颗停止键。
-    final Widget send = widget.viewModel.isChatStreaming
-        ? AppIconButton(
-            key: const ValueKey('chat_stop_button'),
-            icon: Icons.stop_rounded,
-            size: size,
-            iconSize: iconSize,
-            tooltip: widget.compact
-                ? l10n.chatStopOutputMobile
-                : l10n.chatStopOutput,
-            iconColor: colors.error,
-            variant: AppIconButtonVariant.outlined,
-            onPressed: widget.viewModel.abortChat,
-          )
-        : AppAsyncIconButton(
-            key: const ValueKey('chat_send_button'),
-            isLoading: false,
-            icon: Icons.send_rounded,
-            size: size,
-            iconSize: iconSize,
-            tooltip: l10n.chatSendTooltip,
-            loadingTooltip: l10n.chatSendingTooltip,
-            variant: AppIconButtonVariant.primary,
-            onPressed: _handleSend,
-          );
+    // 生成中发送键原位变成停止键；仅保留单个激活按钮实例并在状态切换时形变弹入。
+    final Widget send = _ComposerActionMorph(
+      isStreaming: widget.viewModel.isChatStreaming,
+      child: widget.viewModel.isChatStreaming
+          ? AppIconButton(
+              key: const ValueKey('chat_stop_button'),
+              icon: Icons.stop_rounded,
+              size: 28,
+              iconSize: 15,
+              tooltip: widget.compact
+                  ? l10n.chatStopOutputMobile
+                  : l10n.chatStopOutput,
+              iconColor: colors.error,
+              variant: AppIconButtonVariant.outlined,
+              onPressed: widget.viewModel.abortChat,
+            )
+          : AppAsyncIconButton(
+              key: const ValueKey('chat_send_button'),
+              isLoading: false,
+              icon: Icons.send_rounded,
+              size: 28,
+              iconSize: 15,
+              tooltip: l10n.chatSendTooltip,
+              loadingTooltip: l10n.chatSendingTooltip,
+              variant: AppIconButtonVariant.primary,
+              onPressed: _handleSend,
+            ),
+    );
 
     return ListenableBuilder(
       listenable: _inputFocusNode,
       builder: (context, child) => AppCard(
-        radius: widget.compact ? AppRadius.lg : AppRadius.md,
-        backgroundColor: colors.canvasBackground,
+        radius: AppRadius.lg,
+        backgroundColor: colors.elevatedBackground,
         borderColor: _inputFocusNode.hasFocus
-            ? colors.primary
+            ? colors.primary.withValues(alpha: 0.65)
             : colors.borderDefault,
         child: child!,
       ),
@@ -754,28 +930,26 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildAttachmentPreview(),
           field,
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              widget.compact ? AppSpacing.xs : AppSpacing.sm,
-              0,
-              widget.compact ? AppSpacing.xs : AppSpacing.sm,
-              widget.compact ? AppSpacing.xs : AppSpacing.sm,
-            ),
+            padding: const EdgeInsets.fromLTRB(6, 2, 6, 6),
             child: Row(
               children: [
                 attachment,
-                if (widget.compact) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: _buildModelDropdown(
-                      activeProvider,
-                      activeProvider.activeModel,
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildModelThinkingTrigger(
+                      activeModel,
+                      currentEffort,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                ] else
-                  const Spacer(),
+                ),
+                const SizedBox(width: 4),
+                contextStatus,
+                const SizedBox(width: 4),
                 send,
               ],
             ),
@@ -793,7 +967,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
         onKeyEvent: _handleMessageKeyEvent,
         // 焦点冒泡先处理补全，避免 Enter 被外层发送快捷键抢走。
         child: Focus(
-          onKeyEvent: _handleSlashKey,
+          onKeyEvent: _handleComposerSuggestionKey,
           child: StableEdgeSelection(
             controller: _inputScrollController,
             child: TextField(
@@ -801,31 +975,24 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
               controller: _inputController,
               focusNode: _inputFocusNode,
               scrollController: _inputScrollController,
-              scrollPhysics: const StableSelectionScrollPhysics(),
               scrollPadding: EdgeInsets.zero,
-              minLines: 1,
-            maxLines: widget.compact ? 3 : 6,
-            style: TextStyle(
-              fontSize: widget.compact ? 15 : 14,
-              height: 1.5,
-              color: colors.textPrimary,
-            ),
-            decoration: InputDecoration(
-              hintText: context.l10n.chatInputHint,
-              hintMaxLines: widget.compact ? 2 : null,
-              hintStyle: TextStyle(fontSize: 13, color: colors.textMuted),
-              isDense: true,
-              filled: false,
-              contentPadding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.sm,
+              minLines: 2,
+              maxLines: 5,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.5,
+                color: colors.textPrimary,
               ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-            ),
+              decoration: InputDecoration(
+                hintText: context.l10n.chatInputHint,
+                hintStyle: TextStyle(fontSize: 13, color: colors.textMuted),
+                isDense: true,
+                filled: false,
+                contentPadding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
             ),
           ),
         ),
@@ -833,150 +1000,109 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     );
   }
 
-  /// 一体化模型与思考强度控制卡片 (单卡片容器 + 自适应弹性宽度 + 防溢出截断)
-  Widget _buildCombinedModelThinkingCard(
-    LlmProviderConfig activeProvider,
+  /// 合并模型与思考档位触发胶囊；点击弹出带搜索框的模型与思考切换面板
+  Widget _buildModelThinkingTrigger(
     LlmModelConfig activeModel,
     ThinkingEffort currentEffort,
   ) {
     final colors = context.colors;
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colors.borderDefault),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildModelDropdown(activeProvider, activeModel)),
+    final l10n = context.l10n;
+    final thinkingColor = currentEffort == ThinkingEffort.none
+        ? colors.textMuted
+        : colors.primary;
 
-          // 2. 思考强度控制区 (同在一个卡片内，以垂直细线分隔)
-          if (activeModel.supportsThinking) ...[
-            Container(
-              width: 1,
-              height: 18,
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              color: colors.borderDefault,
-            ),
-            _buildInlineThinkingDropdown(activeModel, currentEffort),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModelDropdown(
-    LlmProviderConfig provider,
-    LlmModelConfig activeModel,
-  ) {
     return Tooltip(
-      message: _buildSessionUsageTooltip(context.l10n),
-      child: AppDropdown<String>(
-        key: const ValueKey('chat_model_selector'),
-        value: activeModel.id,
-        danglingLabel: activeModel.name,
-        minHeight: widget.compact ? 48 : 0,
-        multilineMenu: widget.compact,
-        variant: AppDropdownVariant.inline,
-        menuWidth: widget.compact
-            ? MediaQuery.sizeOf(context).width - 32
-            : null,
-        items: provider.models
-            .map(
-              (model) => AppDropdownItem(
-                value: model.id,
-                label: model.name,
-                icon: widget.compact ? null : Icons.smart_toy_outlined,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (model.isMultimodal)
-                      Icon(
-                        Icons.visibility_outlined,
-                        size: 13,
-                        color: context.colors.success,
+      message: _buildSessionUsageTooltip(l10n),
+      child: Builder(
+        builder: (triggerContext) => InkWell(
+          key: const ValueKey('chat_model_selector'),
+          onTap: () => _openModelThinkingPicker(triggerContext),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 28),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: AppTextSwap(
+                      text: activeModel.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      enableBlur: false,
+                      duration: AppMotionDurations.quick,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
                       ),
-                    if (model.supportsThinking && !widget.compact)
-                      Icon(
-                        Icons.psychology_outlined,
-                        size: 13,
-                        color: context.colors.primary,
+                    ),
+                  ),
+                  if (activeModel.supportsThinking) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.psychology_outlined,
+                      size: 13,
+                      color: thinkingColor,
+                    ),
+                    const SizedBox(width: 2),
+                    AppTextSwap(
+                      text: _localizedEffortLabel(l10n, currentEffort),
+                      maxLines: 1,
+                      enableBlur: false,
+                      duration: AppMotionDurations.quick,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: thinkingColor,
                       ),
+                    ),
                   ],
-                ),
+                  const SizedBox(width: 2),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(end: _pickerOpen ? -1.0 : 1.0),
+                    duration: AppMotion.resolveDuration(
+                      context,
+                      AppMotionDurations.fast,
+                    ),
+                    curve: AppMotionCurves.smoothOut,
+                    builder: (context, scaleY, child) => Transform.scale(
+                      scaleX: 1.0,
+                      scaleY: scaleY,
+                      child: child,
+                    ),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 15,
+                      color: colors.textMuted,
+                    ),
+                  ),
+                ],
               ),
-            )
-            .toList(),
-        onChanged: widget.viewModel.switchActiveModel,
-      ),
-    );
-  }
-
-  /// 一体化卡片内部的思考强度下拉选择框 (none / low / medium / high / xhigh / max)
-  Widget _buildInlineThinkingDropdown(
-    LlmModelConfig model,
-    ThinkingEffort currentEffort,
-  ) {
-    final availableLevels = model.availableThinkingLevels;
-
-    final dropdown = AppDropdown<ThinkingEffort>(
-      key: const ValueKey('chat_thinking_selector'),
-      value: currentEffort,
-      items: availableLevels
-          .map(
-            (effort) => AppDropdownItem<ThinkingEffort>(
-              value: effort,
-              label: widget.compact
-                  ? '${context.l10n.chatThinkingLabel} ${_effortLabel(effort)}'
-                  : _effortLabel(effort),
             ),
-          )
-          .toList(),
-      onChanged: widget.viewModel.setThinkingEffort,
-      variant: widget.compact
-          ? AppDropdownVariant.inline
-          : AppDropdownVariant.compact,
-      minHeight: widget.compact ? 48 : 0,
-      width: widget.compact ? null : 92,
-      menuWidth: 200,
-    );
-    if (widget.compact) return dropdown;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.psychology_outlined,
-          size: 14,
-          color: context.colors.primary,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          context.l10n.chatThinkingLabel,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textPrimary,
           ),
         ),
-        const SizedBox(width: 6),
-        dropdown,
-      ],
+      ),
     );
   }
 
-  /// 思考等级档位展示名 (l10n 词条统一接管)
-  String _effortLabel(ThinkingEffort effort) {
-    final l10n = context.l10n;
-    return switch (effort) {
-      ThinkingEffort.none => l10n.chatThinkingEffortNone,
-      ThinkingEffort.low => l10n.chatThinkingEffortLow,
-      ThinkingEffort.medium => l10n.chatThinkingEffortMedium,
-      ThinkingEffort.high => l10n.chatThinkingEffortHigh,
-      ThinkingEffort.xhigh => l10n.chatThinkingEffortXHigh,
-      ThinkingEffort.max => l10n.chatThinkingEffortMax,
-    };
+  Future<void> _openModelThinkingPicker(BuildContext anchorContext) async {
+    if (!mounted) return;
+    setState(() => _pickerOpen = true);
+    try {
+      await showAnchoredPopover<void>(
+        context: anchorContext,
+        preferAbove: true,
+        maxWidth: 340,
+        maxHeight: 420,
+        builder: (_) => _ModelThinkingPickerSheet(viewModel: widget.viewModel),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _pickerOpen = false);
+      }
+    }
   }
 
   /// 悬停模型选择器时展示的当前会话用量摘要
@@ -1021,5 +1147,299 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       buffer.write('\n${entry.key}\n${detail.toString()}');
     }
     return buffer.toString();
+  }
+}
+
+/// 合并的模型与思考档位选择弹窗：含实时搜索框、思考强度分段控制与模型列表
+class _ModelThinkingPickerSheet extends StatefulWidget {
+  final StudioViewModel viewModel;
+
+  const _ModelThinkingPickerSheet({required this.viewModel});
+
+  @override
+  State<_ModelThinkingPickerSheet> createState() =>
+      _ModelThinkingPickerSheetState();
+}
+
+class _ModelThinkingPickerSheetState extends State<_ModelThinkingPickerSheet> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+
+    return ListenableBuilder(
+      listenable: widget.viewModel,
+      builder: (context, _) {
+        final activeProvider = widget.viewModel.config.activeLlmProvider;
+        final activeModel = activeProvider.activeModel;
+        final currentEffort = widget.viewModel.currentThinkingEffort;
+        final availableLevels = activeModel.availableThinkingLevels;
+        final filteredModels = _query.isEmpty
+            ? activeProvider.models
+            : activeProvider.models
+                  .where(
+                    (m) =>
+                        m.name.toLowerCase().contains(_query) ||
+                        m.id.toLowerCase().contains(_query),
+                  )
+                  .toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: AppSearchField(
+                      key: const ValueKey('chat_model_search_field'),
+                      hintText: l10n.settingsSearchModelHint,
+                      debounceDuration: Duration.zero,
+                      onChanged: (q) =>
+                          setState(() => _query = q.trim().toLowerCase()),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AppIconButton(
+                    icon: Icons.close_rounded,
+                    size: 32,
+                    iconSize: 16,
+                    variant: AppIconButtonVariant.ghost,
+                    tooltip: l10n.close,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              if (activeModel.supportsThinking &&
+                  availableLevels.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  key: const ValueKey('chat_thinking_selector'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.elevatedBackground,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: colors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.psychology_outlined,
+                        size: 15,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: AppSegmentedCardBar<ThinkingEffort>(
+                          items: [
+                            for (final effort in availableLevels)
+                              AppSegmentedItem<ThinkingEffort>(
+                                value: effort,
+                                label: _localizedEffortLabel(l10n, effort),
+                              ),
+                          ],
+                          selectedValue: currentEffort,
+                          expand: true,
+                          itemPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          onValueChanged: widget.viewModel.setThinkingEffort,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Flexible(
+                child: filteredModels.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 28),
+                        child: Center(
+                          child: Icon(
+                            Icons.search_off_rounded,
+                            size: 22,
+                            color: colors.textMuted,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: filteredModels.length,
+                        itemBuilder: (context, index) {
+                          final model = filteredModels[index];
+                          final isSelected = model.id == activeModel.id;
+                          return InkWell(
+                            key: ValueKey('chat_model_option_${model.id}'),
+                            // 选定模型后不立即关闭浮层，便于连续调整思考强度
+                            onTap: () =>
+                                widget.viewModel.switchActiveModel(model.id),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: AnimatedContainer(
+                              duration: AppMotion.resolveDuration(
+                                context,
+                                AppMotionDurations.quick,
+                              ),
+                              curve: AppMotionCurves.smoothOut,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected ? colors.primaryTint : null,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      model.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: isSelected
+                                            ? colors.primary
+                                            : colors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (model.isMultimodal) ...[
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.visibility_outlined,
+                                      size: 13,
+                                      color: colors.success,
+                                    ),
+                                  ],
+                                  if (model.supportsThinking) ...[
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.psychology_outlined,
+                                      size: 13,
+                                      color: colors.primary,
+                                    ),
+                                  ],
+                                  const SizedBox(width: 8),
+                                  AppIconSwap(
+                                    swapKey: isSelected,
+                                    enableBlur: false,
+                                    duration: AppMotionDurations.quick,
+                                    child: isSelected
+                                        ? Icon(
+                                            Icons.check_rounded,
+                                            key: const ValueKey(true),
+                                            size: 16,
+                                            color: colors.primary,
+                                          )
+                                        : const SizedBox(
+                                            key: ValueKey(false),
+                                            width: 16,
+                                            height: 16,
+                                          ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 发送/停止主按钮单实例形变容器：状态切换时触发微缩放弹入，
+/// 全程不共存两个按钮 Key，保证测试与辅助功能语义即时一致。
+class _ComposerActionMorph extends StatefulWidget {
+  final bool isStreaming;
+  final Widget child;
+
+  const _ComposerActionMorph({
+    required this.isStreaming,
+    required this.child,
+  });
+
+  @override
+  State<_ComposerActionMorph> createState() => _ComposerActionMorphState();
+}
+
+class _ComposerActionMorphState extends State<_ComposerActionMorph>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _scaleCurve;
+  late final CurvedAnimation _turnsCurve;
+  late final Animation<double> _scale;
+  late final Animation<double> _turns;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppMotionDurations.quick,
+      value: 1.0,
+    );
+    _scaleCurve = CurvedAnimation(
+      parent: _controller,
+      curve: AppMotionCurves.bounce,
+    );
+    _turnsCurve = CurvedAnimation(
+      parent: _controller,
+      curve: AppMotionCurves.smoothOut,
+    );
+    _scale = Tween<double>(begin: 0.78, end: 1.0).animate(_scaleCurve);
+    _turns = Tween<double>(begin: -0.05, end: 0.0).animate(_turnsCurve);
+  }
+
+  @override
+  void didUpdateWidget(_ComposerActionMorph oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isStreaming != widget.isStreaming) {
+      if (AppMotion.shouldReduceMotion(context)) {
+        _controller.value = 1.0;
+      } else {
+        _controller.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scaleCurve.dispose();
+    _turnsCurve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller.isCompleted) return widget.child;
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) => Transform.rotate(
+        angle: _turns.value * 6.283185307179586,
+        child: Transform.scale(scale: _scale.value, child: child),
+      ),
+    );
   }
 }

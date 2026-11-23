@@ -10,6 +10,8 @@ import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_key_value_row.dart';
 import '../../../core/widgets/app_number_slider.dart';
 import '../../../core/widgets/app_segmented_controls.dart';
+import '../../../core/widgets/app_toggle_controls.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../view_models/studio_view_model.dart';
 import 'prompt_editor_card.dart';
 import 'rich_prompt_text_controller.dart';
@@ -114,68 +116,54 @@ class _InpaintPageState extends State<InpaintPage> {
         );
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PageHeader(
-                title: l10n.inpaintPageTitle,
-                subtitle: l10n.inpaintPageSubtitle,
-              ),
+              PageHeader(title: l10n.inpaintPageTitle),
               const SizedBox(height: AppSpacing.lg),
 
-              // 1. 修复模式切换 (AppOptionCard 选项)
+              // 1. 修复模式切换 (AppSegmentedCardBar 选项)
               SectionHeader(l10n.inpaintSectionMode),
               const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppOptionCard<InpaintMode>(
-                      value: InpaintMode.focus,
-                      title: l10n.inpaintModeFocus,
-                      subtitle: l10n.inpaintModeFocusSubtitle,
-                      isSelected: isFocus,
-                      onTap: () => vm.setInpaintMode(InpaintMode.focus),
-                    ),
+              AppSegmentedCardBar<InpaintMode>(
+                items: [
+                  AppSegmentedItem(
+                    value: InpaintMode.focus,
+                    label: l10n.inpaintModeFocus,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppOptionCard<InpaintMode>(
-                      value: InpaintMode.standard,
-                      title: l10n.inpaintModeStandard,
-                      subtitle: l10n.inpaintModeStandardSubtitle,
-                      isSelected: inpaint.mode == InpaintMode.standard,
-                      onTap: () => vm.setInpaintMode(InpaintMode.standard),
-                    ),
+                  AppSegmentedItem(
+                    value: InpaintMode.standard,
+                    label: l10n.inpaintModeStandard,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppOptionCard<InpaintMode>(
-                      value: InpaintMode.aiEdit,
-                      title: l10n.inpaintModeAiEdit,
-                      subtitle: l10n.inpaintModeAiEditSubtitle,
-                      isSelected: isAiEdit,
-                      onTap: () => vm.setInpaintMode(InpaintMode.aiEdit),
-                    ),
+                  AppSegmentedItem(
+                    value: InpaintMode.aiEdit,
+                    label: l10n.inpaintModeAiEdit,
                   ),
                 ],
+                selectedValue: inpaint.mode,
+                expand: true,
+                onValueChanged: vm.setInpaintMode,
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // 2. 焦点几何信息卡 (AppCollapsibleSection + AppBadge + AppKeyValueRow)
-              if (isFocus) ...[
-                _buildGeometryCard(context, geometry),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-
-              // 2b. AI 整图编辑绘图模型信息卡
-              if (isAiEdit) ...[
-                _buildAiEditCard(context, vm.imageEditModelInfo),
-                const SizedBox(height: AppSpacing.lg),
-              ],
+              AppCardResize(
+                alignment: Alignment.topLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isFocus) ...[
+                      _buildGeometryCard(context, geometry),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                    if (isAiEdit) ...[
+                      _buildAiEditCard(context, vm.imageEditModelInfo),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ],
+                ),
+              ),
 
               // 2c. AI 整图编辑生成设置
               if (isAiEdit) ...[
@@ -555,26 +543,28 @@ class _InpaintPageState extends State<InpaintPage> {
     required ValueChanged<bool> onChanged,
   }) {
     final colors = context.colors;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 12, color: colors.textPrimary),
-          ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onChanged(!value),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 12, color: colors.textPrimary),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            AppSwitch(
+              value: value,
+              onChanged: onChanged,
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeTrackColor: colors.primary,
-          activeThumbColor: Colors.white,
-          inactiveTrackColor: colors.mutedBackground,
-          inactiveThumbColor: colors.textMuted,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
+      ),
     );
   }
 

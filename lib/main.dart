@@ -1,8 +1,11 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'data/services/config_service.dart';
+import 'data/services/media_store_service.dart';
 import 'data/services/network_proxy_service.dart';
 import 'data/services/tag_dictionary_service.dart';
 import 'data/services/window_state_service.dart';
@@ -11,6 +14,7 @@ import 'ui/core/context_l10n.dart';
 import 'ui/core/locale/app_locale_controller.dart';
 import 'ui/core/theme/app_accent_controller.dart';
 import 'ui/core/theme/app_theme.dart';
+import 'ui/core/theme/frame_rate_controller.dart';
 import 'ui/core/theme/theme_mode_controller.dart';
 import 'ui/core/theme/ui_zoom_controller.dart';
 import 'ui/core/widgets/custom_title_bar.dart';
@@ -20,10 +24,10 @@ import 'ui/features/studio/views/studio_view.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  AppWidgetsFlutterBinding.ensureInitialized();
 
   // 异步预热 Danbooru 词库索引 (后台 isolate，零阻塞 UI)
-  TagDictionaryService.instance.ensureLoaded();
+  unawaited(TagDictionaryService.instance.ensureLoaded());
 
   if (!kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.windows ||
@@ -31,7 +35,7 @@ void main() async {
           defaultTargetPlatform == TargetPlatform.macOS)) {
     await windowManager.ensureInitialized();
 
-    final configService = ConfigService();
+    final configService = ConfigService.shared;
     final windowState = await configService.loadWindowState();
 
     final bool hasValidPosition =
@@ -73,38 +77,47 @@ void main() async {
   // 启动即按持久化配置校正主题模式与 UI 缩放，避免深色用户闪亮屏、
   // 缩放用户首帧尺寸跳动 (配置加载与 StudioViewModel 的 init 各自独立，
   // 这里多解析一次换取首帧即正确)。
-  // 安卓存储目录探测失败会让 loadConfig 显式抛错：降级到带重试的
+  // 安卓存储目录探测失败会让 loadConfig 显式抛错：降级到带重试与权限引导的
   // [_BootFailureApp] 轻量错误页，而不是在 runApp 之前直接崩溃黑屏。
-  if (await _syncControllersFromBootConfig()) {
+  final bootError = await _syncControllersFromBootConfig();
+  if (bootError == null) {
     runApp(const NovelAiHarnessApp());
   } else {
-    runApp(const _BootFailureApp());
+    runApp(_BootFailureApp(initialError: bootError));
   }
 }
 
-/// 加载启动配置并同步全局控制器：任何异常都降级为 false，由 [main]
-/// 展示重试错误页，不让主 isolate 在首帧前直接终止。
-Future<bool> _syncControllersFromBootConfig() async {
+/// 加载启动配置并同步全局控制器：返回 null 表示成功，否则返回原始异常对象，
+/// 供 [_BootFailureApp] 展示诊断信息、权限引导与降级进入能力。
+Future<Object?> _syncControllersFromBootConfig({
+  bool tolerateStorageDirectoryFailure = false,
+}) async {
   try {
-    final configService = ConfigService();
-    final bootConfig = await configService.loadConfig();
+    final configService = ConfigService.shared;
+    final bootConfig = tolerateStorageDirectoryFailure
+        ? await configService.loadConfigTolerant()
+        : await configService.loadConfig();
+    // 本地 fork：启动即应用持久化的网络代理配置 (上游无此服务)。
     NetworkProxyService.instance.configureFromConfig(bootConfig);
     AppThemeModeController.instance.syncFromConfig(bootConfig);
     AppAccentController.instance.syncFromConfig(bootConfig);
     AppLocaleController.instance.syncFromConfig(bootConfig);
     AppUiZoomController.instance.syncFromConfig(bootConfig);
-    return true;
+    AppFrameRateController.instance.syncFromConfig(bootConfig);
+    return null;
   } catch (error, stackTrace) {
     debugPrint('Boot config load failed: $error\n$stackTrace');
-    return false;
+    return error;
   }
 }
 
-/// 启动配置加载失败的轻量降级页：展示原因提示并支持原地重试，
-/// 重试成功后用正式应用整树替换当前错误页。
+/// 启动配置加载失败的轻量降级页：展示原因提示、Android 存储权限引导、
+/// 原地重试以及降级进入工作台能力，避免用户被永久挡在应用门外。
 /// 预主题阶段，直接用内置中性色，不依赖未同步的主题控制器。
 class _BootFailureApp extends StatefulWidget {
-  const _BootFailureApp();
+  const _BootFailureApp({this.initialError});
+
+  final Object? initialError;
 
   @override
   State<_BootFailureApp> createState() => _BootFailureAppState();
@@ -112,15 +125,54 @@ class _BootFailureApp extends StatefulWidget {
 
 class _BootFailureAppState extends State<_BootFailureApp> {
   bool _retrying = false;
+  bool _requestingPermission = false;
+  bool _permissionDenied = false;
+  late Object? _error = widget.initialError;
+
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   Future<void> _retry() async {
     if (_retrying) return;
     setState(() => _retrying = true);
-    if (await _syncControllersFromBootConfig()) {
+    final error = await _syncControllersFromBootConfig();
+    if (error == null) {
       runApp(const NovelAiHarnessApp());
       return;
     }
-    if (mounted) setState(() => _retrying = false);
+    if (mounted) {
+      setState(() {
+        _error = error;
+        _retrying = false;
+      });
+    }
+  }
+
+  Future<void> _grantPermission() async {
+    if (_requestingPermission) return;
+    setState(() => _requestingPermission = true);
+    final granted = _permissionDenied
+        ? await MediaStoreService.instance.openAppSettings().then(
+            (_) => MediaStoreService.instance.hasStoragePermission(),
+          )
+        : await MediaStoreService.instance.requestStoragePermission();
+    if (!mounted) return;
+    setState(() {
+      _requestingPermission = false;
+      _permissionDenied = !granted;
+    });
+    if (granted) {
+      await _retry();
+    }
+  }
+
+  Future<void> _continueAnyway() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    await _syncControllersFromBootConfig(
+      tolerateStorageDirectoryFailure: true,
+    );
+    runApp(const NovelAiHarnessApp());
   }
 
   @override
@@ -140,44 +192,97 @@ class _BootFailureAppState extends State<_BootFailureApp> {
           return Scaffold(
             backgroundColor: const Color(0xFF191919),
             body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    size: 44,
-                    color: Color(0xFFE2B714),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        size: 44,
+                        color: Color(0xFFE2B714),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        l10n.bootLoadFailedTitle,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFE9E9E7),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.bootLoadFailedHint,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9B9B97),
+                        ),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF232323),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF333333),
+                            ),
+                          ),
+                          child: SelectableText(
+                            _error.toString(),
+                            maxLines: 4,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFFB5B5B0),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 10,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          FilledButton(
+                            onPressed: _retrying ? null : _retry,
+                            child: _retrying
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(l10n.bootRetry),
+                          ),
+                          if (_isAndroid)
+                            OutlinedButton(
+                              onPressed: (_retrying || _requestingPermission)
+                                  ? null
+                                  : _grantPermission,
+                              child: Text(
+                                _permissionDenied
+                                    ? l10n.bootOpenSettings
+                                    : l10n.bootGrantPermission,
+                              ),
+                            ),
+                          TextButton(
+                            onPressed: _retrying ? null : _continueAnyway,
+                            child: Text(l10n.bootContinueAnyway),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    l10n.bootLoadFailedTitle,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFE9E9E7),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.bootLoadFailedHint,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF9B9B97),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _retrying ? null : _retry,
-                    child: _retrying
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(l10n.bootRetry),
-                  ),
-                ],
+                ),
               ),
             ),
           );

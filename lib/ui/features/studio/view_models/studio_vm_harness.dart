@@ -138,7 +138,6 @@ mixin _StudioHarnessMixin on _StudioCore {
         getAccountInfo: () => _accountInfo,
       ),
     );
-    _toolRegistry.register(NovelAiInpaintGeometryTool(repository: _repository));
     _toolRegistry.register(
       AiEditImageTool(
         repository: _repository,
@@ -157,25 +156,18 @@ mixin _StudioHarnessMixin on _StudioCore {
       ),
     );
     _toolRegistry.register(
-      NovelAiSuggestTagsTool(
-        repository: _repository,
-        configService: _configService,
+      DanbooruTagsTool(
+        suggestTool: NovelAiSuggestTagsTool(
+          repository: _repository,
+          configService: _configService,
+        ),
       ),
     );
-    _toolRegistry.register(DanbooruSearchTagsTool());
-    _toolRegistry.register(DanbooruRelatedTagsTool());
-    _toolRegistry.register(DanbooruRecommendArtistsTool());
-    // AnySearch 网络搜索三件套 (web_search / get_search_domains / web_extract):
+    // AnySearch 网络搜索与网页正文提取统一工具:
     // 密钥从 AppConfig 实时读取，未配置时匿名访问 (限流较低)
-    String anySearchApiKeyGetter() {
-      return _config.anySearchApiKey;
-    }
-
-    _toolRegistry.register(WebSearchTool(apiKeyGetter: anySearchApiKeyGetter));
     _toolRegistry.register(
-      WebGetDomainsTool(apiKeyGetter: anySearchApiKeyGetter),
+      WebResearchTool(apiKeyGetter: () => _config.anySearchApiKey),
     );
-    _toolRegistry.register(WebExtractTool(apiKeyGetter: anySearchApiKeyGetter));
     _toolRegistry.register(
       NovelAiAccountInfoTool(
         repository: _repository,
@@ -273,29 +265,17 @@ mixin _StudioHarnessMixin on _StudioCore {
       ),
     );
     _toolRegistry.register(
-      NovelAiListCharacterPromptsTool(
+      CharacterPromptsTool(
         getCharacterPrompts: () => _params.characterPrompts,
+        updateCharacterPrompts: _setCharacterPrompts,
         getAiPosition: () => _params.characterAiPosition,
-        sanitizeText: (text) => _params.textForAgent(text),
-      ),
-    );
-    _toolRegistry.register(
-      NovelAiAddCharacterPromptTool(
-        getCharacterPrompts: () => _params.characterPrompts,
-        updateCharacterPrompts: _setCharacterPrompts,
         getCharacterLimit: () => _params.model.maxCharacterPrompts,
-      ),
-    );
-    _toolRegistry.register(
-      NovelAiUpdateCharacterPromptTool(
-        getCharacterPrompts: () => _params.characterPrompts,
-        updateCharacterPrompts: _setCharacterPrompts,
-      ),
-    );
-    _toolRegistry.register(
-      NovelAiRemoveCharacterPromptTool(
-        getCharacterPrompts: () => _params.characterPrompts,
-        updateCharacterPrompts: _setCharacterPrompts,
+        sanitizeText: (text) => _params.textForAgent(text),
+        onCustomPositionUsed: () {
+          if (_params.characterAiPosition) {
+            updateParams(_params.copyWith(characterAiPosition: false));
+          }
+        },
       ),
     );
     _toolRegistry.register(
@@ -304,61 +284,26 @@ mixin _StudioHarnessMixin on _StudioCore {
         loadImageBytes: _repository.loadHistoryImageBytes,
         isModelMultimodal: () =>
             _config.activeLlmProvider.activeModel.isMultimodal,
+        renderOverlay: renderImageWithCharacterOverlay,
       ),
     );
-    // Agent 批注增删改查四件套工具：写入口统一走 board.replaceImageAnnotations
-    // (阶段4D 试点：BoardController 域内方法，同步仓库持久化与大画布)
+    // Agent 批注统一管理工具：写入口统一走 board.replaceImageAnnotations
     _toolRegistry.register(
-      ViewImageAnnotationsTool(
+      ImageAnnotationsTool(
         getHistory: () => _repository.history,
         loadImageBytes: _repository.loadHistoryImageBytes,
         isModelMultimodal: () =>
             _config.activeLlmProvider.activeModel.isMultimodal,
-      ),
-    );
-    _toolRegistry.register(
-      AddImageAnnotationTool(
-        getHistory: () => _repository.history,
+        renderOverlay: renderImageWithAnnotationOverlay,
         writeAnnotations: board.replaceImageAnnotations,
       ),
     );
     _toolRegistry.register(
-      UpdateImageAnnotationTool(
-        getHistory: () => _repository.history,
-        writeAnnotations: board.replaceImageAnnotations,
-      ),
-    );
-    _toolRegistry.register(
-      RemoveImageAnnotationTool(
-        getHistory: () => _repository.history,
-        writeAnnotations: board.replaceImageAnnotations,
-      ),
-    );
-    _toolRegistry.register(
-      ClearImageAnnotationsTool(
-        getHistory: () => _repository.history,
-        writeAnnotations: board.replaceImageAnnotations,
-      ),
-    );
-    _toolRegistry.register(
-      SearchPromptLibraryTool(getEntries: () => promptLibraryEntries),
-    );
-    _toolRegistry.register(
-      AddPromptLibraryEntryTool(
+      PromptLibraryTool(
         getEntries: () => promptLibraryEntries,
         addEntry: addPromptCombo,
-      ),
-    );
-    _toolRegistry.register(
-      UpdatePromptLibraryEntryTool(
-        getEntries: () => promptLibraryEntries,
         updateEntry: updatePromptCombo,
-      ),
-    );
-    _toolRegistry.register(
-      SetPromptLibraryPreviewTool(
-        getEntries: () => promptLibraryEntries,
-        updateEntry: updatePromptCombo,
+        deleteEntry: deletePromptCombo,
         getHistory: () => _repository.history,
         // 内存缺失时从磁盘缓存回载大图字节，避免刚重启后的空字节
         loadImageBytes: ensureImageLoaded,
@@ -368,12 +313,6 @@ mixin _StudioHarnessMixin on _StudioCore {
           if (!isPathInsideRoots(path, _agentReadableRoots)) return null;
           return savePromptPreviewFromPath(path);
         },
-      ),
-    );
-    _toolRegistry.register(
-      DeletePromptLibraryEntryTool(
-        getEntries: () => promptLibraryEntries,
-        deleteEntry: deletePromptCombo,
       ),
     );
     _toolRegistry.register(
@@ -394,9 +333,30 @@ mixin _StudioHarnessMixin on _StudioCore {
       ),
     );
 
+    _toolRegistry.register(
+      RunPipelineTool(
+        registry: _toolRegistry,
+        isToolAllowed: _harness.isToolExecutionAllowed,
+        isCancelled: () => _harness.isRunCancelled,
+      ),
+    );
+    _toolRegistry.register(
+      DescribeToolsTool(
+        registry: _toolRegistry,
+        isToolAllowed: _harness.isToolExecutionAllowed,
+      ),
+    );
+
     // 注册自定义扩展工具
     for (final customTool in _config.customTools) {
       _toolRegistry.register(customTool);
+    }
+
+    // 注册已连接的 MCP 工具（通过 CodeMode 精简工具表面按需索引与编排）
+    for (final mcpTool in _mcpManager.buildAgentTools(
+      isModelMultimodal: () => _config.activeLlmProvider.activeModel.isMultimodal,
+    )) {
+      _toolRegistry.register(mcpTool);
     }
 
     // 配置 LLM Provider
@@ -406,12 +366,13 @@ mixin _StudioHarnessMixin on _StudioCore {
     _harness.providerLabel = activeLlm.name.isNotEmpty
         ? activeLlm.name
         : activeLlm.id;
+    _harness.provider?.close();
     if (_canCreateChatProvider(activeLlm)) {
       final supportsThinking = activeModel.supportsThinking;
       final isReasoningActive =
           supportsThinking && _currentThinkingEffort != ThinkingEffort.none;
 
-      _harness.provider = OpenAiCompatibleProvider(
+      _harness.provider = LlmProviderFactory.create(
         baseUrl: activeLlm.fullEndpointUrl,
         apiKey: activeLlm.apiKey,
         model: activeModel.id,
@@ -445,6 +406,10 @@ mixin _StudioHarnessMixin on _StudioCore {
     // 长期记忆摘要注入：Harness 只通过回调读取，避免 core 层反向依赖 UI/ViewModel。
     _harness.memoryEntriesProvider = () => memoryEntries;
 
+    // 启用双轨精简工具表面：只将高频核心工具展开为完整 JSON Schema，
+    // 其余已授权二级工具以单行索引附于系统提示词，由 run_pipeline / describe_tools 调度。
+    _harness.compactToolSurface = true;
+
     // 长程配置：单次对话最大工具轮数 (设置页 Defaults 可调)
     _harness.maxTurns = _config.agentMaxTurns;
     // 上下文压缩窗口：按当前模型卡片的上下文窗口自适应触发
@@ -452,6 +417,8 @@ mixin _StudioHarnessMixin on _StudioCore {
     _harness.compactionEnabled = _config.agentCompactionEnabled;
     _harness.backgroundCompactionEnabled = _config.agentBackgroundCompaction;
     _harness.persistentImages = _config.agentPersistentImages;
+    // 重建压缩通道前先关闭旧通道，避免残留连接
+    _harness.compactionProvider?.close();
     _harness.compactionProvider = null;
     _harness.compactionModelWindowTokens = activeModel.contextWindow;
     final summaryProvider = _config.llmProviders
@@ -468,7 +435,7 @@ mixin _StudioHarnessMixin on _StudioCore {
                 ? ThinkingEffort.none
                 : summaryModel.defaultThinkingEffort)
           : null;
-      _harness.compactionProvider = OpenAiCompatibleProvider(
+      _harness.compactionProvider = LlmProviderFactory.create(
         baseUrl: summaryProvider.fullEndpointUrl,
         apiKey: summaryProvider.apiKey,
         model: summaryModel.id,
@@ -483,6 +450,23 @@ mixin _StudioHarnessMixin on _StudioCore {
       );
       _harness.compactionModelWindowTokens = summaryModel.contextWindow;
     }
+  }
+
+  void _syncMcpToolsToRegistry() {
+    final oldMcpNames = _toolRegistry
+        .getAll()
+        .whereType<McpAgentTool>()
+        .map((t) => t.name)
+        .toList();
+    for (final name in oldMcpNames) {
+      _toolRegistry.unregister(name);
+    }
+    for (final mcpTool in _mcpManager.buildAgentTools(
+      isModelMultimodal: () => _config.activeLlmProvider.activeModel.isMultimodal,
+    )) {
+      _toolRegistry.register(mcpTool);
+    }
+    _harness.memoryChanged();
   }
 
   /// 动态调整 Agent 思考强度 (在对话工作台中随点随切)
@@ -607,14 +591,47 @@ mixin _StudioHarnessMixin on _StudioCore {
     return result;
   }
 
-  Future<SkillPackage> readSkillImportFile(String path) =>
-      _skillPackageService.readImportFile(path);
+  Future<SkillPackage> readSkillImportFile(String path, {String? filename}) =>
+      _skillPackageService.readImportFile(path, filename: filename);
+  Future<List<SkillPackage>> readSkillImportFileAll(
+    String path, {
+    String? filename,
+  }) => _skillPackageService.readImportFileAll(path, filename: filename);
+  Future<SkillPackage> readSkillImportBytes(
+    Uint8List bytes,
+    String filename,
+  ) => _skillPackageService.readImportBytes(bytes, filename);
+  Future<List<SkillPackage>> readSkillImportBytesAll(
+    Uint8List bytes,
+    String filename,
+  ) => _skillPackageService.readImportBytesAll(bytes, filename);
   Future<SkillPackage> readSkillImportDirectory(String path) =>
       _skillPackageService.readImportDirectory(path);
+  Future<List<SkillPackage>> readSkillImportDirectoryAll(String path) =>
+      _skillPackageService.readImportDirectoryAll(path);
+  Future<Uint8List> readSkillResource(Skill skill, String path) =>
+      _skillPackageService.readResource(skill, path);
   Future<Uint8List> exportSkillPackage(Skill skill) =>
       _skillPackageService.exportPackage(skill);
   Future<void> writeSkillExportFile(String path, Uint8List bytes) =>
       _skillPackageService.writeExportFile(path, bytes);
+
+  /// 判断内置技能是否存在本地覆盖版本
+  bool isBuiltinSkillOverridden(String skillId) =>
+      BuiltinSkills.all.any((b) => b.id == skillId) &&
+      _config.customSkills.any((s) => s.id == skillId);
+
+  /// 将被覆盖修改过的内置技能恢复为出厂默认版本
+  Future<void> resetBuiltinSkill(String skillId) => _withSkillWrite(() async {
+    if (!isBuiltinSkillOverridden(skillId)) return;
+    await _commitSkillConfig(
+      _config.copyWith(
+        customSkills: _config.customSkills
+            .where((s) => s.id != skillId)
+            .toList(),
+      ),
+    );
+  });
 
   /// 确认后才安装。重名拒绝覆盖（可在编辑框改 ID），配置提交失败清理本次安装。
   Future<Skill> importSkillPackage(SkillPackage package, Skill edited) =>
@@ -769,4 +786,87 @@ mixin _StudioHarnessMixin on _StudioCore {
     _setupHarnessAndTools();
     notifyListeners();
   }
+
+  // ------------------------- MCP 服务管理 (CodeMode) -------------------------
+
+  List<McpServerConfig> get mcpServers => _config.mcpServers;
+
+  McpServerRuntimeState mcpServerState(String serverId) =>
+      _mcpManager.stateOf(serverId);
+
+  List<McpToolDescriptor> get discoveredMcpTools =>
+      _mcpManager.discoveredTools;
+
+  /// 新增或更新单个 MCP 服务配置并同步连接
+  Future<void> saveMcpServer(
+    McpServerConfig server, {
+    String? originalId,
+  }) async {
+    final list = _config.mcpServers.toList();
+    final targetId = originalId ?? server.id;
+    final idx = list.indexWhere((s) => s.id == targetId);
+    if (idx >= 0) {
+      list[idx] = server;
+    } else {
+      // 防止 ID 碰撞
+      var uniqueId = server.id;
+      var suffix = 2;
+      while (list.any((s) => s.id == uniqueId)) {
+        uniqueId = '${server.id}-$suffix';
+        suffix++;
+      }
+      list.add(uniqueId == server.id ? server : server.copyWith(id: uniqueId));
+    }
+    _config = _config.copyWith(mcpServers: list);
+    await _configService.saveConfig(_config);
+    unawaited(_mcpManager.syncConfigs(_config.mcpServers));
+    notifyListeners();
+  }
+
+  /// 批量导入 MCP 服务配置（重名按 ID 更新，不重复堆叠）
+  Future<int> importMcpServers(List<McpServerConfig> incoming) async {
+    if (incoming.isEmpty) return 0;
+    final list = _config.mcpServers.toList();
+    for (final server in incoming) {
+      final idx = list.indexWhere((s) => s.id == server.id);
+      if (idx >= 0) {
+        list[idx] = server;
+      } else {
+        list.add(server);
+      }
+    }
+    _config = _config.copyWith(mcpServers: list);
+    await _configService.saveConfig(_config);
+    unawaited(_mcpManager.syncConfigs(_config.mcpServers));
+    notifyListeners();
+    return incoming.length;
+  }
+
+  /// 启停指定 MCP 服务
+  Future<void> toggleMcpServer(String serverId, bool enabled) async {
+    final list = _config.mcpServers
+        .map((s) => s.id == serverId ? s.copyWith(enabled: enabled) : s)
+        .toList();
+    _config = _config.copyWith(mcpServers: list);
+    await _configService.saveConfig(_config);
+    unawaited(_mcpManager.syncConfigs(_config.mcpServers));
+    notifyListeners();
+  }
+
+  /// 删除 MCP 服务
+  Future<void> deleteMcpServer(String serverId) async {
+    final list = _config.mcpServers.where((s) => s.id != serverId).toList();
+    _config = _config.copyWith(mcpServers: list);
+    await _configService.saveConfig(_config);
+    await _mcpManager.syncConfigs(_config.mcpServers);
+    _syncMcpToolsToRegistry();
+    notifyListeners();
+  }
+
+  /// 立即连接/刷新指定 MCP 服务
+  Future<McpServerRuntimeState> reconnectMcpServer(String serverId) =>
+      _mcpManager.connectServer(serverId);
+
+  /// 重连所有已启用的 MCP 服务
+  Future<void> reconnectAllMcpServers() => _mcpManager.reconnectAllEnabled();
 }

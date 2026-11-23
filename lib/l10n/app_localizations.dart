@@ -476,6 +476,60 @@ abstract class AppLocalizations {
   /// **'手动模式下生效：点击打开取色器自由指定任意颜色'**
   String get settingsAccentSeedSubtitle;
 
+  /// No description provided for @settingsBackgroundMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'背景色'**
+  String get settingsBackgroundMode;
+
+  /// No description provided for @settingsBackgroundModeSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换工作台画布与面板底色：默认纸本/暗灰、跟随强调色微染或自由指定'**
+  String get settingsBackgroundModeSubtitle;
+
+  /// No description provided for @backgroundModeDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get backgroundModeDefault;
+
+  /// No description provided for @backgroundModeFollowAccent.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随强调色'**
+  String get backgroundModeFollowAccent;
+
+  /// No description provided for @backgroundModeCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get backgroundModeCustom;
+
+  /// No description provided for @settingsBackgroundLightColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'亮色背景'**
+  String get settingsBackgroundLightColor;
+
+  /// No description provided for @settingsBackgroundDarkColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色背景'**
+  String get settingsBackgroundDarkColor;
+
+  /// No description provided for @settingsBackgroundColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'画布背景色'**
+  String get settingsBackgroundColor;
+
+  /// No description provided for @settingsBackgroundReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get settingsBackgroundReset;
+
   /// No description provided for @colorPickerTitle.
   ///
   /// In zh, this message translates to:
@@ -1253,7 +1307,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsModelSortDefault.
   ///
   /// In zh, this message translates to:
-  /// **'默认顺序'**
+  /// **'原始顺序'**
   String get settingsModelSortDefault;
 
   /// No description provided for @settingsModelSortNameAsc.
@@ -1267,6 +1321,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'名称 Z-A'**
   String get settingsModelSortNameDesc;
+
+  /// No description provided for @settingsModelSortContextDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'上下文从大到小'**
+  String get settingsModelSortContextDesc;
+
+  /// No description provided for @settingsModelSortMaxTokensDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'最大输出从大到小'**
+  String get settingsModelSortMaxTokensDesc;
+
+  /// No description provided for @settingsModelSortThinkingFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持思考优先'**
+  String get settingsModelSortThinkingFirst;
+
+  /// No description provided for @settingsModelSortMultimodalFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持多模态优先'**
+  String get settingsModelSortMultimodalFirst;
+
+  /// No description provided for @settingsModelSortImageOutputFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'绘图模型优先'**
+  String get settingsModelSortImageOutputFirst;
 
   /// No description provided for @settingsFilterImageOnly.
   ///
@@ -2687,7 +2771,7 @@ abstract class AppLocalizations {
   /// No description provided for @charPromptEmptyDescription.
   ///
   /// In zh, this message translates to:
-  /// **'点击右上角「女 / 男 / 其他」预设按钮即可开启多角色防串色隔离生图'**
+  /// **'点击右上角「添加角色」按钮即可开启多角色防串色隔离生图'**
   String get charPromptEmptyDescription;
 
   /// No description provided for @charPromptExitCanvasEditTooltip.
@@ -2713,6 +2797,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'画板编辑'**
   String get charPromptCanvasEdit;
+
+  /// No description provided for @charPromptAddCharacter.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加角色'**
+  String get charPromptAddCharacter;
 
   /// No description provided for @charPromptAddFemaleTooltip.
   ///
@@ -2839,6 +2929,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'拖动调整后缀词高度 (双击重置)'**
   String get affixResizeSuffixTooltip;
+
+  /// No description provided for @affixSaveStyleLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'存为画风'**
+  String get affixSaveStyleLabel;
+
+  /// No description provided for @affixSaveStyleTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'将当前前缀词、后缀词和负面提示词保存为画风预设'**
+  String get affixSaveStyleTooltip;
+
+  /// No description provided for @affixStylePresetsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'画风库'**
+  String get affixStylePresetsLabel;
+
+  /// No description provided for @affixStylePresetsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'从词库一键填入画风预设（前置词、后置词与负面词）'**
+  String get affixStylePresetsTooltip;
+
+  /// No description provided for @affixStylePresetsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'词库暂无风格条目，可先点击「存为画风」创建'**
+  String get affixStylePresetsEmpty;
+
+  /// No description provided for @affixSaveStyleEmptyNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前前置词、后缀词和负面提示词均为空'**
+  String get affixSaveStyleEmptyNotice;
+
+  /// No description provided for @affixAppliedStyleNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'已填入画风预设: {title}'**
+  String affixAppliedStyleNotice(String title);
+
+  /// No description provided for @bannedWordsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'排除违禁词'**
+  String get bannedWordsTitle;
+
+  /// No description provided for @bannedWordsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅对助手隐藏，不影响生图'**
+  String get bannedWordsSubtitle;
+
+  /// No description provided for @bannedWordsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入要对助手隐藏的词条，用逗号分隔...'**
+  String get bannedWordsHint;
 
   /// No description provided for @annotHistoryTitle.
   ///
@@ -3539,7 +3689,7 @@ abstract class AppLocalizations {
   /// No description provided for @metadataPromptTitle.
   ///
   /// In zh, this message translates to:
-  /// **'正向提示词 (Prompt)'**
+  /// **'正向提示词'**
   String get metadataPromptTitle;
 
   /// No description provided for @metadataCopiedPrompt.
@@ -3551,7 +3701,7 @@ abstract class AppLocalizations {
   /// No description provided for @metadataNegativePromptTitle.
   ///
   /// In zh, this message translates to:
-  /// **'负向提示词 (Negative Prompt)'**
+  /// **'负向提示词'**
   String get metadataNegativePromptTitle;
 
   /// No description provided for @metadataCopiedNegativePrompt.
@@ -3599,7 +3749,7 @@ abstract class AppLocalizations {
   /// No description provided for @metadataCharacterPromptsTitle.
   ///
   /// In zh, this message translates to:
-  /// **'多角色提示词 (Character Prompts)'**
+  /// **'多角色提示词'**
   String get metadataCharacterPromptsTitle;
 
   /// No description provided for @metadataCharacterIndex.
@@ -3695,7 +3845,7 @@ abstract class AppLocalizations {
   /// No description provided for @metadataRawJsonTitle.
   ///
   /// In zh, this message translates to:
-  /// **'原始元数据 (Raw JSON / Text)'**
+  /// **'原始元数据'**
   String get metadataRawJsonTitle;
 
   /// No description provided for @metadataCopyRawTooltip.
@@ -3824,6 +3974,24 @@ abstract class AppLocalizations {
   /// **'全局配置 (API Key / 存储 / LLM)'**
   String get sidebarSettingsTooltip;
 
+  /// No description provided for @sidebarCollapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起'**
+  String get sidebarCollapse;
+
+  /// No description provided for @sidebarCollapseTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起左侧栏'**
+  String get sidebarCollapseTooltip;
+
+  /// No description provided for @sidebarExpandTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开左侧栏'**
+  String get sidebarExpandTooltip;
+
   /// No description provided for @promptResizeTooltip.
   ///
   /// In zh, this message translates to:
@@ -3881,7 +4049,7 @@ abstract class AppLocalizations {
   /// No description provided for @boardSendAllToAi.
   ///
   /// In zh, this message translates to:
-  /// **'发送全部批注到 AI'**
+  /// **'发送批注'**
   String get boardSendAllToAi;
 
   /// No description provided for @boardWireMissedTarget.
@@ -3935,7 +4103,7 @@ abstract class AppLocalizations {
   /// No description provided for @boardImageCardMainTitle.
   ///
   /// In zh, this message translates to:
-  /// **'主图 (当前生成图)'**
+  /// **'主图'**
   String get boardImageCardMainTitle;
 
   /// No description provided for @boardImageCardRefTitle.
@@ -4238,6 +4406,24 @@ abstract class AppLocalizations {
   /// **'添加为多角色卡片'**
   String get libraryMenuAddAsCharacter;
 
+  /// No description provided for @libraryMenuSendToAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到助手输入框'**
+  String get libraryMenuSendToAgent;
+
+  /// No description provided for @libraryMenuApplyStyleReplace.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键填入画风 (覆盖词缀与负面词)'**
+  String get libraryMenuApplyStyleReplace;
+
+  /// No description provided for @libraryMenuApplyStyleAppend.
+  ///
+  /// In zh, this message translates to:
+  /// **'追加到词缀与负面词'**
+  String get libraryMenuApplyStyleAppend;
+
   /// No description provided for @libraryMenuCopyPrompt.
   ///
   /// In zh, this message translates to:
@@ -4255,6 +4441,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'应用到工作台'**
   String get libraryCardApply;
+
+  /// No description provided for @libraryCardApplyStyle.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用画风'**
+  String get libraryCardApplyStyle;
+
+  /// No description provided for @libraryCardSendToAgentTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送到助手输入框'**
+  String get libraryCardSendToAgentTooltip;
+
+  /// No description provided for @librarySentCharacterToAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已将角色「{title}」发送到助手输入框'**
+  String librarySentCharacterToAgent(String title);
+
+  /// No description provided for @libraryApplyStyleSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已填入画风预设: {title}'**
+  String libraryApplyStyleSuccess(String title);
 
   /// No description provided for @libraryCardAddAsCharacterTooltip.
   ///
@@ -4394,6 +4604,48 @@ abstract class AppLocalizations {
   /// **'输入正向提示词 (如: 1girl, hatsune miku, cybernetic...)'**
   String get libraryEditFieldPromptHint;
 
+  /// No description provided for @libraryEditFieldPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'前置词 (Prefix)'**
+  String get libraryEditFieldPrefix;
+
+  /// No description provided for @libraryEditFieldPrefixHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'放置于主提示词最前的画风/画师前缀 (如: artist:..., watercolor style...)'**
+  String get libraryEditFieldPrefixHint;
+
+  /// No description provided for @libraryEditFieldSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'后置词 (Suffix)'**
+  String get libraryEditFieldSuffix;
+
+  /// No description provided for @libraryEditFieldSuffixHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'放置于主提示词最后的画风后缀 (如: very aesthetic, soft lighting...)'**
+  String get libraryEditFieldSuffixHint;
+
+  /// No description provided for @libraryEditFillAllStyleFromWorkbench.
+  ///
+  /// In zh, this message translates to:
+  /// **'从工作台填入画风'**
+  String get libraryEditFillAllStyleFromWorkbench;
+
+  /// No description provided for @libraryEditWorkspaceStyleEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'工作台前置词、后缀词和负面提示词均为空'**
+  String get libraryEditWorkspaceStyleEmpty;
+
+  /// No description provided for @libraryEditStyleContentEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'请至少填写前置词、后缀词或负面提示词中的一项'**
+  String get libraryEditStyleContentEmpty;
+
   /// No description provided for @libraryEditFieldNegative.
   ///
   /// In zh, this message translates to:
@@ -4403,7 +4655,7 @@ abstract class AppLocalizations {
   /// No description provided for @libraryEditCharacterOnlyBadge.
   ///
   /// In zh, this message translates to:
-  /// **'仅角色分类可用'**
+  /// **'角色 / 风格可用'**
   String get libraryEditCharacterOnlyBadge;
 
   /// No description provided for @libraryEditFillFromNegative.
@@ -4415,7 +4667,7 @@ abstract class AppLocalizations {
   /// No description provided for @libraryEditFieldNegativeHint.
   ///
   /// In zh, this message translates to:
-  /// **'角色专有负面词 (如: worst quality, bad hands, mutated...)'**
+  /// **'角色/画风专有负面词 (如: worst quality, bad hands, mutated...)'**
   String get libraryEditFieldNegativeHint;
 
   /// No description provided for @libraryEditFieldTags.
@@ -4541,8 +4793,20 @@ abstract class AppLocalizations {
   /// No description provided for @chatInputHint.
   ///
   /// In zh, this message translates to:
-  /// **'输入绘画构思，或输入 /nai <词> 快速生图...'**
+  /// **'输入绘画构思，@ 关联词库角色，或 /nai 快速生图...'**
   String get chatInputHint;
+
+  /// No description provided for @chatCharacterMentionHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'词库角色'**
+  String get chatCharacterMentionHeader;
+
+  /// No description provided for @chatLinkedCharacterRemoveTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'移除关联角色'**
+  String get chatLinkedCharacterRemoveTooltip;
 
   /// No description provided for @chatSendTooltip.
   ///
@@ -6212,6 +6476,30 @@ abstract class AppLocalizations {
   /// **'重试'**
   String get bootRetry;
 
+  /// No description provided for @bootGrantPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'授予存储权限'**
+  String get bootGrantPermission;
+
+  /// No description provided for @bootOpenSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开应用设置'**
+  String get bootOpenSettings;
+
+  /// No description provided for @bootContinueAnyway.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续进入（仅内存缓存）'**
+  String get bootContinueAnyway;
+
+  /// No description provided for @bootStorageFallbackBanner.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片存储目录不可用，当前以临时内存模式运行；请检查权限或剩余空间。'**
+  String get bootStorageFallbackBanner;
+
   /// No description provided for @settingsSectionContextManagement.
   ///
   /// In zh, this message translates to:
@@ -6241,6 +6529,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'安全窗口使用到 70% 时提前压缩；到达上限才等待。'**
   String get settingsBackgroundCompactionHint;
+
+  /// No description provided for @settingsAgentPersistentImages.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片持久发送'**
+  String get settingsAgentPersistentImages;
+
+  /// No description provided for @settingsAgentPersistentImagesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。'**
+  String get settingsAgentPersistentImagesHint;
 
   /// No description provided for @settingsCompactionProvider.
   ///
@@ -6805,6 +7105,1105 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'工具'**
   String get toolFallbackName;
+
+  /// No description provided for @chatAssistantLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 助手'**
+  String get chatAssistantLabel;
+
+  /// No description provided for @chatCopyMessageTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制内容'**
+  String get chatCopyMessageTooltip;
+
+  /// No description provided for @chatCopiedTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制'**
+  String get chatCopiedTooltip;
+
+  /// No description provided for @chatEditAndRewindTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑并撤回后续对话'**
+  String get chatEditAndRewindTooltip;
+
+  /// No description provided for @chatRewindToHereTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'回退到此回复'**
+  String get chatRewindToHereTooltip;
+
+  /// No description provided for @chatScrollToBottomTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'回到底部'**
+  String get chatScrollToBottomTooltip;
+
+  /// No description provided for @chatEmptyWelcomeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'有什么可以帮您创作？'**
+  String get chatEmptyWelcomeTitle;
+
+  /// No description provided for @chatEmptySuggestionDraw.
+  ///
+  /// In zh, this message translates to:
+  /// **'帮我构思画面并生成图片'**
+  String get chatEmptySuggestionDraw;
+
+  /// No description provided for @chatEmptySuggestionRefine.
+  ///
+  /// In zh, this message translates to:
+  /// **'优化当前提示词标签与权重'**
+  String get chatEmptySuggestionRefine;
+
+  /// No description provided for @chatEmptySuggestionAnalyze.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析画板图片并给出修改建议'**
+  String get chatEmptySuggestionAnalyze;
+
+  /// No description provided for @chatToolArgsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'调用参数'**
+  String get chatToolArgsLabel;
+
+  /// No description provided for @chatToolOutputLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回结果'**
+  String get chatToolOutputLabel;
+
+  /// No description provided for @settingsFrameRateLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'帧率上限'**
+  String get settingsFrameRateLimit;
+
+  /// No description provided for @settingsFrameRateLimitSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'限制高刷新率显示器的最高渲染帧率，降低 GPU 光栅负载与卡顿'**
+  String get settingsFrameRateLimitSubtitle;
+
+  /// No description provided for @frameRateUnlimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'不限制（随显示器）'**
+  String get frameRateUnlimited;
+
+  /// No description provided for @frameRateFpsOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{fps} FPS'**
+  String frameRateFpsOption(int fps);
+
+  /// No description provided for @inpaintExit.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出修复'**
+  String get inpaintExit;
+
+  /// No description provided for @canvasQuickGenerate.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成'**
+  String get canvasQuickGenerate;
+
+  /// No description provided for @canvasQuickAbort.
+  ///
+  /// In zh, this message translates to:
+  /// **'终止'**
+  String get canvasQuickAbort;
+
+  /// No description provided for @libraryReturn.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回'**
+  String get libraryReturn;
+
+  /// No description provided for @canvasActionReadMetadata.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取图片参数'**
+  String get canvasActionReadMetadata;
+
+  /// No description provided for @metadataNoParamsNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到生成参数，可尝试提取盲水印或作为参考图导入'**
+  String get metadataNoParamsNotice;
+
+  /// No description provided for @metadataPickImageFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取图片失败: {error}'**
+  String metadataPickImageFailed(String error);
+
+  /// No description provided for @settingsSectionProviderBehavior.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求行为'**
+  String get settingsSectionProviderBehavior;
+
+  /// No description provided for @settingsModelSectionCapabilities.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型能力'**
+  String get settingsModelSectionCapabilities;
+
+  /// No description provided for @settingsModelSectionParameters.
+  ///
+  /// In zh, this message translates to:
+  /// **'采样与限制'**
+  String get settingsModelSectionParameters;
+
+  /// No description provided for @settingsModelSectionCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'提示词缓存'**
+  String get settingsModelSectionCache;
+
+  /// No description provided for @settingsConfirmDeleteProviderTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除供应商'**
+  String get settingsConfirmDeleteProviderTitle;
+
+  /// No description provided for @settingsConfirmDeleteProviderMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除供应商「{name}」及其下的模型配置吗？'**
+  String settingsConfirmDeleteProviderMessage(String name);
+
+  /// No description provided for @settingsEndpointCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制完整接口地址'**
+  String get settingsEndpointCopied;
+
+  /// No description provided for @presetDuplicateToEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制并自定义'**
+  String get presetDuplicateToEdit;
+
+  /// No description provided for @presetCopyPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制提示词'**
+  String get presetCopyPrompt;
+
+  /// No description provided for @presetCopiedPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制系统提示词'**
+  String get presetCopiedPrompt;
+
+  /// No description provided for @presetConfirmDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除预设'**
+  String get presetConfirmDeleteTitle;
+
+  /// No description provided for @presetConfirmDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除预设「{name}」吗？'**
+  String presetConfirmDeleteMessage(String name);
+
+  /// No description provided for @presetEnableAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部启用'**
+  String get presetEnableAll;
+
+  /// No description provided for @presetDisableAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部停用'**
+  String get presetDisableAll;
+
+  /// No description provided for @skillSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索技能名称、标识或描述'**
+  String get skillSearchHint;
+
+  /// No description provided for @skillNoMatching.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的技能'**
+  String get skillNoMatching;
+
+  /// No description provided for @skillConfirmDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除技能'**
+  String get skillConfirmDeleteTitle;
+
+  /// No description provided for @skillConfirmDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除自定义技能「{name}」吗？此操作会立即生效。'**
+  String skillConfirmDeleteMessage(String name);
+
+  /// No description provided for @skillImportFileDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持 .zip、.skill 技能包或单个 SKILL.md 文件'**
+  String get skillImportFileDesc;
+
+  /// No description provided for @skillImportFolderDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入包含 SKILL.md 与配套资源的本地目录'**
+  String get skillImportFolderDesc;
+
+  /// No description provided for @skillImportPasteDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'直接粘贴 SKILL.md 文本内容并解析'**
+  String get skillImportPasteDesc;
+
+  /// No description provided for @toolSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索工具名称、标识或描述'**
+  String get toolSearchHint;
+
+  /// No description provided for @toolNoMatching.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的工具'**
+  String get toolNoMatching;
+
+  /// No description provided for @toolConfirmDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除自定义工具'**
+  String get toolConfirmDeleteTitle;
+
+  /// No description provided for @toolConfirmDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除自定义工具「{name}」吗？此操作会立即生效。'**
+  String toolConfirmDeleteMessage(String name);
+
+  /// No description provided for @toolFormatSchema.
+  ///
+  /// In zh, this message translates to:
+  /// **'格式化 JSON'**
+  String get toolFormatSchema;
+
+  /// No description provided for @toolFormatSchemaInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'JSON 格式无效，无法格式化'**
+  String get toolFormatSchemaInvalid;
+
+  /// No description provided for @settingsSectionLibrarySync.
+  ///
+  /// In zh, this message translates to:
+  /// **'词库云同步'**
+  String get settingsSectionLibrarySync;
+
+  /// No description provided for @settingsLibrarySyncEndpointTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步服务地址'**
+  String get settingsLibrarySyncEndpointTitle;
+
+  /// No description provided for @settingsLibrarySyncEndpointHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'https://your-worker.workers.dev'**
+  String get settingsLibrarySyncEndpointHint;
+
+  /// No description provided for @settingsLibrarySyncTokenTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'访问密钥 (Token)'**
+  String get settingsLibrarySyncTokenTitle;
+
+  /// No description provided for @settingsLibrarySyncTokenHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'在 Worker 中配置的 SYNC_TOKEN'**
+  String get settingsLibrarySyncTokenHint;
+
+  /// No description provided for @settingsLibrarySyncNamespaceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'命名空间'**
+  String get settingsLibrarySyncNamespaceTitle;
+
+  /// No description provided for @settingsLibrarySyncNamespaceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'default'**
+  String get settingsLibrarySyncNamespaceHint;
+
+  /// No description provided for @librarySyncButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'云同步'**
+  String get librarySyncButton;
+
+  /// No description provided for @librarySyncingLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步中...'**
+  String get librarySyncingLabel;
+
+  /// No description provided for @librarySyncSettingsMenu.
+  ///
+  /// In zh, this message translates to:
+  /// **'云同步设置...'**
+  String get librarySyncSettingsMenu;
+
+  /// No description provided for @librarySyncMergeMenu.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即云同步 (双向合并)'**
+  String get librarySyncMergeMenu;
+
+  /// No description provided for @librarySyncForcePushMenu.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制上传覆盖云端'**
+  String get librarySyncForcePushMenu;
+
+  /// No description provided for @librarySyncForcePullMenu.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制拉取覆盖本地'**
+  String get librarySyncForcePullMenu;
+
+  /// No description provided for @librarySyncDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'词库云同步'**
+  String get librarySyncDialogTitle;
+
+  /// No description provided for @librarySyncDialogSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 Cloudflare Workers + D1 免费同步词组合与去重预览图。'**
+  String get librarySyncDialogSubtitle;
+
+  /// No description provided for @librarySyncTestConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试连接'**
+  String get librarySyncTestConnection;
+
+  /// No description provided for @librarySyncTesting.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试中...'**
+  String get librarySyncTesting;
+
+  /// No description provided for @librarySyncTestSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接成功：云端 {entries} 条词条 · {images} 张预览图 (版本 r{revision})'**
+  String librarySyncTestSuccess(int entries, int images, int revision);
+
+  /// No description provided for @librarySyncTestFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接失败：{error}'**
+  String librarySyncTestFailed(String error);
+
+  /// No description provided for @librarySyncSaveConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存配置'**
+  String get librarySyncSaveConfig;
+
+  /// No description provided for @librarySyncConfigSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存云同步配置'**
+  String get librarySyncConfigSaved;
+
+  /// No description provided for @librarySyncLastSynced.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次同步：{time}'**
+  String librarySyncLastSynced(String time);
+
+  /// No description provided for @librarySyncNeverSynced.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未同步过'**
+  String get librarySyncNeverSynced;
+
+  /// No description provided for @librarySyncDoneUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'云同步完成，本地与云端已一致 (r{revision})'**
+  String librarySyncDoneUpToDate(int revision);
+
+  /// No description provided for @librarySyncDoneSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步完成：上传 {pushed} · 拉取 {pulled} · 删本地 {deletedLocal} · 删云端 {deletedRemote} · 图 ↑{uploadedImages}/↓{downloadedImages}'**
+  String librarySyncDoneSummary(
+    int pushed,
+    int pulled,
+    int deletedLocal,
+    int deletedRemote,
+    int uploadedImages,
+    int downloadedImages,
+  );
+
+  /// No description provided for @librarySyncForcePushDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已强制上传覆盖云端 ({count} 条，上传图片 {images} 张)'**
+  String librarySyncForcePushDone(int count, int images);
+
+  /// No description provided for @librarySyncForcePullDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已强制拉取覆盖本地 ({count} 条，下载图片 {images} 张)'**
+  String librarySyncForcePullDone(int count, int images);
+
+  /// No description provided for @librarySyncFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'云同步失败：{error}'**
+  String librarySyncFailed(String error);
+
+  /// No description provided for @librarySyncForcePushConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制上传覆盖云端'**
+  String get librarySyncForcePushConfirmTitle;
+
+  /// No description provided for @librarySyncForcePushConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将用本地当前全部词条覆盖云端命名空间中的记录（云端多余条目会被标记删除）。确定继续吗？'**
+  String get librarySyncForcePushConfirmMessage;
+
+  /// No description provided for @librarySyncForcePullConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制拉取覆盖本地'**
+  String get librarySyncForcePullConfirmTitle;
+
+  /// No description provided for @librarySyncForcePullConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将用云端词库完全替换本地当前词库，本地未同步的新增或修改将被覆盖且无法撤销。确定继续吗？'**
+  String get librarySyncForcePullConfirmMessage;
+
+  /// No description provided for @librarySyncStatusUnconfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置'**
+  String get librarySyncStatusUnconfigured;
+
+  /// No description provided for @librarySyncStatusConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'已配置'**
+  String get librarySyncStatusConfigured;
+
+  /// No description provided for @librarySyncStatusConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已连接'**
+  String get librarySyncStatusConnected;
+
+  /// No description provided for @librarySyncStatusError.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接异常'**
+  String get librarySyncStatusError;
+
+  /// No description provided for @librarySyncConfigSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接配置'**
+  String get librarySyncConfigSection;
+
+  /// No description provided for @librarySyncConfigCollapsedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开可修改 Worker 地址、密钥或命名空间'**
+  String get librarySyncConfigCollapsedHint;
+
+  /// No description provided for @librarySyncOverwriteSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制覆盖与恢复'**
+  String get librarySyncOverwriteSection;
+
+  /// No description provided for @librarySyncOverwriteSectionHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅在冲突无法合并或需要整库重置时使用'**
+  String get librarySyncOverwriteSectionHint;
+
+  /// No description provided for @librarySyncForcePushHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'以本地为准覆盖云端（云端多余条目将标记为已删除）'**
+  String get librarySyncForcePushHint;
+
+  /// No description provided for @librarySyncForcePullHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'以云端为准替换本地（本地未同步的修改会丢失）'**
+  String get librarySyncForcePullHint;
+
+  /// No description provided for @librarySyncOverwriteConfirmButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认覆盖'**
+  String get librarySyncOverwriteConfirmButton;
+
+  /// No description provided for @librarySyncEndpointSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'已部署的 Cloudflare Worker 访问地址'**
+  String get librarySyncEndpointSubtitle;
+
+  /// No description provided for @librarySyncTokenSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'与 Worker 中配置的 SYNC_TOKEN Secret 一致'**
+  String get librarySyncTokenSubtitle;
+
+  /// No description provided for @librarySyncNamespaceSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于隔离多套词库（默认 default）'**
+  String get librarySyncNamespaceSubtitle;
+
+  /// No description provided for @canvasQuickPromptTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开精简提示词面板'**
+  String get canvasQuickPromptTooltip;
+
+  /// No description provided for @quickPromptOpenFullTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开完整提示词面板'**
+  String get quickPromptOpenFullTooltip;
+
+  /// No description provided for @quickPromptCharactersCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{enabled}/{total} 已启用'**
+  String quickPromptCharactersCount(int enabled, int total);
+
+  /// No description provided for @notifications.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知'**
+  String get notifications;
+
+  /// No description provided for @notificationsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知与错误记录'**
+  String get notificationsTooltip;
+
+  /// No description provided for @notificationCenterTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知记录'**
+  String get notificationCenterTitle;
+
+  /// No description provided for @notificationCenterEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无通知记录'**
+  String get notificationCenterEmpty;
+
+  /// No description provided for @notificationCenterCopyAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制全部'**
+  String get notificationCenterCopyAll;
+
+  /// No description provided for @notificationCenterClearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空记录'**
+  String get notificationCenterClearAll;
+
+  /// No description provided for @notificationCenterCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制到剪贴板'**
+  String get notificationCenterCopied;
+
+  /// No description provided for @notificationSourceGeneration.
+  ///
+  /// In zh, this message translates to:
+  /// **'生图'**
+  String get notificationSourceGeneration;
+
+  /// No description provided for @notificationSourceInpaint.
+  ///
+  /// In zh, this message translates to:
+  /// **'局部修复'**
+  String get notificationSourceInpaint;
+
+  /// No description provided for @notificationSourceAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'助手'**
+  String get notificationSourceAgent;
+
+  /// No description provided for @notificationSourceAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号'**
+  String get notificationSourceAccount;
+
+  /// No description provided for @notificationSourceComfyUi.
+  ///
+  /// In zh, this message translates to:
+  /// **'ComfyUI'**
+  String get notificationSourceComfyUi;
+
+  /// No description provided for @notificationSourceStorage.
+  ///
+  /// In zh, this message translates to:
+  /// **'存储'**
+  String get notificationSourceStorage;
+
+  /// No description provided for @notificationSourceSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get notificationSourceSystem;
+
+  /// No description provided for @vmAccountRefreshFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新 NovelAI 账号信息失败：{error}'**
+  String vmAccountRefreshFailed(String error);
+
+  /// No description provided for @settingsTabExtensions.
+  ///
+  /// In zh, this message translates to:
+  /// **'技能与 MCP'**
+  String get settingsTabExtensions;
+
+  /// No description provided for @settingsSubtitleExtensions.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理专业技能包（支持压缩包拖拽导入）与外部 MCP 服务（通过 CodeMode 按需编排）'**
+  String get settingsSubtitleExtensions;
+
+  /// No description provided for @extensionsSegmentSkills.
+  ///
+  /// In zh, this message translates to:
+  /// **'技能库'**
+  String get extensionsSegmentSkills;
+
+  /// No description provided for @extensionsSegmentMcp.
+  ///
+  /// In zh, this message translates to:
+  /// **'MCP 服务'**
+  String get extensionsSegmentMcp;
+
+  /// No description provided for @skillFilterAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get skillFilterAll;
+
+  /// No description provided for @skillFilterBuiltin.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置'**
+  String get skillFilterBuiltin;
+
+  /// No description provided for @skillFilterCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get skillFilterCustom;
+
+  /// No description provided for @skillFilterPackaged.
+  ///
+  /// In zh, this message translates to:
+  /// **'含资源包'**
+  String get skillFilterPackaged;
+
+  /// No description provided for @skillBadgeModified.
+  ///
+  /// In zh, this message translates to:
+  /// **'已修改'**
+  String get skillBadgeModified;
+
+  /// No description provided for @skillResetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get skillResetDefault;
+
+  /// No description provided for @skillResetDefaultSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已恢复内置技能「{name}」为出厂默认'**
+  String skillResetDefaultSuccess(String name);
+
+  /// No description provided for @skillBuiltinOverrideHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改内置技能将保存为本地覆盖版本，可随时恢复出厂默认。'**
+  String get skillBuiltinOverrideHint;
+
+  /// No description provided for @skillDropHintTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖拽 .zip / .skill / .md 或技能文件夹到此处导入'**
+  String get skillDropHintTitle;
+
+  /// No description provided for @skillDropHintSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持标准 Agent Skills 压缩包（含单技能或多技能合集），也支持下方按钮导入'**
+  String get skillDropHintSubtitle;
+
+  /// No description provided for @skillDropActiveTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'松开鼠标即可解析并预览技能包'**
+  String get skillDropActiveTitle;
+
+  /// No description provided for @skillImportArchive.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入压缩包 / 文件'**
+  String get skillImportArchive;
+
+  /// No description provided for @skillBatchImportTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量导入技能包'**
+  String get skillBatchImportTitle;
+
+  /// No description provided for @skillBatchImportSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在压缩包中检测到 {count} 个技能，勾选需要导入的条目：'**
+  String skillBatchImportSubtitle(int count);
+
+  /// No description provided for @skillBatchImportButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入选中 ({count})'**
+  String skillBatchImportButton(int count);
+
+  /// No description provided for @skillBatchImportConflict.
+  ///
+  /// In zh, this message translates to:
+  /// **'ID 冲突（已存在）'**
+  String get skillBatchImportConflict;
+
+  /// No description provided for @skillBatchImportSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导入 {count} 个技能'**
+  String skillBatchImportSuccess(int count);
+
+  /// No description provided for @skillResourcePreviewEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击上方文件名可预览包内资源内容'**
+  String get skillResourcePreviewEmpty;
+
+  /// No description provided for @skillResourceBinaryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'该资源为二进制文件（{bytes} 字节），已随技能包托管保存。'**
+  String skillResourceBinaryHint(int bytes);
+
+  /// No description provided for @skillManageLibraryButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理技能库'**
+  String get skillManageLibraryButton;
+
+  /// No description provided for @skillDuplicateAndEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制预设并启用'**
+  String get skillDuplicateAndEnable;
+
+  /// No description provided for @presetAllowMcpTools.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许 MCP 工具（CodeMode）'**
+  String get presetAllowMcpTools;
+
+  /// No description provided for @presetAllowMcpToolsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后，已连接的 MCP 服务工具将自动收纳到 CodeMode 二级索引，由 describe_tools 与 run_pipeline 按需调度，不占用顶层上下文。'**
+  String get presetAllowMcpToolsHint;
+
+  /// No description provided for @mcpCodeModeNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'所有已连接的 MCP 工具都会通过 CodeMode（describe_tools + run_pipeline）按需索引与编排，不直接塞入顶层工具 Schema，既省 Token 又稳缓存。'**
+  String get mcpCodeModeNotice;
+
+  /// No description provided for @mcpAddServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 MCP 服务'**
+  String get mcpAddServer;
+
+  /// No description provided for @mcpImportJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'粘贴 JSON 导入'**
+  String get mcpImportJson;
+
+  /// No description provided for @mcpExportJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制 JSON'**
+  String get mcpExportJson;
+
+  /// No description provided for @mcpReconnectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部重连'**
+  String get mcpReconnectAll;
+
+  /// No description provided for @mcpEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未配置 MCP 服务'**
+  String get mcpEmptyTitle;
+
+  /// No description provided for @mcpEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持 Streamable HTTP / SSE（全平台）与本地 Stdio 命令（桌面端），也可直接粘贴标准 mcpServers JSON。'**
+  String get mcpEmptySubtitle;
+
+  /// No description provided for @mcpStatusConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已连接'**
+  String get mcpStatusConnected;
+
+  /// No description provided for @mcpStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中'**
+  String get mcpStatusConnecting;
+
+  /// No description provided for @mcpStatusDisconnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接'**
+  String get mcpStatusDisconnected;
+
+  /// No description provided for @mcpStatusError.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接失败'**
+  String get mcpStatusError;
+
+  /// No description provided for @mcpToolsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个工具'**
+  String mcpToolsCount(int count);
+
+  /// No description provided for @mcpReconnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'重连'**
+  String get mcpReconnect;
+
+  /// No description provided for @mcpDialogNewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 MCP 服务'**
+  String get mcpDialogNewTitle;
+
+  /// No description provided for @mcpDialogEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 MCP 服务 · {name}'**
+  String mcpDialogEditTitle(String name);
+
+  /// No description provided for @mcpFieldName.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务名称'**
+  String get mcpFieldName;
+
+  /// No description provided for @mcpFieldNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：Filesystem / Context7 / 本地工具'**
+  String get mcpFieldNameHint;
+
+  /// No description provided for @mcpFieldId.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务标识 (ID)'**
+  String get mcpFieldId;
+
+  /// No description provided for @mcpFieldIdHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于工具前缀 mcp_<id>_<tool>，留空自动生成'**
+  String get mcpFieldIdHint;
+
+  /// No description provided for @mcpFieldTransport.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输协议'**
+  String get mcpFieldTransport;
+
+  /// No description provided for @mcpTransportHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTP / SSE'**
+  String get mcpTransportHttp;
+
+  /// No description provided for @mcpTransportStdio.
+  ///
+  /// In zh, this message translates to:
+  /// **'Stdio 本地命令'**
+  String get mcpTransportStdio;
+
+  /// No description provided for @mcpFieldUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'端点 URL'**
+  String get mcpFieldUrl;
+
+  /// No description provided for @mcpFieldUrlHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'https://example.com/mcp 或 http://127.0.0.1:3000/mcp'**
+  String get mcpFieldUrlHint;
+
+  /// No description provided for @mcpFieldHeaders.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTP 请求头（每行 Key: Value，可选）'**
+  String get mcpFieldHeaders;
+
+  /// No description provided for @mcpFieldHeadersHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'Authorization: Bearer your-token'**
+  String get mcpFieldHeadersHint;
+
+  /// No description provided for @mcpFieldCommand.
+  ///
+  /// In zh, this message translates to:
+  /// **'可执行命令 (command)'**
+  String get mcpFieldCommand;
+
+  /// No description provided for @mcpFieldCommandHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：npx / uvx / python / node'**
+  String get mcpFieldCommandHint;
+
+  /// No description provided for @mcpFieldArgs.
+  ///
+  /// In zh, this message translates to:
+  /// **'命令参数（每行一个参数，可选）'**
+  String get mcpFieldArgs;
+
+  /// No description provided for @mcpFieldArgsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'-y\n@modelcontextprotocol/server-filesystem\nD:/Workspace'**
+  String get mcpFieldArgsHint;
+
+  /// No description provided for @mcpFieldEnv.
+  ///
+  /// In zh, this message translates to:
+  /// **'环境变量（每行 KEY=VALUE，可选）'**
+  String get mcpFieldEnv;
+
+  /// No description provided for @mcpFieldEnvHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'API_KEY=your-key'**
+  String get mcpFieldEnvHint;
+
+  /// No description provided for @mcpFieldTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求超时（秒）'**
+  String get mcpFieldTimeout;
+
+  /// No description provided for @mcpStdioDesktopOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'Stdio 本地命令仅支持桌面端（Windows / macOS / Linux）。'**
+  String get mcpStdioDesktopOnly;
+
+  /// No description provided for @mcpImportJsonTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入 mcpServers JSON'**
+  String get mcpImportJsonTitle;
+
+  /// No description provided for @mcpImportJsonHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'兼容 Claude Desktop / Cursor / Antigravity 的 mcpServers JSON 格式，同名服务将覆盖更新。'**
+  String get mcpImportJsonHelp;
+
+  /// No description provided for @mcpImportJsonSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导入 {count} 个 MCP 服务'**
+  String mcpImportJsonSuccess(int count);
+
+  /// No description provided for @mcpExportJsonCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制 mcpServers JSON 到剪贴板'**
+  String get mcpExportJsonCopied;
+
+  /// No description provided for @mcpConfirmDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 MCP 服务'**
+  String get mcpConfirmDeleteTitle;
+
+  /// No description provided for @mcpConfirmDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除 MCP 服务「{name}」并断开其连接吗？'**
+  String mcpConfirmDeleteMessage(String name);
+
+  /// No description provided for @mcpValidationError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写完整的服务名称与端点地址（或命令）。'**
+  String get mcpValidationError;
 
   /// No description provided for @type.
   ///
@@ -8102,12 +9501,6 @@ abstract class AppLocalizations {
   /// **'已导入 {count} 个文档'**
   String libImportedCount(int count);
 
-  /// No description provided for @settingsTabExtensions.
-  ///
-  /// In zh, this message translates to:
-  /// **'扩展'**
-  String get settingsTabExtensions;
-
   /// No description provided for @settingsExtAccounts.
   ///
   /// In zh, this message translates to:
@@ -8125,36 +9518,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'WD14 反推与画风串在「提示词」页使用。'**
   String get settingsExtHint;
-
-  /// No description provided for @bannedWordsTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'对 Agent 隐藏屏蔽词'**
-  String get bannedWordsTitle;
-
-  /// No description provided for @bannedWordsSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'只影响返回给 Agent 的参数文本；编辑框与生成请求保持原文。'**
-  String get bannedWordsSubtitle;
-
-  /// No description provided for @bannedWordsHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'每行一个，或用逗号分隔'**
-  String get bannedWordsHint;
-
-  /// No description provided for @settingsAgentPersistentImages.
-  ///
-  /// In zh, this message translates to:
-  /// **'图片持久发送'**
-  String get settingsAgentPersistentImages;
-
-  /// No description provided for @settingsAgentPersistentImagesHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。'**
-  String get settingsAgentPersistentImagesHint;
 
   /// No description provided for @settingsSessionMaxCount.
   ///

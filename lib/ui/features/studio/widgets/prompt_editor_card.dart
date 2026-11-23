@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_progress_bar.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../../../../data/services/prompt_token_counter_service.dart';
 import 'prompt_edit_actions.dart';
 import 'prompt_resize_handle.dart';
+import 'studio_shared.dart';
 import 'tag_browser_dialog.dart';
 
 /// 只读灰色标签数据 (PREFIX / SUFFIX / QUALITY / BG / UC 预设词展示)
@@ -64,6 +67,9 @@ class PromptEditorCard extends StatelessWidget {
   /// 锁定输入。已有文本保留，不提供会改写文本的快捷操作。
   final bool readOnly;
 
+  /// 是否以内嵌模式渲染 (不包裹外层 AppCard 边框，供浮窗等自带外框的容器复用，避免窗中窗)
+  final bool embedded;
+
   const PromptEditorCard({
     super.key,
     required this.controller,
@@ -83,6 +89,7 @@ class PromptEditorCard extends StatelessWidget {
     this.enableAutocomplete = true,
     this.showTranslation = true,
     this.readOnly = false,
+    this.embedded = false,
   });
 
   /// 按行数参考推导的默认输入区高度 (布局模式切换时变化)
@@ -94,11 +101,7 @@ class PromptEditorCard extends StatelessWidget {
       context,
       showTranslation: showTranslation,
       onTagSelected: (tag) {
-        final text = controller.text;
-        final trimmed = text.trim();
-        final newText = trimmed.isEmpty
-            ? tag
-            : (trimmed.endsWith(',') ? '$trimmed $tag' : '$trimmed, $tag');
+        final newText = appendTagToPromptText(controller.text, tag);
         controller.value = TextEditingValue(
           text: newText,
           selection: TextSelection.collapsed(offset: newText.length),
@@ -113,11 +116,9 @@ class PromptEditorCard extends StatelessWidget {
     final colors = context.colors;
     final l10n = context.l10n;
     final actions = showQuickActions && !readOnly;
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
           if (headerTags.isNotEmpty) _TagPanel(tags: headerTags, atTop: true),
           ResizableTextField(
             controller: controller,
@@ -210,8 +211,9 @@ class PromptEditorCard extends StatelessWidget {
             ),
           if (tokenUsage != null) _TokenFooter(usage: tokenUsage!),
         ],
-      ),
     );
+    if (embedded) return content;
+    return AppCard(padding: EdgeInsets.zero, child: content);
   }
 }
 
@@ -235,15 +237,24 @@ class _TokenFooter extends StatelessWidget {
     };
 
     final prefix = usage.estimated ? l10n.promptTokenEstimated : '';
-    final label = Text(
-      '$prefix${usage.used} / ${usage.hardLimit}',
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: level == PromptTokenBudgetLevel.normal
-            ? FontWeight.w500
-            : FontWeight.w600,
-        color: color,
-      ),
+    final labelStyle = TextStyle(
+      fontSize: 11,
+      fontWeight: level == PromptTokenBudgetLevel.normal
+          ? FontWeight.w500
+          : FontWeight.w600,
+      color: color,
+    );
+    final label = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (prefix.isNotEmpty) Text(prefix, style: labelStyle),
+        AppNumberPopIn(
+          value: '${usage.used}',
+          enableBlur: false,
+          style: labelStyle,
+        ),
+        Text(' / ${usage.hardLimit}', style: labelStyle),
+      ],
     );
 
     return Column(
@@ -255,7 +266,7 @@ class _TokenFooter extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: Tooltip(
               message: _tooltipMessage(l10n),
-              waitDuration: const Duration(milliseconds: 300),
+              waitDuration: AppMotionDurations.verySlow,
               child: label,
             ),
           ),
@@ -319,7 +330,7 @@ class _QuickActionButton extends StatelessWidget {
     final colors = context.colors;
     return Tooltip(
       message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
+      waitDuration: AppMotionDurations.verySlow,
       child: Material(
         color: colors.canvasBackground,
         borderRadius: BorderRadius.circular(AppRadius.sm),

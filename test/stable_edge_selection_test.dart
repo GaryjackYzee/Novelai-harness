@@ -1,8 +1,11 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:novelai_harness/ui/core/theme/app_theme.dart';
 import 'package:novelai_harness/ui/core/widgets/stable_edge_selection.dart';
+import 'package:novelai_harness/ui/features/studio/widgets/agent_chat_messages.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -192,4 +195,202 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     parent.dispose();
   });
+
+  testWidgets('Markdown 拖出列表下边缘会平稳滚出全文并选中末尾', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    final data = [
+      ...List.generate(10, (i) => 'Paragraph $i. ${'word ' * 12}'),
+      'TAIL_TOKEN_END is the last paragraph of this message.',
+    ].join('\n\n');
+    final parent = ScrollController();
+    final offsets = <double>[];
+    parent.addListener(() => offsets.add(parent.offset));
+    String selected = '';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          body: SizedBox(
+            height: 160,
+            child: SelectionArea(
+              onSelectionChanged: (content) {
+                selected = content?.plainText ?? '';
+              },
+              child: ListView(
+                controller: parent,
+                children: [AgentMarkdownBody(data: data)],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MarkdownBody>(find.byType(MarkdownBody)).selectable,
+      isFalse,
+    );
+    final viewport = tester.getRect(find.byType(ListView));
+    final gesture = await tester.startGesture(
+      viewport.topLeft + const Offset(16, 12),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(Offset(viewport.left + 16, viewport.bottom + 28));
+    for (var i = 0; i < 80; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pump();
+
+    expect(offsets, isNotEmpty);
+    expect(parent.offset, greaterThan(40));
+    for (var i = 1; i < offsets.length; i++) {
+      expect(offsets[i], greaterThanOrEqualTo(offsets[i - 1] - 0.5));
+    }
+    expect(selected, contains('TAIL_TOKEN_END'));
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('代码块拖出右边缘时横向滚动不来回跳，并能选到行尾', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    final line = '${'abcdefghij' * 8}CODE_TAIL';
+    final data = 'intro\n\n```\n$line\n```\n';
+    final samples = <double>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          body: SizedBox(
+            width: 180,
+            child: SelectionArea(child: AgentMarkdownBody(data: data)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrollable = tester.state<ScrollableState>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.right,
+      ),
+    );
+    scrollable.position.addListener(
+      () => samples.add(scrollable.position.pixels),
+    );
+    final box = tester.getRect(find.byType(SingleChildScrollView));
+    final gesture = await tester.startGesture(
+      box.centerLeft + const Offset(8, 0),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(Offset(box.right + 30, box.center.dy));
+    String selectedText() {
+      final value = tester
+          .state<EditableTextState>(find.byType(EditableText))
+          .textEditingValue;
+      final selection = value.selection;
+      if (!selection.isValid) return '';
+      return selection.textInside(value.text);
+    }
+
+    for (var i = 0; i < 500 && !selectedText().contains('CODE_TAIL'); i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pump();
+    expect(samples, isNotEmpty);
+    for (var i = 1; i < samples.length; i++) {
+      final step = samples[i] - samples[i - 1];
+      expect(step, greaterThanOrEqualTo(-0.5));
+      expect(step, lessThanOrEqualTo(8.5));
+    }
+    expect(selectedText(), contains('CODE_TAIL'));
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets(
+    'TextField inside StableEdgeSelection auto-scrolls on input while keeping drag speed capped',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final scrollController = ScrollController();
+      final textController = TextEditingController();
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+        scrollController.dispose();
+        textController.dispose();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 240,
+                child: StableEdgeSelection(
+                  controller: scrollController,
+                  child: TextField(
+                    controller: textController,
+                    scrollController: scrollController,
+                    maxLines: 3,
+                    minLines: 1,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+
+      // 输入超过 3 行可见高度的文本，未传递自定义 scrollPhysics 时仍应自动滚到底部
+      final lines = List.generate(
+        12,
+        (i) => 'prompt line $i HEAD_TAG',
+      ).join('\n');
+      await tester.enterText(find.byType(TextField), '$lines\nTAIL_TOKEN');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 150));
+
+      expect(scrollController.position.maxScrollExtent, greaterThan(0));
+      expect(scrollController.offset, greaterThan(0));
+      expect(
+        (scrollController.position.maxScrollExtent - scrollController.offset)
+            .abs(),
+        lessThan(24.0),
+      );
+
+      // 拖选超出上边缘时，抑制隐式滚动且仍保持每帧步长上限 (<= 8.5 px)
+      final startOffset = scrollController.offset;
+      final box = tester.getRect(find.byType(TextField));
+      final gesture = await tester.startGesture(
+        Offset(box.center.dx, box.center.dy),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump();
+
+      final samples = <double>[];
+      scrollController.addListener(() => samples.add(scrollController.offset));
+      await gesture.moveTo(Offset(box.center.dx, box.top - 40));
+      for (var i = 0; i < 60 && scrollController.offset > 0; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pump();
+
+      expect(samples, isNotEmpty);
+      expect(scrollController.offset, lessThan(startOffset));
+      for (var i = 1; i < samples.length; i++) {
+        final delta = samples[i] - samples[i - 1];
+        expect(delta, lessThanOrEqualTo(0.5));
+        expect(delta.abs(), lessThanOrEqualTo(8.5));
+      }
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
 }

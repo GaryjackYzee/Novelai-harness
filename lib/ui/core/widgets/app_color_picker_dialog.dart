@@ -7,6 +7,7 @@ import '../context_l10n.dart';
 import '../theme/app_tokens.dart';
 import '../theme/theme_context_extensions.dart';
 import 'app_dialog_scaffold.dart';
+import 'app_transitions.dart';
 
 /// 通用 HSV 取色器弹窗 (原子组件，无业务状态)
 ///
@@ -20,13 +21,31 @@ class AppColorPickerDialog extends StatefulWidget {
   /// 初始颜色 (缺省 Notion 蓝)
   final Color initialColor;
 
-  const AppColorPickerDialog({super.key, required this.initialColor});
+  /// 自定义弹窗标题 (未指定时使用通用「选择颜色」)
+  final String? title;
 
-  static Future<Color?> show(BuildContext context, {Color? initialColor}) {
+  /// 自定义预设色板 (未指定时使用默认强调色预设)
+  final List<Color>? presets;
+
+  const AppColorPickerDialog({
+    super.key,
+    required this.initialColor,
+    this.title,
+    this.presets,
+  });
+
+  static Future<Color?> show(
+    BuildContext context, {
+    Color? initialColor,
+    String? title,
+    List<Color>? presets,
+  }) {
     return AppDialogScaffold.show<Color>(
       context: context,
       builder: (ctx) => AppColorPickerDialog(
         initialColor: initialColor ?? const Color(0xFF0075DE),
+        title: title,
+        presets: presets,
       ),
     );
   }
@@ -39,6 +58,7 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
   late HSVColor _hsv;
   late final TextEditingController _hexController;
   late final FocusNode _hexFocus;
+  final AppErrorShakeController _hexShakeController = AppErrorShakeController();
   String? _hexError;
 
   /// 预设种子色板 (Notion 语义色系 + 常用 MD3 种子色)
@@ -75,6 +95,7 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
 
   @override
   void dispose() {
+    _hexShakeController.dispose();
     _hexFocus.removeListener(_handleHexFocusChange);
     _hexFocus.dispose();
     _hexController.dispose();
@@ -103,6 +124,7 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
       setState(() {
         _hexError = context.l10n.colorPickerHexInvalid;
       });
+      _hexShakeController.shake();
       return;
     }
     _update(HSVColor.fromColor(parsed));
@@ -114,8 +136,10 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
     final colors = context.colors;
     final current = _currentColor;
 
+    final effectivePresets = widget.presets ?? _kPresets;
+
     return AppDialogScaffold(
-      title: l10n.colorPickerTitle,
+      title: widget.title ?? l10n.colorPickerTitle,
       width: 420,
       onClose: () => Navigator.of(context).pop(),
       actions: [
@@ -135,7 +159,7 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
           onPressed: () => Navigator.of(context).pop(current),
           style: FilledButton.styleFrom(
             backgroundColor: colors.primary,
-            foregroundColor: Colors.white,
+            foregroundColor: colors.onPrimary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
@@ -166,11 +190,14 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _HexField(
-                          controller: _hexController,
-                          focusNode: _hexFocus,
-                          errorText: _hexError,
-                          onSubmitted: (_) => _submitHex(),
+                        AppErrorShake(
+                          controller: _hexShakeController,
+                          child: _HexField(
+                            controller: _hexController,
+                            focusNode: _hexFocus,
+                            errorText: _hexError,
+                            onSubmitted: (_) => _submitHex(),
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         Text(
@@ -246,7 +273,7 @@ class _AppColorPickerDialogState extends State<AppColorPickerDialog> {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  for (final preset in _kPresets)
+                  for (final preset in effectivePresets)
                     _PresetSwatch(
                       color: preset,
                       selected: preset.toARGB32() == current.toARGB32(),

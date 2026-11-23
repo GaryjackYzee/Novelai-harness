@@ -8,6 +8,7 @@ import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:msgpack_dart/msgpack_dart.dart' as msgpack;
 import '../models/novelai_models.dart';
+import 'isolated_compute.dart';
 
 /// 异步并发互斥锁 (保证严格单并发，防止触发官方 429)
 class AsyncLock {
@@ -50,30 +51,40 @@ class NovelAiService {
   static const String _tagsEndpoint = '$_host/ai/generate-image/suggest-tags';
   static const String _userDataEndpoint = '$_host/user/data';
 
+  static const Duration defaultRequestTimeout = Duration(seconds: 120);
+  static const Duration defaultStreamIdleTimeout = Duration(seconds: 90);
+  static const Duration defaultMetaTimeout = Duration(seconds: 25);
+
   static const String _correlationChars =
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   static final Random _random = Random.secure();
 
-  /// 生成/重绘请求整体上限。超时后释放 AsyncLock，避免一次卡死拖垮全部排队请求。
-  static const Duration _postTimeout = Duration(minutes: 5);
-
   /// 超分请求上限 (图片上传 + 处理 + 回传)
   static const Duration _upscaleTimeout = Duration(minutes: 3);
 
-  /// 流式请求首包超时 (建连/排队阶段)
-  static const Duration _streamStartupTimeout = Duration(seconds: 45);
-
-  /// 流式请求两帧之间的空闲上限 (官方会持续推送去噪帧)
-  static const Duration _streamIdleTimeout = Duration(minutes: 2);
-
-  /// 账号/标签等轻量 GET 的超时
-  static const Duration _lightTimeout = Duration(seconds: 20);
-
   final AsyncLock _lock = AsyncLock();
   final http.Client _httpClient;
+  final bool _ownsClient;
+  final Duration requestTimeout;
+  final Duration streamIdleTimeout;
+  final Duration metaTimeout;
+  final Duration retryDelay;
 
-  NovelAiService({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  NovelAiService({
+    http.Client? httpClient,
+    this.requestTimeout = defaultRequestTimeout,
+    this.streamIdleTimeout = defaultStreamIdleTimeout,
+    this.metaTimeout = defaultMetaTimeout,
+    this.retryDelay = const Duration(milliseconds: 2500),
+  }) : _httpClient = httpClient ?? http.Client(),
+       _ownsClient = httpClient == null;
+
+  /// 关闭内部自建的 HTTP 客户端；若由外部注入客户端则交由调用方管理。
+  void close() {
+    if (_ownsClient) {
+      _httpClient.close();
+    }
+  }
 
   /// 实时流式生成插画 (输出中间去噪步数预览与最终成图)
   Stream<NaiStreamProgress> generateImageStream({
@@ -101,13 +112,21 @@ class NovelAiService {
 
     await _lock.acquire();
     try {
-      yield* _executeImageStream(apiKey: apiKey, params: params);
+      final payload = params.toApiPayload(streaming: true);
+      yield* _executeMsgpackStream(
+        apiKey: apiKey,
+        body: jsonEncode(payload),
+        totalSteps: params.effectiveSteps,
+        httpErrorPrefix: '流式生图请求失败',
+        streamErrorFallback: '生图流异常中断',
+        emptyStreamMessage: '流式响应已结束，但未收到任何成图数据。',
+      );
     } finally {
       _lock.release();
     }
   }
 
-  /// TLS 握手被对端中断时自动重试（常见于代理/网络抖动）。
+  /// TLS 握手/连接被对端中断时自动重试（常见于代理与网络抖动）。
   Future<http.StreamedResponse> _sendWithHandshakeRetry(
     http.BaseRequest Function() createRequest, {
     int attempts = 3,
@@ -115,9 +134,7 @@ class NovelAiService {
     Object? lastError;
     for (var attempt = 1; attempt <= attempts; attempt += 1) {
       try {
-        return await _httpClient
-            .send(createRequest())
-            .timeout(_streamStartupTimeout);
+        return await _httpClient.send(createRequest()).timeout(requestTimeout);
       } on HandshakeException catch (error) {
         lastError = error;
       } on SocketException catch (error) {
@@ -128,150 +145,6 @@ class NovelAiService {
       }
     }
     throw lastError ?? StateError('网络连接失败');
-  }
-
-  Stream<NaiStreamProgress> _executeImageStream({
-    required String apiKey,
-    required NaiGenerationParams params,
-  }) async* {
-    final payload = params.toApiPayload(streaming: true);
-    final body = jsonEncode(payload);
-
-    final requestHeaders = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/x-msgpack',
-      'Authorization': 'Bearer ${apiKey.trim()}',
-      'x-correlation-id': _generateCorrelationId(),
-      'x-initiated-at': DateTime.now().toUtc().toIso8601String(),
-    };
-
-    http.StreamedResponse streamedResponse;
-    final uri = Uri.parse(_generateStreamEndpoint);
-
-    http.Request createRequest() {
-      final req = http.Request('POST', uri);
-      req.headers.addAll(requestHeaders);
-      req.body = body;
-      return req;
-    }
-
-    streamedResponse = await _sendWithHandshakeRetry(createRequest);
-
-    // 429 智能重试
-    if (streamedResponse.statusCode == 429) {
-      await Future.delayed(const Duration(milliseconds: 2500));
-      streamedResponse = await _sendWithHandshakeRetry(createRequest);
-    }
-
-    if (streamedResponse.statusCode != 200) {
-      final errorBytes = await streamedResponse.stream.toBytes();
-      final errorBody = utf8.decode(errorBytes, allowMalformed: true);
-      throw _parseHttpError(
-        http.Response(errorBody, streamedResponse.statusCode),
-        '流式生图请求失败',
-      );
-    }
-
-    final buffer = <int>[];
-    var messageCount = 0;
-    var hasYieldedFinal = false;
-    Uint8List? lastReceivedImage;
-
-    await for (final chunk in streamedResponse.stream.timeout(
-      _streamIdleTimeout,
-    )) {
-      buffer.addAll(chunk);
-
-      while (buffer.length >= 4) {
-        final messageLength = _readLength(buffer);
-        if (buffer.length < 4 + messageLength) {
-          // 当前包不完整，等待后续数据到达
-          break;
-        }
-
-        final messageBytes = Uint8List.fromList(
-          buffer.sublist(4, 4 + messageLength),
-        );
-        buffer.removeRange(0, 4 + messageLength);
-        messageCount += 1;
-
-        try {
-          final decoded = msgpack.deserialize(messageBytes);
-          if (decoded is! Map) continue;
-
-          final msgMap = decoded.map(
-            (key, value) => MapEntry(key.toString(), value),
-          );
-
-          final eventType = msgMap['event_type']?.toString();
-          if (eventType == 'error' || msgMap.containsKey('error')) {
-            final err = msgMap['message'] ?? msgMap['error'] ?? '生图流异常中断';
-            yield NaiStreamProgress.error(err.toString());
-            return;
-          }
-
-          final imageBytes = _decodeStreamImage(
-            msgMap['image'] ?? msgMap['data'],
-          );
-          if (imageBytes == null || imageBytes.isEmpty) continue;
-
-          lastReceivedImage = imageBytes;
-
-          if (eventType == 'final') {
-            hasYieldedFinal = true;
-            yield NaiStreamProgress.finalResult(
-              finalImage: imageBytes,
-              totalSteps: params.effectiveSteps,
-            );
-          } else if (eventType == null ||
-              eventType.isEmpty ||
-              eventType == 'intermediate') {
-            final stepIx = _asInt(msgMap['step_ix']);
-            final currentStep = (stepIx != null ? stepIx + 1 : messageCount);
-            yield NaiStreamProgress.intermediate(
-              previewImage: imageBytes,
-              currentStep: currentStep,
-              totalSteps: params.effectiveSteps,
-            );
-          }
-        } catch (error) {
-    debugPrint('[ignored] $error');
-          // 容错忽略单帧解码失败
-        }
-      }
-    }
-
-    // 检查是否有未处理的 final 事件或降级数据
-    if (!hasYieldedFinal) {
-      if (buffer.isNotEmpty) {
-        final leftoverBytes = Uint8List.fromList(buffer);
-        if (_isZip(leftoverBytes)) {
-          final images = _extractImagesFromZip(leftoverBytes);
-          if (images.isNotEmpty) {
-            hasYieldedFinal = true;
-            yield NaiStreamProgress.finalResult(
-              finalImage: images.first,
-              totalSteps: params.effectiveSteps,
-            );
-            return;
-          }
-        }
-      }
-
-      // 如果流已完成但未显式收到 final 标记，将最后接收到的去噪帧作为最终成图
-      if (lastReceivedImage != null && lastReceivedImage.isNotEmpty) {
-        hasYieldedFinal = true;
-        yield NaiStreamProgress.finalResult(
-          finalImage: lastReceivedImage,
-          totalSteps: params.effectiveSteps,
-        );
-      }
-    }
-
-    // 流已结束但既无 final 成图也无任何中间帧：显式报错，避免静默失败
-    if (!hasYieldedFinal) {
-      yield NaiStreamProgress.error('流式响应已结束，但未收到任何成图数据。');
-    }
   }
 
   /// 生成插画 (标准 ZIP 归档模式)
@@ -295,7 +168,7 @@ class NovelAiService {
 
       // 429 智能重试
       if (response.statusCode == 429) {
-        await Future.delayed(const Duration(milliseconds: 2500));
+        await Future.delayed(retryDelay);
         response = await _postWithAuth(_generateEndpoint, apiKey, body);
       }
 
@@ -356,137 +229,172 @@ class NovelAiService {
         noise: noise,
         streaming: true,
       );
-      final body = jsonEncode(payload);
-
-      final requestHeaders = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/x-msgpack',
-        'Authorization': 'Bearer ${apiKey.trim()}',
-        'x-correlation-id': _generateCorrelationId(),
-        'x-initiated-at': DateTime.now().toUtc().toIso8601String(),
-      };
-
-      http.StreamedResponse streamedResponse;
-      final uri = Uri.parse(_generateStreamEndpoint);
-
-      http.Request createRequest() {
-        final req = http.Request('POST', uri);
-        req.headers.addAll(requestHeaders);
-        req.body = body;
-        return req;
-      }
-
-      streamedResponse = await _sendWithHandshakeRetry(createRequest);
-
-      if (streamedResponse.statusCode == 429) {
-        await Future.delayed(const Duration(milliseconds: 2500));
-        streamedResponse = await _httpClient
-            .send(createRequest())
-            .timeout(_streamStartupTimeout);
-      }
-
-      if (streamedResponse.statusCode != 200) {
-        final errorBytes = await streamedResponse.stream.toBytes();
-        final errorBody = utf8.decode(errorBytes, allowMalformed: true);
-        throw _parseHttpError(
-          http.Response(errorBody, streamedResponse.statusCode),
-          '流式重绘请求失败',
-        );
-      }
-
-      final buffer = <int>[];
-      var messageCount = 0;
-      var hasYieldedFinal = false;
-      Uint8List? lastReceivedImage;
-
-      await for (final chunk in streamedResponse.stream.timeout(
-        _streamIdleTimeout,
-      )) {
-        buffer.addAll(chunk);
-
-        while (buffer.length >= 4) {
-          final messageLength = _readLength(buffer);
-          if (buffer.length < 4 + messageLength) break;
-
-          final messageBytes = Uint8List.fromList(
-            buffer.sublist(4, 4 + messageLength),
-          );
-          buffer.removeRange(0, 4 + messageLength);
-          messageCount += 1;
-
-          try {
-            final decoded = msgpack.deserialize(messageBytes);
-            if (decoded is! Map) continue;
-
-            final msgMap = decoded.map(
-              (key, value) => MapEntry(key.toString(), value),
-            );
-
-            final eventType = msgMap['event_type']?.toString();
-            if (eventType == 'error' || msgMap.containsKey('error')) {
-              final err = msgMap['message'] ?? msgMap['error'] ?? '重绘流异常中断';
-              yield NaiStreamProgress.error(err.toString());
-              return;
-            }
-
-            final imageBytes = _decodeStreamImage(
-              msgMap['image'] ?? msgMap['data'],
-            );
-            if (imageBytes == null || imageBytes.isEmpty) continue;
-
-            lastReceivedImage = imageBytes;
-
-            if (eventType == 'final') {
-              hasYieldedFinal = true;
-              yield NaiStreamProgress.finalResult(
-                finalImage: imageBytes,
-                totalSteps: params.effectiveSteps,
-              );
-            } else if (eventType == null ||
-                eventType.isEmpty ||
-                eventType == 'intermediate') {
-              final stepIx = _asInt(msgMap['step_ix']);
-              final currentStep = (stepIx != null ? stepIx + 1 : messageCount);
-              yield NaiStreamProgress.intermediate(
-                previewImage: imageBytes,
-                currentStep: currentStep,
-                totalSteps: params.effectiveSteps,
-              );
-            }
-          } catch (error) {
-    debugPrint('[ignored] $error');}
-        }
-      }
-
-      if (!hasYieldedFinal) {
-        if (buffer.isNotEmpty) {
-          final leftoverBytes = Uint8List.fromList(buffer);
-          if (_isZip(leftoverBytes)) {
-            final images = _extractImagesFromZip(leftoverBytes);
-            if (images.isNotEmpty) {
-              hasYieldedFinal = true;
-              yield NaiStreamProgress.finalResult(
-                finalImage: images.first,
-                totalSteps: params.effectiveSteps,
-              );
-              return;
-            }
-          }
-        }
-        if (lastReceivedImage != null && lastReceivedImage.isNotEmpty) {
-          hasYieldedFinal = true;
-          yield NaiStreamProgress.finalResult(
-            finalImage: lastReceivedImage,
-            totalSteps: params.effectiveSteps,
-          );
-        }
-      }
-
-      if (!hasYieldedFinal) {
-        yield NaiStreamProgress.error('流式重绘响应已结束，但未收到任何成图数据。');
-      }
+      yield* _executeMsgpackStream(
+        apiKey: apiKey,
+        body: jsonEncode(payload),
+        totalSteps: params.effectiveSteps,
+        httpErrorPrefix: '流式重绘请求失败',
+        streamErrorFallback: '重绘流异常中断',
+        emptyStreamMessage: '流式重绘响应已结束，但未收到任何成图数据。',
+      );
     } finally {
       _lock.release();
+    }
+  }
+
+  Stream<NaiStreamProgress> _executeMsgpackStream({
+    required String apiKey,
+    required String body,
+    required int totalSteps,
+    required String httpErrorPrefix,
+    required String streamErrorFallback,
+    required String emptyStreamMessage,
+  }) async* {
+    final requestHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/x-msgpack',
+      'Authorization': 'Bearer ${apiKey.trim()}',
+      'x-correlation-id': _generateCorrelationId(),
+      'x-initiated-at': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    final uri = Uri.parse(_generateStreamEndpoint);
+
+    http.Request createRequest() {
+      final req = http.Request('POST', uri);
+      req.headers.addAll(requestHeaders);
+      req.body = body;
+      return req;
+    }
+
+    http.StreamedResponse streamedResponse = await _sendWithHandshakeRetry(
+      createRequest,
+    );
+
+    // 429 智能重试：先消费/取消废弃响应流，防止泄漏底层 socket 连接
+    if (streamedResponse.statusCode == 429) {
+      await _discardResponseStream(streamedResponse);
+      await Future.delayed(retryDelay);
+      streamedResponse = await _sendWithHandshakeRetry(createRequest);
+    }
+
+    if (streamedResponse.statusCode != 200) {
+      final errorBytes = await streamedResponse.stream.toBytes().timeout(
+        metaTimeout,
+      );
+      final errorBody = utf8.decode(errorBytes, allowMalformed: true);
+      throw _parseHttpError(
+        http.Response(errorBody, streamedResponse.statusCode),
+        httpErrorPrefix,
+      );
+    }
+
+    final buffer = _ByteFrameBuffer();
+    var messageCount = 0;
+    var hasYieldedFinal = false;
+    Uint8List? lastReceivedImage;
+
+    await for (final chunk in streamedResponse.stream.timeout(
+      streamIdleTimeout,
+    )) {
+      buffer.append(chunk);
+
+      while (buffer.available >= 4) {
+        final messageLength = buffer.peekUint32BE();
+        if (buffer.available < 4 + messageLength) {
+          // 当前包不完整，等待后续数据到达
+          break;
+        }
+
+        final messageBytes = buffer.takeFrame(messageLength);
+        messageCount += 1;
+
+        try {
+          final decoded = msgpack.deserialize(messageBytes);
+          if (decoded is! Map) continue;
+
+          final msgMap = decoded.map(
+            (key, value) => MapEntry(key.toString(), value),
+          );
+
+          final eventType = msgMap['event_type']?.toString();
+          if (eventType == 'error' || msgMap.containsKey('error')) {
+            final err =
+                msgMap['message'] ?? msgMap['error'] ?? streamErrorFallback;
+            yield NaiStreamProgress.error(err.toString());
+            return;
+          }
+
+          final imageBytes = _decodeStreamImage(
+            msgMap['image'] ?? msgMap['data'],
+          );
+          if (imageBytes == null || imageBytes.isEmpty) continue;
+
+          lastReceivedImage = imageBytes;
+
+          if (eventType == 'final') {
+            hasYieldedFinal = true;
+            yield NaiStreamProgress.finalResult(
+              finalImage: imageBytes,
+              totalSteps: totalSteps,
+            );
+          } else if (eventType == null ||
+              eventType.isEmpty ||
+              eventType == 'intermediate') {
+            final stepIx = _asInt(msgMap['step_ix']);
+            final currentStep = stepIx != null ? stepIx + 1 : messageCount;
+            yield NaiStreamProgress.intermediate(
+              previewImage: imageBytes,
+              currentStep: currentStep,
+              totalSteps: totalSteps,
+            );
+          }
+        } catch (_) {
+          // 容错忽略单帧解码失败
+        }
+      }
+    }
+
+    // 检查是否有未处理的 final 事件或降级数据
+    if (!hasYieldedFinal) {
+      if (buffer.available > 0) {
+        final leftoverBytes = buffer.takeRemaining();
+        if (_isZip(leftoverBytes)) {
+          final images = await _extractImagesFromZip(leftoverBytes);
+          if (images.isNotEmpty) {
+            hasYieldedFinal = true;
+            yield NaiStreamProgress.finalResult(
+              finalImage: images.first,
+              totalSteps: totalSteps,
+            );
+            return;
+          }
+        }
+      }
+
+      // 如果流已完成但未显式收到 final 标记，将最后接收到的去噪帧作为最终成图
+      if (lastReceivedImage != null && lastReceivedImage.isNotEmpty) {
+        hasYieldedFinal = true;
+        yield NaiStreamProgress.finalResult(
+          finalImage: lastReceivedImage,
+          totalSteps: totalSteps,
+        );
+      }
+    }
+
+    // 流已结束但既无 final 成图也无任何中间帧：显式报错，避免静默失败
+    if (!hasYieldedFinal) {
+      yield NaiStreamProgress.error(emptyStreamMessage);
+    }
+  }
+
+  Future<void> _discardResponseStream(http.StreamedResponse response) async {
+    final sub = response.stream.listen((_) {}, onError: (_) {});
+    try {
+      await sub.asFuture<void>().timeout(const Duration(seconds: 2));
+    } catch (_) {
+    } finally {
+      await sub.cancel();
     }
   }
 
@@ -524,7 +432,7 @@ class NovelAiService {
       );
 
       if (response.statusCode == 429) {
-        await Future.delayed(const Duration(milliseconds: 2500));
+        await Future.delayed(retryDelay);
         response = await _postWithAuth(_generateEndpoint, apiKey, body);
       }
 
@@ -557,7 +465,7 @@ class NovelAiService {
       ).timeout(_upscaleTimeout);
 
       if (response.statusCode == 429) {
-        await Future.delayed(const Duration(milliseconds: 2500));
+        await Future.delayed(retryDelay);
         response = await _postMultipartUpscale(
           apiKey: apiKey,
           imageBytes: imageBytes,
@@ -574,12 +482,13 @@ class NovelAiService {
       }
 
       // 优先按 ZIP 归档解包；非打包响应则直接作为裸图片字节返回
-      try {
-        final extracted = _extractImagesFromZip(raw);
-        if (extracted.isNotEmpty) return extracted.first;
-      } catch (error) {
-    debugPrint('[ignored] $error');
-        // 非 ZIP 格式，走裸字节回退
+      if (_isZip(raw)) {
+        try {
+          final extracted = await _extractImagesFromZip(raw);
+          if (extracted.isNotEmpty) return extracted.first;
+        } catch (_) {
+          // 非标准 ZIP，走裸字节回退
+        }
       }
       return raw;
     });
@@ -616,8 +525,8 @@ class NovelAiService {
         ),
       );
 
-    final streamed = await _httpClient.send(request);
-    return await http.Response.fromStream(streamed);
+    final streamed = await _httpClient.send(request).timeout(requestTimeout);
+    return await http.Response.fromStream(streamed).timeout(requestTimeout);
   }
 
   /// 查询 Danbooru 标签联想建议
@@ -637,7 +546,7 @@ class NovelAiService {
     try {
       final response = await _httpClient
           .get(uri, headers: {'Authorization': 'Bearer ${apiKey.trim()}'})
-          .timeout(_lightTimeout);
+        .timeout(metaTimeout);
 
       if (response.statusCode != 200) {
         return [];
@@ -665,7 +574,7 @@ class NovelAiService {
     final uri = Uri.parse(_userDataEndpoint);
     final response = await _httpClient
         .get(uri, headers: {'Authorization': 'Bearer ${apiKey.trim()}'})
-        .timeout(_lightTimeout);
+        .timeout(metaTimeout);
 
     if (response.statusCode != 200) {
       throw _parseHttpError(response, '查询账号信息失败');
@@ -691,35 +600,15 @@ class NovelAiService {
           },
           body: body,
         )
-        .timeout(_postTimeout);
+        .timeout(requestTimeout);
   }
 
-  List<Uint8List> _extractImagesFromZip(Uint8List zipBytes) {
+  Future<List<Uint8List>> _extractImagesFromZip(Uint8List zipBytes) async {
     try {
-      final archive = ZipDecoder().decodeBytes(zipBytes);
-      final images = <Uint8List>[];
-
-      for (final file in archive) {
-        if (file.isFile && file.name.toLowerCase().endsWith('.png')) {
-          final content = file.content;
-          if (content is List<int>) {
-            images.add(Uint8List.fromList(content));
-          }
-        }
-      }
-
-      if (images.isEmpty && archive.isNotEmpty) {
-        final first = archive.first;
-        if (first.isFile && first.content is List<int>) {
-          images.add(Uint8List.fromList(first.content as List<int>));
-        }
-      }
-
-      if (images.isEmpty) {
-        throw Exception('压缩包内未找到有效图像文件。');
-      }
-
-      return images;
+      return await runIsolated(
+        _extractImagesFromZipIsolate,
+        IsolateBytes(zipBytes),
+      );
     } catch (e) {
       throw Exception('解析图片数据流失败: $e');
     }
@@ -752,10 +641,6 @@ class NovelAiService {
     ).join();
   }
 
-  static int _readLength(List<int> bytes) {
-    return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
-  }
-
   static bool _isZip(List<int> bytes) {
     return bytes.length > 4 && bytes[0] == 0x50 && bytes[1] == 0x4B;
   }
@@ -785,4 +670,97 @@ class NovelAiService {
     }
     return null;
   }
+}
+
+class _ByteFrameBuffer {
+  Uint8List _buffer = Uint8List(4096);
+  int _readOffset = 0;
+  int _writeOffset = 0;
+
+  int get available => _writeOffset - _readOffset;
+
+  void append(List<int> chunk) {
+    if (chunk.isEmpty) return;
+    final rem = available;
+    final needed = rem + chunk.length;
+    if (_writeOffset + chunk.length > _buffer.length) {
+      if (needed <= _buffer.length) {
+        if (rem > 0) {
+          _buffer.setRange(0, rem, _buffer, _readOffset);
+        }
+        _readOffset = 0;
+        _writeOffset = rem;
+      } else {
+        var newCap = _buffer.length * 2;
+        while (newCap < needed) {
+          newCap *= 2;
+        }
+        final next = Uint8List(newCap);
+        if (rem > 0) {
+          next.setRange(0, rem, _buffer, _readOffset);
+        }
+        _buffer = next;
+        _readOffset = 0;
+        _writeOffset = rem;
+      }
+    }
+    _buffer.setRange(_writeOffset, _writeOffset + chunk.length, chunk);
+    _writeOffset += chunk.length;
+  }
+
+  int peekUint32BE() {
+    return (_buffer[_readOffset] << 24) |
+        (_buffer[_readOffset + 1] << 16) |
+        (_buffer[_readOffset + 2] << 8) |
+        _buffer[_readOffset + 3];
+  }
+
+  Uint8List takeFrame(int messageLength) {
+    final start = _readOffset + 4;
+    final end = start + messageLength;
+    final frame = _buffer.sublist(start, end);
+    _readOffset = end;
+    if (_readOffset == _writeOffset) {
+      _readOffset = 0;
+      _writeOffset = 0;
+    }
+    return frame;
+  }
+
+  Uint8List takeRemaining() {
+    if (available <= 0) return Uint8List(0);
+    final out = _buffer.sublist(_readOffset, _writeOffset);
+    _readOffset = 0;
+    _writeOffset = 0;
+    return out;
+  }
+}
+
+List<Uint8List> _extractImagesFromZipIsolate(IsolateBytes packed) {
+  final zipBytes = packed.materialize();
+  final archive = ZipDecoder().decodeBytes(zipBytes);
+  final images = <Uint8List>[];
+
+  for (final file in archive) {
+    if (file.isFile && file.name.toLowerCase().endsWith('.png')) {
+      final content = file.content;
+      if (content is List<int>) {
+        images.add(content is Uint8List ? content : Uint8List.fromList(content));
+      }
+    }
+  }
+
+  if (images.isEmpty && archive.isNotEmpty) {
+    final first = archive.first;
+    if (first.isFile && first.content is List<int>) {
+      final content = first.content as List<int>;
+      images.add(content is Uint8List ? content : Uint8List.fromList(content));
+    }
+  }
+
+  if (images.isEmpty) {
+    throw Exception('压缩包内未找到有效图像文件。');
+  }
+
+  return images;
 }

@@ -40,7 +40,8 @@ class AgentHarness {
   bool compactionEnabled = true;
   bool backgroundCompactionEnabled = true;
 
-  /// 历史图片每轮重发；关闭时折叠为占位符省 Token。
+  /// 图片持久发送：关闭时历史轮次的图片折叠为占位符 (默认，省 Token
+  /// 且保住提示缓存前缀)；开启后历史图片每轮原样重发，模型可直接回看。
   bool persistentImages = false;
   LlmProvider? compactionProvider;
   int compactionModelWindowTokens = 128000;
@@ -55,6 +56,7 @@ class AgentHarness {
   int _usageFloor = 0;
   String? _compactionError;
   int _lastBackgroundSize = -1;
+  _ContextUsageCache? _cachedContextUsage;
 
   /// 当前模型的上下文窗口大小 (Token)，由 ViewModel 装配时按模型卡片写入
   int contextWindowTokens = 128000;
@@ -181,6 +183,37 @@ class AgentHarness {
       '[图片附件已折叠: 图片数据已在当时的轮次展示过，此处不再重复发送。'
       '如需再次查看画板图片，请调用 view_canvas_image 工具]';
 
+  /// 是否启用精简工具表面（CodeMode 双轨模式）：
+  /// 开启后仅向模型发送高频核心工具的完整 JSON Schema，其余预设已启用的
+  /// 二级工具以单行索引附于系统提示词，由 `run_pipeline` 批量编排或
+  /// `describe_tools` 按需展开，显著降低每轮 Schema Token 开销并稳定前缀缓存。
+  bool compactToolSurface = false;
+
+  static const Set<String> defaultPrimaryToolNames = {
+    'update_studio_parameters',
+    'novelai_generate',
+    'novelai_inpaint',
+    'view_canvas_image',
+    'ask_user',
+    'load_skill',
+    'run_pipeline',
+    'describe_tools',
+  };
+
+  Set<String>? _activeAllowedToolNames;
+
+  /// 当前运行周期内的工具执行许可检查
+  /// （兼顾轮次起始权限冻结与当前预设白名单；基础工具始终放行）
+  bool isToolExecutionAllowed(String toolName) {
+    if (!_isToolAllowed(toolName)) return false;
+    final active = _activeAllowedToolNames;
+    if (active != null && !active.contains(toolName)) return false;
+    return true;
+  }
+
+  /// 当前调度循环是否已被中断
+  bool get isRunCancelled => _activeRun?.isCancelled ?? false;
+
   /// 切换当前激活的预设
   void setPreset(AgentPreset preset) {
     currentPreset = preset;
@@ -214,8 +247,57 @@ class AgentHarness {
   /// 供工具自检复用的统一权限判断（与请求侧白名单保持一致）。
   bool isToolAllowed(String name) => _isToolAllowed(name);
 
+  /// 预设当前可用的工具集合（基础工具始终可用，不受预设白名单限制）。
+  List<AgentTool> _enabledToolsForPreset(AgentPreset preset) => tools
+      .getAll()
+      .where(
+        (tool) =>
+            _alwaysAllowedTools.contains(tool.name) ||
+            preset.isToolEnabled(tool.name),
+      )
+      .toList();
+
+  bool _shouldUseCompactToolSurface(List<AgentTool> enabledTools) {
+    if (!compactToolSurface) return false;
+    final hasBridge = enabledTools.any(
+      (t) => t.name == 'run_pipeline' || t.name == 'describe_tools',
+    );
+    if (!hasBridge) return false;
+    return enabledTools.any(
+      (t) => t.usesCompactSurface && !defaultPrimaryToolNames.contains(t.name),
+    );
+  }
+
+  List<AgentTool> _resolveProviderTools(List<AgentTool> enabledTools) {
+    if (!_shouldUseCompactToolSurface(enabledTools)) return enabledTools;
+    return enabledTools
+        .where(
+          (t) =>
+              !t.usesCompactSurface || defaultPrimaryToolNames.contains(t.name),
+        )
+        .toList();
+  }
+
+  static String _formatCompactToolSignature(AgentTool tool) {
+    final props = tool.parameters['properties'];
+    final requiredList = tool.parameters['required'];
+    final requiredSet = requiredList is List
+        ? requiredList.map((e) => e.toString()).toSet()
+        : const <String>{};
+    if (props is! Map || props.isEmpty) {
+      return '${tool.name}(): ${tool.label}';
+    }
+    final args = props.keys
+        .map((k) {
+          final name = k.toString();
+          return requiredSet.contains(name) ? name : '$name?';
+        })
+        .join(', ');
+    return '${tool.name}($args): ${tool.label}';
+  }
+
   /// 构建本轮对话的完整系统提示词
-  /// (预设人设/工作流 + Pi 标准 available_skills 按需加载声明)
+  /// (预设人设/工作流 + Pi 标准 available_skills 按需加载声明 + 精简二级工具索引)
   String buildSystemPrompt(AgentPreset preset) {
     final buffer = StringBuffer(preset.systemPrompt.trim());
     final enabledSkills = preset.enabledSkillIds
@@ -232,6 +314,26 @@ class AgentHarness {
         buffer.writeln('\n\n$skillsXml');
       }
     }
+    final enabledTools = _enabledToolsForPreset(preset);
+    if (_shouldUseCompactToolSurface(enabledTools)) {
+      final secondary = enabledTools
+          .where(
+            (t) =>
+                t.usesCompactSurface &&
+                !defaultPrimaryToolNames.contains(t.name),
+          )
+          .toList();
+      if (secondary.isNotEmpty) {
+        buffer.writeln('\n<secondary_tools>');
+        buffer.writeln(
+          '以下二级工具（含已接入的 MCP 外部工具）已启用但未展开完整 Schema。请优先用 `run_pipeline` 直接编排执行（支持 @step.tags、vars.join 拼装与 filter 过滤），或先调用 `describe_tools` 查看精确参数：',
+        );
+        for (final tool in secondary) {
+          buffer.writeln('- ${_formatCompactToolSignature(tool)}');
+        }
+        buffer.write('</secondary_tools>');
+      }
+    }
     buffer.writeln(
       '\n每条助手回复由系统注入稳定的 [回复 #编号] 引用标记，正文中禁止输出、'
       '回显或以任何形式重复该标记。'
@@ -239,7 +341,14 @@ class AgentHarness {
       '按编号读取或释放旧回复；清理请用 ids 数组一次批量处理，不要逐条多次调用。'
       '释放不删除用户原文；请先记录必要结论。',
     );
-    if (tools.getAll().any((tool) => tool.name == PresetToolKeys.library)) {
+    if (enabledTools.any((t) => t.name == 'prompt_library')) {
+      buffer.writeln(
+        '若用户消息末尾附带 <library_characters>，表示系统已自动关联本地词库角色，'
+        '请直接采用其提示词设定，无需让用户提醒去查词库；若提及未自动关联的自定义角色名，'
+        '可主动调用 prompt_library(action: "search", category: "角色") 查询。',
+      );
+    }
+    if (enabledTools.any((tool) => tool.name == PresetToolKeys.libraryQuery)) {
       buffer.writeln(
         '\n用户资料库里可能有角色设定、世界观或参考文档。需要依据这些资料时，'
         '调用 library_query 工具：先用 tree 或 find 查看深层文件路径，'
@@ -249,7 +358,7 @@ class AgentHarness {
     }
     final memoryEntries = _memoryEntriesForPrompt();
     if (memoryEntries.isNotEmpty ||
-        tools.getAll().any(
+        enabledTools.any(
           (tool) =>
               tool.name == PresetToolKeys.memory ||
               tool.name == PresetToolKeys.reflection,
@@ -298,23 +407,32 @@ class AgentHarness {
 
   /// 发送用户消息并启动 Agent 循环流
   /// [images] 为可选的用户图片附件 (粘贴/上传，随消息发送给视觉模型)
+  /// [llmContext] 为仅发送给 LLM 的附加上下文（如自动关联的词库角色设定）
   Stream<HarnessEvent> send(
     String userText, {
     double temperature = 0.7,
     List<AgentMessageImage>? images,
+    String? llmContext,
   }) {
     final hasImages = images != null && images.isNotEmpty;
     if (userText.trim().isEmpty && !hasImages) return const Stream.empty();
     if (_activeRun != null) throw StateError('Agent 已在运行');
     final run = _HarnessRun();
     _activeRun = run;
-    return _send(userText, temperature: temperature, images: images, run: run);
+    return _send(
+      userText,
+      temperature: temperature,
+      images: images,
+      llmContext: llmContext,
+      run: run,
+    );
   }
 
   Stream<HarnessEvent> _send(
     String userText, {
     required double temperature,
     List<AgentMessageImage>? images,
+    String? llmContext,
     required _HarnessRun run,
   }) async* {
     try {
@@ -325,11 +443,15 @@ class AgentHarness {
       // 1. 记录用户消息
       final userMsgId =
           'user_${DateTime.now().microsecondsSinceEpoch}_$_sendEpoch';
+      final trimmedContext = llmContext?.trim();
       final userMsg = AgentMessage(
         id: userMsgId,
         role: AgentRole.user,
         content: userText.trim(),
         images: images ?? const [],
+        llmContext: trimmedContext != null && trimmedContext.isNotEmpty
+            ? trimmedContext
+            : null,
         imageEpoch: _sendEpoch,
       );
       _messages.add(userMsg);
@@ -345,12 +467,11 @@ class AgentHarness {
 
       // 2. 一次性构建本轮上下文：系统提示词与工具白名单在循环内保持不变
       final systemPrompt = buildSystemPrompt(currentPreset);
-      final activeTools = tools
-          .getAll()
-          .where((tool) => _isToolAllowed(tool.name))
-          .toList();
+      final enabledTools = _enabledToolsForPreset(currentPreset);
+      final activeTools = _resolveProviderTools(enabledTools);
 
-      final allowedToolNames = activeTools.map((tool) => tool.name).toSet();
+      final allowedToolNames = enabledTools.map((tool) => tool.name).toSet();
+      _activeAllowedToolNames = allowedToolNames;
 
       // 长程执行循环：
       // - 每轮流式请求对瞬态错误 (网络抖动 / 429 / 5xx / 流中断 / 空响应)
@@ -400,8 +521,8 @@ class AgentHarness {
           yield TurnStartEvent(assistantMsgId);
           if (run.isCancelled) return;
 
-          String content = '';
-          String thoughts = '';
+          final contentBuffer = StringBuffer();
+          final thoughtsBuffer = StringBuffer();
           String? thoughtSignature;
           List<ReasoningRecord> reasoningRecords = const [];
           // 流式增量里的回复标记过滤：UI 与入库正文都不会看到回显的标记
@@ -424,7 +545,7 @@ class AgentHarness {
             if (event is ThoughtDeltaEvent) {
               final chunk = thoughtFilter.add(event.delta);
               if (chunk.isNotEmpty) {
-                thoughts += chunk;
+                thoughtsBuffer.write(chunk);
                 yield ThoughtDeltaEvent(chunk);
               }
             } else if (event is ThoughtSignatureEvent) {
@@ -438,7 +559,7 @@ class AgentHarness {
             } else if (event is ContentDeltaEvent) {
               final chunk = contentFilter.add(event.delta);
               if (chunk.isNotEmpty) {
-                content += chunk;
+                contentBuffer.write(chunk);
                 yield ContentDeltaEvent(chunk);
               }
             } else if (event is ToolCallEvent) {
@@ -463,14 +584,17 @@ class AgentHarness {
           // 流结束：冲刷被扣在过滤缓冲里的尾巴 (残缺标记直接丢弃)
           final contentTail = contentFilter.flush();
           if (contentTail.isNotEmpty) {
-            content += contentTail;
+            contentBuffer.write(contentTail);
             yield ContentDeltaEvent(contentTail);
           }
           final thoughtTail = thoughtFilter.flush();
           if (thoughtTail.isNotEmpty) {
-            thoughts += thoughtTail;
+            thoughtsBuffer.write(thoughtTail);
             yield ThoughtDeltaEvent(thoughtTail);
           }
+
+          final content = contentBuffer.toString();
+          final thoughts = thoughtsBuffer.toString();
 
           if (run.isCancelled) {
             // 保存已显示的半截正文/思考，不把尚未执行的工具调用写入协议历史。
@@ -620,6 +744,7 @@ class AgentHarness {
                   await run.wait(tool.execute(call.id, call.arguments)) ??
                   ToolResult(
                     toolCallId: call.id,
+                    toolName: call.name,
                     content: '用户已中断；已启动的外部操作可能仍在执行。',
                     isError: true,
                   );
@@ -674,6 +799,7 @@ class AgentHarness {
         // 继续下一轮循环，让 LLM 根据工具结果生成最终回答
       }
     } finally {
+      _activeAllowedToolNames = null;
       run.cancel();
       if (identical(_activeRun, run)) _activeRun = null;
       onContextChanged?.call();
@@ -708,15 +834,6 @@ class AgentHarness {
       );
     }
 
-    if (memory.prompt.isNotEmpty) {
-      result.add(
-        AgentMessage(
-          id: 'context_notes',
-          role: AgentRole.user,
-          content: memory.prompt,
-        ),
-      );
-    }
     final forgottenToolIds = <String>{};
     for (var i = _contextStartIndex; i < _messages.length; i++) {
       var m = _messages[i];
@@ -745,7 +862,16 @@ class AgentHarness {
           content: '[回复 #${m.replyNumber}]\n${stripReplyMarkers(m.content)}',
         );
       }
+      if (m.role == AgentRole.user &&
+          m.llmContext != null &&
+          m.llmContext!.isNotEmpty) {
+        final merged = m.content.isEmpty
+            ? m.llmContext!
+            : '${m.content}\n\n${m.llmContext!}';
+        m = m.copyWith(content: merged);
+      }
       // 本轮新产生的图片原样发送；更早轮次的图片折叠为占位符
+      // (persistentImages 开启时全部原样发送，不折叠)
       if (persistentImages ||
           m.imageEpoch == _sendEpoch ||
           !m.hasVisionImages) {
@@ -753,6 +879,16 @@ class AgentHarness {
       } else {
         result.add(m.withVisionImagesCollapsed(_kCollapsedImagePlaceholder));
       }
+    }
+    // 会话笔记放在消息窗口末尾，避免增删笔记击穿历史消息的 KV 前缀缓存。
+    if (memory.prompt.isNotEmpty) {
+      result.add(
+        AgentMessage(
+          id: 'context_notes',
+          role: AgentRole.user,
+          content: memory.prompt,
+        ),
+      );
     }
     return _pruneOrphanToolMessages(result);
   }
@@ -765,27 +901,29 @@ class AgentHarness {
   static const int _estimatedImageTokens = 1200;
 
   int _estimateMessageTokens(AgentMessage m) {
-    var chars = m.content.length + m.thoughts.length;
+    var tokens =
+        _estimateTextTokens(m.content) +
+        _estimateTextTokens(m.thoughts) +
+        _estimateTextTokens(m.llmContext ?? '');
     // 跨轮回放的推理项也随请求原样重发，必须计入估算：
-    // 明文按 chars/4；加密载荷是 base64，先反推原始字节数再除 4。
+    // 明文按文本估算；加密载荷是 base64，先反推原始字节数再除 4。
     for (final record in m.reasoningRecords) {
       final encrypted = record.encryptedContent;
       if (encrypted != null && encrypted.isNotEmpty) {
-        chars += (encrypted.length * 3 / 4).round();
+        tokens += ((encrypted.length * 3 / 4) / 4).ceil();
       } else {
-        chars += record.plaintext.length;
+        tokens += _estimateTextTokens(record.plaintext);
       }
     }
     if (m.hasVisionImages) {
-      chars += _estimatedImageTokens * 4 * m.images.length;
-      if (m.role == AgentRole.tool) chars += _estimatedImageTokens * 4;
+      tokens += _estimatedImageTokens * m.images.length;
+      if (m.role == AgentRole.tool) tokens += _estimatedImageTokens;
     }
     for (final tc in m.toolCalls ?? const <ToolCall>[]) {
-      chars += tc.name.length + jsonEncode(tc.arguments).length;
+      tokens += _estimateTextTokens(tc.name) +
+          _estimateTextTokens(jsonEncode(tc.arguments));
     }
-    return (chars / 4).ceil() +
-        _estimateTextTokens(m.content) -
-        (m.content.length / 4).ceil();
+    return tokens;
   }
 
   /// 估算当前请求上下文的 Token 总量。
@@ -811,14 +949,12 @@ class AgentHarness {
     }
     final prompt = systemPrompt ?? buildSystemPrompt(currentPreset);
     final request = _buildRequestMessages(prompt);
-    final toolTokens = tools
-        .getAll()
-        .where((t) => _isToolAllowed(t.name))
-        .fold<int>(
-          0,
-          (sum, t) =>
-              sum + _estimateTextTokens(jsonEncode(t.toOpenAiFunction())),
-        );
+    final toolTokens = _resolveProviderTools(
+      _enabledToolsForPreset(currentPreset),
+    ).fold<int>(
+      0,
+      (sum, t) => sum + _estimateTextTokens(jsonEncode(t.toOpenAiFunction())),
+    );
     final protocolTokens = switch (provider) {
       LlmRequestOverhead(:final requestProtocolPrompt) => _estimateTextTokens(
         requestProtocolPrompt,
@@ -936,20 +1072,22 @@ class AgentHarness {
       '## 关键决定\n- **[决定]**: [原因]\n'
       '## 下一步\n1. ...\n'
       '## 关键上下文\n[接续工作必需的具体信息]\n\n'
-      '要求：每节保持精炼；完整保留提示词文本、生图参数、图片索引、批注坐标、'
-      '报错原文等关键细节；不要遗漏未完成的请求。';
+      '要求：每节保持精炼；用中性客观的概括保留创意意图、生图参数、图片索引、批注坐标、'
+      '报错原文与回复编号（如需引用原提示词直接标注可在工作台查询或保留关键标签，避免大段复述敏感细节）；不要遗漏未完成的请求。';
 
   /// 调用当前 LLM 生成 (或迭代更新) 压缩摘要。
   /// 失败或空摘要返回 null，此时放弃压缩 (绝不破坏现有上下文)。
   Future<String?> _generateSummary(
     List<AgentMessage> toSummarize, {
+    String? preSerializedConversation,
     String? previousSummary,
     _HarnessRun? run,
   }) async {
     final p = compactionProvider ?? provider;
     if (p == null) return null;
 
-    final conversationText = _serializeForSummary(toSummarize);
+    final conversationText =
+        preSerializedConversation ?? _serializeForSummary(toSummarize);
     final buffer = StringBuffer();
     buffer.write('<conversation>\n$conversationText</conversation>\n\n');
     if (previousSummary != null) {
@@ -976,7 +1114,7 @@ class AgentHarness {
       ),
     ];
 
-    String summary = '';
+    final summaryBuffer = StringBuffer();
     final stream = p.streamChat(
       messages: requestMessages,
       tools: const <AgentTool>[],
@@ -987,7 +1125,7 @@ class AgentHarness {
           compactionTimeout,
         )) {
       if (event is ContentDeltaEvent) {
-        summary += event.delta;
+        summaryBuffer.write(event.delta);
       } else if (event is UsageEvent) {
         if (!(run?.isCancelled ?? false)) {
           onCompactionUsage?.call(event.usage, p.modelId);
@@ -996,7 +1134,7 @@ class AgentHarness {
         return null;
       }
     }
-    final trimmed = summary.trim();
+    final trimmed = summaryBuffer.toString().trim();
     return trimmed.isEmpty ? null : trimmed;
   }
 
@@ -1099,6 +1237,61 @@ class AgentHarness {
   }
 }
 
+class _ContextUsageCache {
+  final int messageCount;
+  final AgentMessage? lastMessage;
+  final TokenUsage? lastUsage;
+  final int contextStartIndex;
+  final int usageFloor;
+  final int contextRevision;
+  final int contextWindowTokens;
+  final AgentPreset preset;
+  final bool compactToolSurface;
+  final LlmProvider? provider;
+  final Future<CompactionEvent?>? pendingCompaction;
+  final int noteCount;
+  final int forgottenCount;
+  final String? compactionSummary;
+  final String? compactionError;
+  final ContextUsage value;
+
+  const _ContextUsageCache({
+    required this.messageCount,
+    required this.lastMessage,
+    required this.lastUsage,
+    required this.contextStartIndex,
+    required this.usageFloor,
+    required this.contextRevision,
+    required this.contextWindowTokens,
+    required this.preset,
+    required this.compactToolSurface,
+    required this.provider,
+    required this.pendingCompaction,
+    required this.noteCount,
+    required this.forgottenCount,
+    required this.compactionSummary,
+    required this.compactionError,
+    required this.value,
+  });
+
+  bool matches(AgentHarness h) =>
+      messageCount == h._messages.length &&
+      identical(lastMessage, h._messages.lastOrNull) &&
+      identical(lastUsage, h._messages.lastOrNull?.usage) &&
+      contextStartIndex == h._contextStartIndex &&
+      usageFloor == h._usageFloor &&
+      contextRevision == h._contextRevision &&
+      contextWindowTokens == h.contextWindowTokens &&
+      identical(preset, h.currentPreset) &&
+      compactToolSurface == h.compactToolSurface &&
+      identical(provider, h.provider) &&
+      identical(pendingCompaction, h._pendingCompaction) &&
+      noteCount == h.memory.notes.length &&
+      forgottenCount == h.memory.forgottenReplies.length &&
+      compactionSummary == h._compactionSummary &&
+      compactionError == h._compactionError;
+}
+
 /// 每轮独立的取消信号，不依赖 async* 的 subscription.cancel 等待上游返回。
 class _HarnessRun {
   final Completer<void> _cancelled = Completer<void>();
@@ -1108,18 +1301,38 @@ class _HarnessRun {
     if (!isCancelled) _cancelled.complete();
   }
 
-  Future<T?> wait<T>(Future<T> work) =>
-      Future.any<T?>([work, _cancelled.future.then<T?>((_) => null)]);
+  Future<T?> wait<T>(Future<T> work) {
+    if (isCancelled) {
+      unawaited(work.then<void>((_) {}, onError: (Object _) {}));
+      return Future<T?>.value(null);
+    }
+    final completer = Completer<T?>();
+    work.then(
+      (value) {
+        if (!completer.isCompleted) completer.complete(value);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completer.isCompleted && !isCancelled) {
+          completer.completeError(error, stackTrace);
+        }
+      },
+    );
+    unawaited(
+      _cancelled.future.then((_) {
+        if (!completer.isCompleted) completer.complete(null);
+      }),
+    );
+    return completer.future;
+  }
 
   Stream<T> events<T>(Stream<T> source) {
     late final StreamController<T> controller;
     StreamSubscription<T>? subscription;
     void cancelSource() {
-      final current = subscription;
-      subscription = null;
       // 上游可能阻塞在网络或 async* await；清理不能反向阻塞中断。
-      if (current != null) {
-        unawaited(current.cancel().catchError((Object _) {}));
+      if (subscription != null) {
+        unawaited(subscription!.cancel().catchError((Object _) {}));
+        subscription = null;
       }
     }
 
@@ -1138,7 +1351,10 @@ class _HarnessRun {
               controller.addError(error, stack);
             }
           },
-          onDone: () => unawaited(controller.close()),
+          onDone: () {
+            subscription = null;
+            if (!controller.isClosed) unawaited(controller.close());
+          },
         );
         // 每个请求仅注册一次取消监听，不按流式 token 累积 Future 回调。
         unawaited(

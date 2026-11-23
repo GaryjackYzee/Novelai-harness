@@ -71,15 +71,17 @@ class AppFloatingDock extends StatelessWidget {
         border: Border.all(color: effectiveBorder),
         boxShadow: effectiveShadows,
       ),
-      child: child,
+      child: Material(type: MaterialType.transparency, child: child),
     );
 
     if (enableBlur) {
-      content = ClipRRect(
-        borderRadius: borderRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: content,
+      content = RepaintBoundary(
+        child: ClipRRect(
+          borderRadius: borderRadius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+            child: content,
+          ),
         ),
       );
     }

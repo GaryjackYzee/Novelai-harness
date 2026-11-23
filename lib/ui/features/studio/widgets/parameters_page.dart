@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../../data/models/comfyui_models.dart';
 import '../../../../data/models/novelai_models.dart';
 import '../../../../data/services/network_proxy_service.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../core/widgets/app_async_icon_button.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_collapsible_section.dart';
 import '../../../core/widgets/app_dropdown.dart';
+import '../../../core/widgets/app_icon_button.dart';
 import '../../../core/widgets/app_number_slider.dart';
 import '../../../core/widgets/app_segmented_controls.dart';
 import '../../../core/widgets/app_setting_tile.dart';
+import '../../../core/widgets/app_transitions.dart';
 import '../../../core/widgets/overlay_anchor.dart';
 import '../view_models/studio_view_model.dart';
 import 'proxy_feature_switch.dart';
@@ -104,7 +107,7 @@ class _ParametersPageState extends State<ParametersPage> {
             const SizedBox(height: 10),
 
             // 0. 生成后端切换 (NovelAI 官方接口 ↔ ComfyUI AI Bridge)
-            AppSegmentedPillBar<String>(
+            AppSegmentedCardBar<String>(
               items: [
                 AppSegmentedItem(
                   value: 'novelai',
@@ -151,7 +154,7 @@ class _ParametersPageState extends State<ParametersPage> {
                 const SizedBox(height: 8),
                 SectionHeader(l10n.paramsEffort),
                 const SizedBox(height: 8),
-                AppSegmentedPillBar<NaiEffort>(
+                AppSegmentedCardBar<NaiEffort>(
                   items: [
                     AppSegmentedItem(
                       value: NaiEffort.high,
@@ -166,17 +169,24 @@ class _ParametersPageState extends State<ParametersPage> {
                   expand: true,
                   onValueChanged: viewModel.setEffort,
                 ),
-                if (params.isMediumEffort) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.paramsEffortMediumHint,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: context.colors.textSecondary,
+                AppPanelReveal(
+                  visible: params.isMediumEffort,
+                  openDuration: AppMotionDurations.fast,
+                  closeDuration: AppMotionDurations.quick,
+                  slideOffset: AppMotionDistances.base,
+                  enableBlur: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      l10n.paramsEffortMediumHint,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: context.colors.textSecondary,
+                      ),
                     ),
                   ),
-                ],
+                ),
               ],
             ],
             const SizedBox(height: 10),
@@ -284,7 +294,7 @@ class _SeedAndSamplerRowState extends State<_SeedAndSamplerRow> {
               SectionHeader(l10n.paramsSectionSeed),
               const SizedBox(height: 8),
               Container(
-                height: 40,
+                height: 38,
                 padding: const EdgeInsets.only(left: 10, right: 4),
                 decoration: BoxDecoration(
                   color: colors.cardBackground,
@@ -359,9 +369,14 @@ class _SeedAndSamplerRowState extends State<_SeedAndSamplerRow> {
                           _buttonKey,
                         ),
                         borderRadius: BorderRadius.circular(AppRadius.sm),
-                        child: Container(
-                          width: 32,
-                          height: 32,
+                        child: AnimatedContainer(
+                          duration: AppMotion.resolveDuration(
+                            context,
+                            AppMotionDurations.quick,
+                          ),
+                          curve: AppMotionCurves.smoothOut,
+                          width: 30,
+                          height: 30,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: params.seedMode == NaiSeedMode.fixed
@@ -369,12 +384,16 @@ class _SeedAndSamplerRowState extends State<_SeedAndSamplerRow> {
                                 : colors.primaryTint,
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
-                          child: Icon(
-                            _modeIcon(params.seedMode),
-                            size: 16,
-                            color: params.seedMode == NaiSeedMode.fixed
-                                ? colors.textSecondary
-                                : colors.primary,
+                          child: AppIconSwap(
+                            swapKey: params.seedMode,
+                            enableBlur: false,
+                            child: Icon(
+                              _modeIcon(params.seedMode),
+                              size: 16,
+                              color: params.seedMode == NaiSeedMode.fixed
+                                  ? colors.textSecondary
+                                  : colors.primary,
+                            ),
                           ),
                         ),
                       ),
@@ -418,233 +437,119 @@ void _showSeedSettingsMenu(
   StudioViewModel viewModel,
   GlobalKey buttonKey,
 ) {
-  final overlay = Overlay.maybeOf(context, rootOverlay: true);
-  if (overlay == null) return;
-
-  final renderBox = buttonKey.currentContext?.findRenderObject() as RenderBox?;
-  if (renderBox == null) return;
-
-  // 按钮窗口全局坐标 → 根 Overlay 布局坐标 (UI 缩放感知，zoom=1 时恒等)
-  final buttonTopLeft = globalToOverlayPosition(
-    overlay,
-    renderBox.localToGlobal(Offset.zero),
+  final anchorContext = buttonKey.currentContext ?? context;
+  showAnchoredPopover<void>(
+    context: anchorContext,
+    preferAbove: false,
+    gap: 4,
+    minWidth: 248,
+    maxWidth: 248,
+    maxHeight: 380,
+    builder: (_) => _SeedSettingsOverlay(viewModel: viewModel),
   );
-  final position = Offset(
-    buttonTopLeft.dx,
-    buttonTopLeft.dy + renderBox.size.height + 4,
-  );
-
-  late final OverlayEntry entry;
-  var removed = false;
-  void dismiss() {
-    if (removed) return;
-    removed = true;
-    if (entry.mounted) entry.remove();
-  }
-
-  entry = OverlayEntry(
-    builder: (_) => _SeedSettingsOverlay(
-      position: position,
-      buttonWidth: renderBox.size.width,
-      viewModel: viewModel,
-      onDismiss: dismiss,
-    ),
-  );
-  overlay.insert(entry);
 }
 
-class _SeedSettingsOverlay extends StatefulWidget {
-  final Offset position;
-  final double buttonWidth;
+class _SeedSettingsOverlay extends StatelessWidget {
   final StudioViewModel viewModel;
-  final VoidCallback onDismiss;
 
-  const _SeedSettingsOverlay({
-    required this.position,
-    required this.buttonWidth,
-    required this.viewModel,
-    required this.onDismiss,
-  });
-
-  @override
-  State<_SeedSettingsOverlay> createState() => _SeedSettingsOverlayState();
-}
-
-class _SeedSettingsOverlayState extends State<_SeedSettingsOverlay> {
-  bool _visible = false;
-  static const double _menuWidth = 248.0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _visible = true);
-    });
-  }
+  const _SeedSettingsOverlay({required this.viewModel});
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final screenSize = MediaQuery.sizeOf(context);
-    final left = (widget.position.dx + widget.buttonWidth - _menuWidth).clamp(
-      8.0,
-      (screenSize.width - _menuWidth - 8.0).clamp(8.0, double.infinity),
-    );
-    final top = widget.position.dy.clamp(
-      8.0,
-      (screenSize.height - 380.0 - 8.0).clamp(8.0, double.infinity),
-    );
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: ListenableBuilder(
+        listenable: viewModel,
+        builder: (context, _) {
+          final params = viewModel.params;
+          final l10n = context.l10n;
 
-    return Shortcuts(
-      shortcuts: const <ShortcutActivator, Intent>{
-        SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          DismissIntent: CallbackAction<DismissIntent>(
-            onInvoke: (_) {
-              widget.onDismiss();
-              return null;
-            },
-          ),
-        },
-        child: FocusScope(
-          autofocus: true,
-          child: Stack(
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 点击背景关闭
-              Positioned.fill(
-                child: Listener(
-                  onPointerSignal: (_) => widget.onDismiss(),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapDown: (_) => widget.onDismiss(),
-                    onSecondaryTapDown: (_) => widget.onDismiss(),
+              // 1. 种子模式
+              _overlayGroupLabel(context, l10n.paramsSeedModeGroup),
+              AppSegmentedCardBar<NaiSeedMode>(
+                items: [
+                  AppSegmentedItem(
+                    value: NaiSeedMode.random,
+                    label: l10n.paramsSeedModeRandomShort,
                   ),
+                  AppSegmentedItem(
+                    value: NaiSeedMode.increase,
+                    label: l10n.paramsSeedModeIncreaseShort,
+                  ),
+                  AppSegmentedItem(
+                    value: NaiSeedMode.fixed,
+                    label: l10n.paramsSeedModeFixedShort,
+                  ),
+                ],
+                selectedValue: params.seedMode,
+                expand: true,
+                itemPadding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 5,
                 ),
+                onValueChanged: viewModel.setSeedMode,
               ),
 
-              // 浮层卡片本体
-              Positioned(
-                left: left,
-                top: top,
-                child: AnimatedOpacity(
-                  opacity: _visible ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 100),
-                  curve: Curves.easeOut,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      width: _menuWidth,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: colors.elevatedBackground,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: colors.borderDefault),
-                        boxShadow: context.shadowElevated,
-                      ),
-                      child: ListenableBuilder(
-                        listenable: widget.viewModel,
-                        builder: (context, _) {
-                          final params = widget.viewModel.params;
-                          final l10n = context.l10n;
+              _overlayDivider(context),
 
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 1. 种子模式
-                              _overlayGroupLabel(l10n.paramsSeedModeGroup),
-                              _buildModeOption(
-                                mode: NaiSeedMode.random,
-                                icon: Icons.eco_rounded,
-                                title: l10n.paramsSeedModeRandomTitle,
-                                subtitle: l10n.paramsSeedModeRandomSubtitle,
-                                isSelected:
-                                    params.seedMode == NaiSeedMode.random,
-                              ),
-                              const SizedBox(height: 2),
-                              _buildModeOption(
-                                mode: NaiSeedMode.increase,
-                                icon: Icons.trending_up_rounded,
-                                title: l10n.paramsSeedModeIncreaseTitle,
-                                subtitle: l10n.paramsSeedModeIncreaseSubtitle,
-                                isSelected:
-                                    params.seedMode == NaiSeedMode.increase,
-                              ),
-                              const SizedBox(height: 2),
-                              _buildModeOption(
-                                mode: NaiSeedMode.fixed,
-                                icon: Icons.lock_outline_rounded,
-                                title: l10n.paramsSeedModeFixedTitle,
-                                subtitle: l10n.paramsSeedModeFixedSubtitle,
-                                isSelected:
-                                    params.seedMode == NaiSeedMode.fixed,
-                              ),
-
-                              _overlayDivider(),
-
-                              // 2. 生成控制
-                              _overlayGroupLabel(l10n.paramsSeedTimingGroup),
-                              AppSegmentedPillBar<NaiSeedTiming>(
-                                items: [
-                                  AppSegmentedItem(
-                                    value: NaiSeedTiming.before,
-                                    label: l10n.paramsSeedTimingBefore,
-                                  ),
-                                  AppSegmentedItem(
-                                    value: NaiSeedTiming.after,
-                                    label: l10n.paramsSeedTimingAfter,
-                                  ),
-                                ],
-                                selectedValue: params.seedTiming,
-                                variant: AppPillVariant.soft,
-                                expand: true,
-                                onValueChanged: widget.viewModel.setSeedTiming,
-                              ),
-
-                              _overlayDivider(),
-
-                              // 3. 原功能与快捷操作
-                              _buildActionRow(
-                                icon: Icons.casino_outlined,
-                                title: l10n.paramsSeedRandomizeNow,
-                                onTap: () {
-                                  final newSeed = generateRandomSeed();
-                                  widget.viewModel.updateParams(
-                                    params.copyWith(seed: newSeed),
-                                  );
-                                },
-                              ),
-
-                              if (params.seed >= 0) ...[
-                                const SizedBox(height: 2),
-                                _buildActionRow(
-                                  icon: Icons.restart_alt_rounded,
-                                  title: l10n.paramsSeedResetRandom,
-                                  onTap: () {
-                                    widget.viewModel.updateParams(
-                                      params.copyWith(seed: -1),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ],
-                          );
-                        },
-                      ),
-                    ),
+              // 2. 生成控制
+              _overlayGroupLabel(context, l10n.paramsSeedTimingGroup),
+              AppSegmentedCardBar<NaiSeedTiming>(
+                items: [
+                  AppSegmentedItem(
+                    value: NaiSeedTiming.before,
+                    label: l10n.paramsSeedTimingBefore,
                   ),
+                  AppSegmentedItem(
+                    value: NaiSeedTiming.after,
+                    label: l10n.paramsSeedTimingAfter,
+                  ),
+                ],
+                selectedValue: params.seedTiming,
+                expand: true,
+                itemPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 5,
                 ),
+                onValueChanged: viewModel.setSeedTiming,
               ),
+
+              _overlayDivider(context),
+
+              // 3. 原功能与快捷操作
+              _buildActionRow(
+                context: context,
+                icon: Icons.casino_outlined,
+                title: l10n.paramsSeedRandomizeNow,
+                onTap: () {
+                  final newSeed = generateRandomSeed();
+                  viewModel.updateParams(params.copyWith(seed: newSeed));
+                },
+              ),
+
+              if (params.seed >= 0) ...[
+                const SizedBox(height: 2),
+                _buildActionRow(
+                  context: context,
+                  icon: Icons.restart_alt_rounded,
+                  title: l10n.paramsSeedResetRandom,
+                  onTap: () {
+                    viewModel.updateParams(params.copyWith(seed: -1));
+                  },
+                ),
+              ],
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _overlayGroupLabel(String text) {
+  Widget _overlayGroupLabel(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
       child: Text(
@@ -658,7 +563,7 @@ class _SeedSettingsOverlayState extends State<_SeedSettingsOverlay> {
     );
   }
 
-  Widget _overlayDivider() {
+  Widget _overlayDivider(BuildContext context) {
     return Container(
       height: 1,
       color: context.colors.borderSubtle,
@@ -666,26 +571,8 @@ class _SeedSettingsOverlayState extends State<_SeedSettingsOverlay> {
     );
   }
 
-  Widget _buildModeOption({
-    required NaiSeedMode mode,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isSelected,
-  }) {
-    return AppOptionCard<NaiSeedMode>(
-      value: mode,
-      isSelected: isSelected,
-      title: title,
-      subtitle: subtitle,
-      icon: icon,
-      radius: 6,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      onTap: () => widget.viewModel.setSeedMode(mode),
-    );
-  }
-
   Widget _buildActionRow({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
@@ -693,10 +580,12 @@ class _SeedSettingsOverlayState extends State<_SeedSettingsOverlay> {
     final colors = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         child: Row(
           children: [
             Icon(icon, size: 15, color: colors.primary),
@@ -768,7 +657,6 @@ class _AdvancedSettingsSection extends StatelessWidget {
           // 1. 删除元数据开关
           AppSettingTile.switchTile(
             title: l10n.paramsStripMetadata,
-            subtitle: l10n.paramsStripMetadataSubtitle,
             value: viewModel.stripMetadata,
             onChanged: (val) => viewModel.setStripMetadata(val),
           ),
@@ -777,31 +665,43 @@ class _AdvancedSettingsSection extends StatelessWidget {
           // 2. 添加水印开关
           AppSettingTile.switchTile(
             title: l10n.paramsAddWatermark,
-            subtitle: l10n.paramsAddWatermarkSubtitle,
             value: viewModel.enableWatermark,
             onChanged: (val) => viewModel.setEnableWatermark(val),
           ),
 
           // 水印 2D 调节面板 (开启时展开)
-          if (viewModel.enableWatermark) ...[
-            const SizedBox(height: 10),
-            WatermarkPadPicker(
-              config: viewModel.watermarkConfig,
-              onChanged: (newCfg) => viewModel.updateWatermarkConfig(newCfg),
-              viewModel: viewModel,
+          AppPanelReveal(
+            visible: viewModel.enableWatermark,
+            openDuration: AppMotionDurations.fast,
+            closeDuration: AppMotionDurations.quick,
+            slideOffset: AppMotionDistances.base,
+            enableBlur: false,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: WatermarkPadPicker(
+                config: viewModel.watermarkConfig,
+                onChanged: (newCfg) => viewModel.updateWatermarkConfig(newCfg),
+                viewModel: viewModel,
+              ),
             ),
-          ],
+          ),
 
           // 3. 保持原图像开关 (当开启删除元数据或添加水印之一时展示)
-          if (showKeepOriginal) ...[
-            const SizedBox(height: 10),
-            AppSettingTile.switchTile(
-              title: l10n.paramsKeepOriginalImage,
-              subtitle: l10n.paramsKeepOriginalImageSubtitle,
-              value: viewModel.keepOriginalImage,
-              onChanged: (val) => viewModel.setKeepOriginalImage(val),
+          AppPanelReveal(
+            visible: showKeepOriginal,
+            openDuration: AppMotionDurations.fast,
+            closeDuration: AppMotionDurations.quick,
+            slideOffset: AppMotionDistances.base,
+            enableBlur: false,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: AppSettingTile.switchTile(
+                title: l10n.paramsKeepOriginalImage,
+                value: viewModel.keepOriginalImage,
+                onChanged: (val) => viewModel.setKeepOriginalImage(val),
+              ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -835,91 +735,87 @@ class _ComfyConnectionCard extends StatelessWidget {
       ComfyUiConnectionStatus.disconnected => l10n.comfyStatusDisconnected,
     };
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colors.borderDefault),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
+    return AppCardResize(
+      alignment: Alignment.topLeft,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.cardBackground,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: colors.borderDefault),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AnimatedContainer(
+                  duration: AppMotion.resolveDuration(
+                    context,
+                    AppMotionDurations.quick,
+                  ),
+                  curve: AppMotionCurves.smoothOut,
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
                   ),
                 ),
-              ),
-              if (status == ComfyUiConnectionStatus.connecting)
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AppTextSwap(
+                    text: statusText,
+                    enableBlur: false,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
                   ),
-                )
-              else
-                IconButton(
-                  icon: Icon(
-                    Icons.refresh,
-                    size: 17,
-                    color: colors.textSecondary,
-                  ),
+                ),
+                AppAsyncIconButton(
+                  isLoading: status == ComfyUiConnectionStatus.connecting,
+                  icon: Icons.refresh_rounded,
+                  size: 26,
+                  iconSize: 16,
+                  variant: AppIconButtonVariant.ghost,
                   tooltip: l10n.dockRefreshTooltip,
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.all(3),
-                  constraints: const BoxConstraints(),
-                  onPressed: () => viewModel.refreshComfyUiStatus(),
+                  onPressed: viewModel.refreshComfyUiStatus,
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            viewModel.config.comfyUiBaseUrl,
-            style: TextStyle(
-              fontSize: 12,
-              fontFamily: 'monospace',
-              color: colors.textSecondary,
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          if (status == ComfyUiConnectionStatus.connected && state != null)
+            const SizedBox(height: 8),
             Text(
-              state.canDrive
-                  ? l10n.comfyBridgeNodeSummary(
-                      state.promptNodeIds.length,
-                      state.resolutionNodeIds.length,
-                      state.paramsNodeIds.length,
-                    )
-                  : l10n.comfyBridgeNoPanelHint,
+              viewModel.config.comfyUiBaseUrl,
               style: TextStyle(
                 fontSize: 12,
-                color: state.canDrive ? colors.textSecondary : colors.warning,
+                fontFamily: 'monospace',
+                color: colors.textSecondary,
               ),
-            )
-          else if (viewModel.comfyLastError != null)
-            Text(
-              viewModel.comfyLastError!,
-              style: TextStyle(fontSize: 12, color: colors.error),
             ),
-        ],
+            const SizedBox(height: 8),
+            if (status == ComfyUiConnectionStatus.connected && state != null)
+              Text(
+                state.canDrive
+                    ? l10n.comfyBridgeNodeSummary(
+                        state.promptNodeIds.length,
+                        state.resolutionNodeIds.length,
+                        state.paramsNodeIds.length,
+                      )
+                    : l10n.comfyBridgeNoPanelHint,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: state.canDrive ? colors.textSecondary : colors.warning,
+                ),
+              )
+            else if (viewModel.comfyLastError != null)
+              Text(
+                viewModel.comfyLastError!,
+                style: TextStyle(fontSize: 12, color: colors.error),
+              ),
+          ],
+        ),
       ),
     );
   }

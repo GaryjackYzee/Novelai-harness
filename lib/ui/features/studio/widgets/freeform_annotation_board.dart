@@ -8,6 +8,10 @@ import '../../../../data/services/image_metadata_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../core/widgets/app_action_button.dart';
+import '../../../core/widgets/app_badge.dart';
+import '../../../core/widgets/app_drop_target_overlay.dart';
+import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_floating_dock.dart';
 import '../../../core/widgets/app_scale_gesture_region.dart';
 import '../view_models/studio_view_model.dart';
@@ -368,10 +372,14 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
   @override
   Widget build(BuildContext context) {
     final viewModel = widget.viewModel;
-    final boardData = viewModel.board.boardData;
-    final colors = context.colors;
 
-    return LayoutBuilder(
+    return ListenableBuilder(
+      listenable: viewModel.board,
+      builder: (context, _) {
+        final boardData = viewModel.board.boardData;
+        final colors = context.colors;
+
+        return LayoutBuilder(
       builder: (context, constraints) {
         if (_viewportSize != constraints.biggest) {
           _viewportSize = constraints.biggest;
@@ -388,11 +396,19 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
           });
         }
 
+        final canAcceptDrop =
+            (ModalRoute.of(context)?.isCurrent ?? true) &&
+            TickerMode.valuesOf(context).enabled;
         return DropTarget(
-          onDragEntered: (_) => setState(() => _isDraggingExternalOver = true),
+          enable: canAcceptDrop,
+          onDragEntered: (_) {
+            if (!canAcceptDrop) return;
+            setState(() => _isDraggingExternalOver = true);
+          },
           onDragExited: (_) => setState(() => _isDraggingExternalOver = false),
           onDragDone: (details) async {
             setState(() => _isDraggingExternalOver = false);
+            if (!canAcceptDrop) return;
             final dropPos = _localToBoard(details.localPosition);
             for (final file in details.files) {
               final bytes = await file.readAsBytes();
@@ -483,15 +499,10 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
                               height: kBoardCanvasSize,
                               color: colors.canvasBackground,
                               child: CustomPaint(
-                                // 网格点阵画在卡片之下，连线画在卡片之上 (前景) 不被图片遮挡
+                                // 网格点阵画在卡片之下，与前景连线分离，避免拖拽节点/连线时重复重绘网格
+                                isComplex: true,
                                 painter: BoardGridPainter(
                                   dotColor: colors.borderHover,
-                                ),
-                                foregroundPainter: BoardWirePainter(
-                                  boardData: boardData,
-                                  liveOverlays: _liveOverlays,
-                                  wireDrag: _wireDrag,
-                                  dragColor: colors.primary,
                                 ),
                                 child: Stack(
                                   clipBehavior: Clip.none,
@@ -570,6 +581,22 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
                                         onUpdateWire: _updateWireFromGlobal,
                                         onEndWire: _endWireDrag,
                                       ),
+
+                                    // 1.3 连线前景层隔离在独立 RepaintBoundary，拖拽时零波及卡片/网格
+                                    Positioned.fill(
+                                      child: IgnorePointer(
+                                        child: RepaintBoundary(
+                                          child: CustomPaint(
+                                            painter: BoardWirePainter(
+                                              boardData: boardData,
+                                              liveOverlays: _liveOverlays,
+                                              wireDrag: _wireDrag,
+                                              dragColor: colors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -579,64 +606,19 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
                       ),
 
                       // 2. 拖入高亮指示器 (外部文件或内部 History 拖入)
-                      if (_isDraggingExternalOver || isInternalDragOver)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: colors.primary.withValues(alpha: 0.10),
-                                border: Border.all(
-                                  color: colors.primary,
-                                  width: 3.0,
-                                ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colors.cardBackground,
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.md,
-                                    ),
-                                    boxShadow: context.shadowElevated,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.file_download_outlined,
-                                        color: colors.primary,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        isInternalDragOver
-                                            ? context.l10n.boardDropInternalHint
-                                            : context
-                                                  .l10n
-                                                  .boardDropExternalHint,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: colors.textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      AppDropTargetOverlay(
+                        isDragging:
+                            _isDraggingExternalOver || isInternalDragOver,
+                        title: isInternalDragOver
+                            ? context.l10n.boardDropInternalHint
+                            : context.l10n.boardDropExternalHint,
+                      ),
 
                       // 3. 顶部居中浮动工具坞
                       Positioned(
                         top: 14,
-                        left: 0,
-                        right: 0,
+                        left: 12,
+                        right: 12,
                         child: Center(
                           child: BoardAnnotationToolbar(
                             toolMode: _toolMode,
@@ -671,6 +653,10 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
                               ),
                             ),
                             onPasteImage: _handlePaste,
+                            onPickHistoryReference:
+                                MediaQuery.sizeOf(context).width < 900
+                                ? () => _showMobileHistoryReferenceSheet(context)
+                                : null,
                           ),
                         ),
                       ),
@@ -684,54 +670,24 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              TextButton.icon(
+                              AppActionButton(
+                                icon: Icons.close_rounded,
+                                label: context.l10n.boardExitAnnotation,
+                                variant: AppActionButtonVariant.ghost,
                                 onPressed: () =>
                                     viewModel.board.setAnnotatingImage(false),
-                                icon: const Icon(Icons.close_rounded, size: 15),
-                                label: Text(
-                                  context.l10n.boardExitAnnotation,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: colors.textSecondary,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
-                                  ),
-                                ),
                               ),
                               const SizedBox(width: 6),
-                              ElevatedButton.icon(
+                              AppActionButton(
+                                icon: Icons.smart_toy_outlined,
+                                label: context.l10n.boardSendAllToAi,
+                                variant: AppActionButtonVariant.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 9,
+                                ),
                                 onPressed: () =>
                                     viewModel.board.sendAnnotationsToChat(),
-                                icon: const Icon(
-                                  Icons.smart_toy_outlined,
-                                  size: 15,
-                                ),
-                                label: Text(
-                                  context.l10n.boardSendAllToAi,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: colors.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 9,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.sm,
-                                    ),
-                                  ),
-                                  elevation: 0,
-                                ),
                               ),
                             ],
                           ),
@@ -742,6 +698,151 @@ class _FreeformAnnotationBoardState extends State<FreeformAnnotationBoard> {
                 ),
               );
             },
+          ),
+        );
+      },
+    );
+      },
+    );
+  }
+
+  // ------------------------- 窄屏历史参考图选择器 -------------------------
+
+  Future<void> _showMobileHistoryReferenceSheet(BuildContext context) {
+    final gallery = widget.viewModel.gallery;
+    final selectedId = widget.viewModel.selectedImage?.id;
+    final colors = context.colors;
+    final l10n = context.l10n;
+
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.cardBackground,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.65;
+        return SafeArea(
+          top: false,
+          child: SizedBox(
+            height: maxHeight,
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.borderHover,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.collections_outlined,
+                        size: 16,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.annotHistoryTitle.trim(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AppBadge.pill(
+                        label: '${gallery.length}',
+                        variant: AppBadgeVariant.primary,
+                        fontSize: 11,
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: colors.borderDefault),
+                Expanded(
+                  child: gallery.isEmpty
+                      ? AppEmptyState(
+                          icon: Icons.photo_library_outlined,
+                          title: l10n.annotHistoryEmpty,
+                          isCompact: true,
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: 0.85,
+                              ),
+                          itemCount: gallery.length,
+                          itemBuilder: (_, index) {
+                            final item = gallery[index];
+                            final isSelected = item.id == selectedId;
+                            final thumb =
+                                item.thumbnailBytes ??
+                                (item.bytes.isNotEmpty ? item.bytes : null);
+                            return InkWell(
+                              onTap: () {
+                                widget.viewModel.board.addImageNodeToBoard(
+                                  item,
+                                );
+                                Navigator.of(sheetContext).pop();
+                                showCanvasSnackBar(
+                                  context,
+                                  l10n.annotHistoryAddedAsReference,
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                              child: Container(
+                                padding: const EdgeInsets.all(1.0),
+                                decoration: BoxDecoration(
+                                  color: colors.mutedBackground,
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
+                                ),
+                                foregroundDecoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? colors.primary
+                                        : colors.borderDefault,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm - 1.0,
+                                  ),
+                                  child: thumb != null && thumb.isNotEmpty
+                                      ? Image.memory(
+                                          thumb,
+                                          fit: BoxFit.cover,
+                                          gaplessPlayback: true,
+                                          cacheWidth: 240,
+                                        )
+                                      : Icon(
+                                          Icons.image_outlined,
+                                          color: colors.textMuted,
+                                        ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         );
       },

@@ -38,6 +38,7 @@ const _studioModelIds = <String>[
   'nai-diffusion-3',
 ];
 
+/// 写进 Agent 工具结果前处理一段参数文本。开关关闭时保留原文，包括空白。
 String _agentVisibleParamText(NaiGenerationParams params, String text) {
   final shown = params.textForAgent(text);
   return shown.isEmpty ? '(空)' : shown;
@@ -113,10 +114,13 @@ String buildStudioParamsReport(
     '• 随机种子: ${params.seed == -1 ? '随机 (-1)' : params.seed}',
     '• 点数预估: $costStatus',
   ];
+  final characterReport = buildCharacterPromptsReport(
+    params.characterPrompts,
+    aiPosition: params.characterAiPosition,
+    sanitizeText: params.textForAgent,
+  );
   var report = '$title\n${lines.join('\n')}';
-  report +=
-      '\n\n角色提示词详情：\n'
-      '${buildCharacterPromptsReport(params.characterPrompts, aiPosition: params.characterAiPosition, sanitizeText: params.textForAgent)}';
+  report += '\n\n角色提示词详情：\n$characterReport';
   return report;
 }
 
@@ -204,21 +208,21 @@ class NovelAiGetStudioParamsTool extends AgentTool {
     final lines = <String>[];
 
     if (requestedKeys.contains('prompt')) {
-      lines.add('• 原始正向提示词: ${params.prompt.isEmpty ? '(空)' : params.prompt}');
+      lines.add('• 原始正向提示词: ${_agentVisibleParamText(params, params.prompt)}');
     }
     if (requestedKeys.contains('negative_prompt')) {
       lines.add(
-        '• 原始负向提示词: ${params.negativePrompt.isEmpty ? '(空)' : params.negativePrompt}',
+        '• 原始负向提示词: ${_agentVisibleParamText(params, params.negativePrompt)}',
       );
     }
     if (requestedKeys.contains('effective_prompt')) {
       lines.add(
-        '• 最终正向提示词: ${effective.prompt.isEmpty ? '(空)' : effective.prompt}',
+        '• 最终正向提示词: ${_agentVisibleParamText(params, effective.prompt)}',
       );
     }
     if (requestedKeys.contains('effective_negative_prompt')) {
       lines.add(
-        '• 最终负向提示词: ${effective.negativePrompt.isEmpty ? '(空)' : effective.negativePrompt}',
+        '• 最终负向提示词: ${_agentVisibleParamText(params, effective.negativePrompt)}',
       );
     }
     if (requestedKeys.contains('generation_backend')) {
@@ -329,7 +333,7 @@ class NovelAiUpdateParamsTool extends AgentTool {
          name: 'update_studio_parameters',
          label: '修改参数',
          description:
-             '按需修改工作台的生图参数。只需传入需要修改的一个或多个字段（如 prompt、steps、scale 等），未传入的字段将保持原设置不变。修改后会实时同步更新 UI 界面。',
+             '增量修改工作台生图参数并实时同步 UI；只需传入要改的字段（如 prompt/negative_prompt/resolution/steps/scale），未传字段保持不变。',
          parameters: {
            'type': 'object',
            'properties': {
@@ -483,19 +487,7 @@ class NovelAiUpdateParamsTool extends AgentTool {
       }
     }
 
-    // 2. 负向提示词
-    if (args.containsKey('negative_prompt')) {
-      if (current.isMediumEffort && model == NaiModel.v5Full) {
-        blockedEntries.add('负向提示词（节约档锁定排除词）');
-      } else if (isAllowed(PresetParamKeys.negativePrompt)) {
-        negativePrompt = args['negative_prompt'] as String? ?? '';
-        updatedEntries.add('负向提示词: 已更新');
-      } else {
-        blockedEntries.add('负向提示词');
-      }
-    }
-
-    // 3. 模型
+    // 2. 模型 (先于 negative_prompt 校验，避免同次调用切换模型时仍被旧模型锁定拦截)
     if (args.containsKey('model')) {
       if (isAllowed(PresetParamKeys.model)) {
         final modelStr = args['model'] as String?;
@@ -507,6 +499,18 @@ class NovelAiUpdateParamsTool extends AgentTool {
         }
       } else {
         blockedEntries.add('生图模型');
+      }
+    }
+
+    // 3. 负向提示词
+    if (args.containsKey('negative_prompt')) {
+      if (current.isMediumEffort && model == NaiModel.v5Full) {
+        blockedEntries.add('负向提示词（节约档锁定排除词）');
+      } else if (isAllowed(PresetParamKeys.negativePrompt)) {
+        negativePrompt = args['negative_prompt'] as String? ?? '';
+        updatedEntries.add('负向提示词: 已更新');
+      } else {
+        blockedEntries.add('负向提示词');
       }
     }
 

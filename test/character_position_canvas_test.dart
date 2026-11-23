@@ -5,6 +5,7 @@ import 'package:novelai_harness/l10n/app_localizations.dart';
 import 'package:novelai_harness/main.dart';
 import 'package:novelai_harness/ui/core/locale/app_locale_controller.dart';
 import 'package:novelai_harness/ui/features/studio/view_models/studio_view_model.dart';
+import 'package:novelai_harness/ui/features/studio/views/studio_view.dart';
 import 'package:novelai_harness/ui/features/studio/widgets/character_position_canvas_view.dart';
 import 'package:novelai_harness/ui/features/studio/widgets/character_card_item.dart';
 
@@ -32,17 +33,20 @@ void main() {
       await tester.drag(promptsTitle, const Offset(0, -450));
       await tester.pumpAndSettle();
 
-      // 3. 找到添加角色三预设按钮并添加两个角色
-      final addBtn = find.text('女');
-      expect(addBtn, findsOneWidget);
-      await tester.ensureVisible(addBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(addBtn);
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(addBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(addBtn);
-      await tester.pumpAndSettle();
+      // 3. 打开「添加角色」下拉菜单并添加两个女角色
+      for (var i = 0; i < 2; i++) {
+        final addMenuBtn = find.text('添加角色');
+        expect(addMenuBtn, findsOneWidget);
+        await tester.ensureVisible(addMenuBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(addMenuBtn);
+        await tester.pumpAndSettle();
+
+        final femaleOption = find.text('女');
+        expect(femaleOption, findsOneWidget);
+        await tester.tap(femaleOption);
+        await tester.pumpAndSettle();
+      }
 
       // 验证添加了 2 个角色卡片
       expect(find.byType(CharacterCardItem), findsNWidgets(2));
@@ -93,9 +97,8 @@ void main() {
 
       expect(find.byType(CharacterPositionOverlay), findsOneWidget);
 
-      final aiAutoBtn = find.text('AI 自动');
-      expect(aiAutoBtn, findsOneWidget);
-      await tester.tap(aiAutoBtn);
+      // 合并上游后 AI 自动胶囊位于折叠浮窗，直接驱动同一 VM 入口验证退出行为。
+      StudioView.testViewModelHook!.setCharacterAiPosition(true);
       await tester.pumpAndSettle();
 
       expect(find.byType(CharacterPositionOverlay), findsNothing);

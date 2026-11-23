@@ -2,21 +2,27 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../data/models/prompt_library_sync_models.dart';
 import '../../../../data/services/config_service.dart';
 import '../../../../data/models/nai_generation_params.dart';
 import '../../../../data/services/image_save_path_service.dart';
 import '../../../../data/services/media_store_service.dart';
+import '../../../../data/services/prompt_library_sync_service.dart';
 import '../../../../data/services/tag_dictionary_service.dart';
 import '../../../../data/services/tag_dictionary_update_service.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/context_l10n.dart';
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/md3_accent.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../../../core/widgets/app_action_button.dart';
 import '../../../core/widgets/app_color_picker_dialog.dart';
 import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_setting_tile.dart';
+import '../../../core/widgets/app_transitions.dart';
+import '../../../core/widgets/smooth_scroll_controller.dart';
 import 'settings_shared.dart';
 import 'image_save_template_settings.dart';
 
@@ -63,13 +69,26 @@ class GeneralSettingsDraft {
       comfyParamsNodeController = TextEditingController(
         text: config.comfyUiParamsNodeId,
       ),
+      promptSyncEndpointController = TextEditingController(
+        text: config.promptSyncEndpoint,
+      ),
+      promptSyncTokenController = TextEditingController(
+        text: config.promptSyncToken,
+      ),
+      promptSyncNamespaceController = TextEditingController(
+        text: config.promptSyncNamespace,
+      ),
       opusFreeMode = config.opusFreeMode,
       themeMode = config.themeMode,
       accentMode = config.accentMode,
       accentVariant = config.accentVariant,
       accentSeedColor = config.accentSeedColor,
+      backgroundMode = config.backgroundMode,
+      customLightBackgroundColor = config.customLightBackgroundColor,
+      customDarkBackgroundColor = config.customDarkBackgroundColor,
       localePreference = config.localePreference,
       uiZoom = config.uiZoom,
+      maxFrameRate = config.maxFrameRate,
       enableStreamPreview = config.enableStreamPreview,
       enableTagAutocomplete = config.enableTagAutocomplete,
       showTagTranslations = config.showTagTranslations,
@@ -127,6 +146,9 @@ class GeneralSettingsDraft {
   final TextEditingController comfyPromptNodeController;
   final TextEditingController comfyResolutionNodeController;
   final TextEditingController comfyParamsNodeController;
+  final TextEditingController promptSyncEndpointController;
+  final TextEditingController promptSyncTokenController;
+  final TextEditingController promptSyncNamespaceController;
   bool comfyUiEnabled;
   int rtxUpscaleScale;
 
@@ -142,11 +164,23 @@ class GeneralSettingsDraft {
   /// 手动模式种子色 (#RRGGBB 文本，null = 未指定)，保存时聚合进 AppConfig
   String? accentSeedColor;
 
+  /// 背景色来源 (默认 Notion / 跟随强调色 / 自定义)，保存时聚合进 AppConfig
+  AppBackgroundMode backgroundMode;
+
+  /// 自定义亮色模式背景色 (#RRGGBB，null = 默认暖纸)
+  String? customLightBackgroundColor;
+
+  /// 自定义深色模式背景色 (#RRGGBB，null = 默认暗灰)
+  String? customDarkBackgroundColor;
+
   /// 语言偏好 (跟随系统/中文/English)，保存时由 SettingsDialog 聚合进 AppConfig
   AppLocalePreference localePreference;
 
   /// 全局 UI 缩放 (浏览器式整体缩放)，保存时聚合进 AppConfig
   double uiZoom;
+
+  /// 最大渲染帧率上限 (`0` = 不限制)，保存时聚合进 AppConfig
+  int maxFrameRate;
   bool enableStreamPreview;
   bool enableTagAutocomplete;
   bool showTagTranslations;
@@ -176,6 +210,9 @@ class GeneralSettingsDraft {
     comfyPromptNodeController.dispose();
     comfyResolutionNodeController.dispose();
     comfyParamsNodeController.dispose();
+    promptSyncEndpointController.dispose();
+    promptSyncTokenController.dispose();
+    promptSyncNamespaceController.dispose();
   }
 }
 
@@ -198,16 +235,27 @@ class GeneralSettingsTab extends StatefulWidget {
 
 class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
   GeneralSettingsDraft get _draft => widget.draft;
+  late final SmoothWheelScrollController _scrollController =
+      SmoothWheelScrollController();
 
   TagDictMeta? _dictMeta;
   bool _dictUpdating = false;
   String _dictStatus = '';
+  bool _syncTesting = false;
+  String _syncTestMessage = '';
+  bool _syncTestOk = false;
 
   @override
   void initState() {
     super.initState();
     _refreshDictInfo();
     _refreshExportFolderName();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   /// 启动时校验已选导出目录的授权与显示名 (授权被撤销则清空展示)。
@@ -308,6 +356,41 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
     }
   }
 
+  Future<void> _testLibrarySync() async {
+    if (_syncTesting) return;
+    final l10n = context.l10n;
+    setState(() {
+      _syncTesting = true;
+      _syncTestMessage = '';
+    });
+    try {
+      final health = await PromptLibrarySyncService.instance.testConnection(
+        PromptLibrarySyncConfig(
+          endpoint: _draft.promptSyncEndpointController.text.trim(),
+          token: _draft.promptSyncTokenController.text.trim(),
+          namespace: _draft.promptSyncNamespaceController.text.trim(),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _syncTestOk = true;
+        _syncTestMessage = l10n.librarySyncTestSuccess(
+          health.activeEntries,
+          health.imageCount,
+          health.revision,
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _syncTestOk = false;
+        _syncTestMessage = l10n.librarySyncTestFailed(e.toString());
+      });
+    } finally {
+      if (mounted) setState(() => _syncTesting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -315,12 +398,13 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 600;
+        final isNarrow = constraints.maxWidth < 560;
         return SingleChildScrollView(
+          controller: _scrollController,
           padding: EdgeInsets.fromLTRB(
-            isNarrow ? 14 : 28,
+            isNarrow ? 16 : 28,
             8,
-            isNarrow ? 14 : 28,
+            isNarrow ? 16 : 28,
             20,
           ),
           child: Column(
@@ -329,7 +413,6 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
               AppSectionHeader(title: l10n.settingsSectionAppearance),
               AppSettingTile(
                 title: l10n.settingsThemeMode,
-                subtitle: l10n.settingsThemeModeSubtitle,
                 control: AppDropdown.simple(
                   value: _draft.themeMode,
                   items: AppThemeModePreference.values,
@@ -343,8 +426,123 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                 ),
               ),
               AppSettingTile(
+                title: l10n.settingsBackgroundMode,
+                subtitle: l10n.settingsBackgroundModeSubtitle,
+                control: AppDropdown.simple(
+                  value: _draft.backgroundMode,
+                  items: AppBackgroundMode.values,
+                  labelOf: (mode) => switch (mode) {
+                    AppBackgroundMode.defaultNotion =>
+                      l10n.backgroundModeDefault,
+                    AppBackgroundMode.followAccent =>
+                      l10n.backgroundModeFollowAccent,
+                    AppBackgroundMode.custom => l10n.backgroundModeCustom,
+                  },
+                  width: 130,
+                  onChanged: (mode) =>
+                      setState(() => _draft.backgroundMode = mode),
+                ),
+              ),
+              AppPanelReveal(
+                visible: _draft.backgroundMode == AppBackgroundMode.custom,
+                enableBlur: false,
+                child: Column(
+                  children: [
+                    if (_draft.themeMode != AppThemeModePreference.dark)
+                      AppSettingTile(
+                        title: _draft.themeMode == AppThemeModePreference.system
+                            ? l10n.settingsBackgroundLightColor
+                            : l10n.settingsBackgroundColor,
+                        control: _BackgroundColorRow(
+                          currentColor:
+                              _seedColorOf(_draft.customLightBackgroundColor) ??
+                              kLightBackgroundPresets.first,
+                          defaultColor: kLightBackgroundPresets.first,
+                          presets: kLightBackgroundPresets,
+                          hasCustomValue:
+                              _draft.customLightBackgroundColor != null,
+                          tooltip: l10n.settingsBackgroundLightColor,
+                          resetTooltip: l10n.settingsBackgroundReset,
+                          onSelectPreset: (color) => setState(() {
+                            _draft.customLightBackgroundColor =
+                                color.toARGB32() ==
+                                    kLightBackgroundPresets.first.toARGB32()
+                                ? null
+                                : seedColorText(color.toARGB32());
+                          }),
+                          onPickCustom: () async {
+                            final picked = await AppColorPickerDialog.show(
+                              context,
+                              title: l10n.settingsBackgroundLightColor,
+                              initialColor:
+                                  _seedColorOf(
+                                    _draft.customLightBackgroundColor,
+                                  ) ??
+                                  kLightBackgroundPresets.first,
+                              presets: kLightBackgroundPresets,
+                            );
+                            if (picked == null) return;
+                            setState(() {
+                              _draft.customLightBackgroundColor = seedColorText(
+                                picked.toARGB32(),
+                              );
+                            });
+                          },
+                          onReset: () => setState(
+                            () => _draft.customLightBackgroundColor = null,
+                          ),
+                        ),
+                      ),
+                    if (_draft.themeMode != AppThemeModePreference.light)
+                      AppSettingTile(
+                        title: _draft.themeMode == AppThemeModePreference.system
+                            ? l10n.settingsBackgroundDarkColor
+                            : l10n.settingsBackgroundColor,
+                        control: _BackgroundColorRow(
+                          currentColor:
+                              _seedColorOf(_draft.customDarkBackgroundColor) ??
+                              kDarkBackgroundPresets.first,
+                          defaultColor: kDarkBackgroundPresets.first,
+                          presets: kDarkBackgroundPresets,
+                          hasCustomValue:
+                              _draft.customDarkBackgroundColor != null,
+                          tooltip: l10n.settingsBackgroundDarkColor,
+                          resetTooltip: l10n.settingsBackgroundReset,
+                          onSelectPreset: (color) => setState(() {
+                            _draft.customDarkBackgroundColor =
+                                color.toARGB32() ==
+                                    kDarkBackgroundPresets.first.toARGB32()
+                                ? null
+                                : seedColorText(color.toARGB32());
+                          }),
+                          onPickCustom: () async {
+                            final picked = await AppColorPickerDialog.show(
+                              context,
+                              title: l10n.settingsBackgroundDarkColor,
+                              initialColor:
+                                  _seedColorOf(
+                                    _draft.customDarkBackgroundColor,
+                                  ) ??
+                                  kDarkBackgroundPresets.first,
+                              presets: kDarkBackgroundPresets,
+                            );
+                            if (picked == null) return;
+                            setState(() {
+                              _draft.customDarkBackgroundColor = seedColorText(
+                                picked.toARGB32(),
+                              );
+                            });
+                          },
+                          onReset: () => setState(
+                            () => _draft.customDarkBackgroundColor = null,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              AppSettingTile(
                 title: l10n.settingsAccentSource,
-                subtitle: l10n.settingsAccentSourceSubtitle,
                 control: AppDropdown.simple(
                   value: _draft.accentMode,
                   items: AppAccentMode.values,
@@ -357,52 +555,62 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                   onChanged: (mode) => setState(() => _draft.accentMode = mode),
                 ),
               ),
-              AppSettingTile(
-                title: l10n.settingsAccentSeed,
-                subtitle: l10n.settingsAccentSeedSubtitle,
-                control: _AccentSeedSwatch(
-                  color:
-                      _seedColorOf(_draft.accentSeedColor) ??
-                      const Color(0xFF0075DE),
-                  onTap: () async {
-                    final picked = await AppColorPickerDialog.show(
-                      context,
-                      initialColor:
-                          _seedColorOf(_draft.accentSeedColor) ??
-                          const Color(0xFF0075DE),
-                    );
-                    if (picked == null) return;
-                    setState(() {
-                      _draft.accentSeedColor = seedColorText(picked.toARGB32());
-                      _draft.accentMode = AppAccentMode.manual;
-                    });
-                  },
+              AppPanelReveal(
+                visible: _draft.accentMode == AppAccentMode.manual,
+                enableBlur: false,
+                child: AppSettingTile(
+                  title: l10n.settingsAccentSeed,
+                  control: _AccentSeedSwatch(
+                    color:
+                        _seedColorOf(_draft.accentSeedColor) ??
+                        const Color(0xFF0075DE),
+                    onTap: () async {
+                      final picked = await AppColorPickerDialog.show(
+                        context,
+                        initialColor:
+                            _seedColorOf(_draft.accentSeedColor) ??
+                            const Color(0xFF0075DE),
+                      );
+                      if (picked == null) return;
+                      setState(() {
+                        _draft.accentSeedColor = seedColorText(
+                          picked.toARGB32(),
+                        );
+                        _draft.accentMode = AppAccentMode.manual;
+                      });
+                    },
+                  ),
                 ),
               ),
-              AppSettingTile(
-                title: l10n.settingsAccentVariant,
-                subtitle: l10n.settingsAccentVariantSubtitle,
-                control: AppDropdown.simple(
-                  value: _draft.accentVariant,
-                  items: AppAccentVariant.values,
-                  labelOf: (variant) => switch (variant) {
-                    AppAccentVariant.tonalSpot => l10n.accentVariantTonalSpot,
-                    AppAccentVariant.vibrant => l10n.accentVariantVibrant,
-                    AppAccentVariant.expressive => l10n.accentVariantExpressive,
-                    AppAccentVariant.content => l10n.accentVariantContent,
-                    AppAccentVariant.neutral => l10n.accentVariantNeutral,
-                    AppAccentVariant.monochrome => l10n.accentVariantMonochrome,
-                    AppAccentVariant.rainbow => l10n.accentVariantRainbow,
-                    AppAccentVariant.fruitSalad => l10n.accentVariantFruitSalad,
-                  },
-                  width: 170,
-                  onChanged: (variant) =>
-                      setState(() => _draft.accentVariant = variant),
+              AppPanelReveal(
+                visible: _draft.accentMode != AppAccentMode.defaultBlue,
+                enableBlur: false,
+                child: AppSettingTile(
+                  title: l10n.settingsAccentVariant,
+                  control: AppDropdown.simple(
+                    value: _draft.accentVariant,
+                    items: AppAccentVariant.values,
+                    labelOf: (variant) => switch (variant) {
+                      AppAccentVariant.tonalSpot => l10n.accentVariantTonalSpot,
+                      AppAccentVariant.vibrant => l10n.accentVariantVibrant,
+                      AppAccentVariant.expressive =>
+                        l10n.accentVariantExpressive,
+                      AppAccentVariant.content => l10n.accentVariantContent,
+                      AppAccentVariant.neutral => l10n.accentVariantNeutral,
+                      AppAccentVariant.monochrome =>
+                        l10n.accentVariantMonochrome,
+                      AppAccentVariant.rainbow => l10n.accentVariantRainbow,
+                      AppAccentVariant.fruitSalad =>
+                        l10n.accentVariantFruitSalad,
+                    },
+                    width: 170,
+                    onChanged: (variant) =>
+                        setState(() => _draft.accentVariant = variant),
+                  ),
                 ),
               ),
               AppSettingTile(
                 title: l10n.settingsLanguage,
-                subtitle: l10n.settingsLanguageSubtitle,
                 control: AppDropdown.simple(
                   value: _draft.localePreference,
                   items: AppLocalePreference.values,
@@ -431,11 +639,29 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                   onChanged: (zoom) => setState(() => _draft.uiZoom = zoom),
                 ),
               ),
+              AppSettingTile(
+                title: l10n.settingsFrameRateLimit,
+                subtitle: l10n.settingsFrameRateLimitSubtitle,
+                control: AppDropdown<int>.simple(
+                  value:
+                      ConfigService.supportedMaxFrameRates.contains(
+                        _draft.maxFrameRate,
+                      )
+                      ? _draft.maxFrameRate
+                      : 0,
+                  items: ConfigService.supportedMaxFrameRates,
+                  labelOf: (fps) => fps <= 0
+                      ? l10n.frameRateUnlimited
+                      : l10n.frameRateFpsOption(fps),
+                  width: 170,
+                  onChanged: (fps) =>
+                      setState(() => _draft.maxFrameRate = fps),
+                ),
+              ),
               const SizedBox(height: 12),
               AppSectionHeader(title: l10n.settingsSectionNovelaiService),
               AppSettingTile(
                 title: l10n.settingsApiKeyTitle,
-                subtitle: l10n.settingsApiKeySubtitle,
                 control: SettingsKeyField(
                   controller: _draft.naiKeyController,
                   hintText: 'pst-...',
@@ -443,9 +669,7 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
               ),
               AppSettingTile(
                 title: l10n.settingsSaveDirTitle,
-                subtitle: isAndroid
-                    ? l10n.settingsAndroidSaveDirSubtitle
-                    : l10n.settingsSaveDirSubtitle,
+                subtitle: isAndroid ? l10n.settingsAndroidSaveDirSubtitle : null,
                 control: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 320),
                   child: Row(
@@ -518,9 +742,6 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
               ),
               AppSettingTile.switchTile(
                 title: l10n.settingsAutoSaveTitle,
-                subtitle: _draft.autoSaveImages
-                    ? l10n.settingsAutoSaveSubtitleOn
-                    : l10n.settingsAutoSaveSubtitleOff,
                 value: _draft.autoSaveImages,
                 onChanged: (val) => setState(() => _draft.autoSaveImages = val),
               ),
@@ -534,7 +755,6 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                 ),
               AppSettingTile.switchTile(
                 title: l10n.settingsStreamPreviewTitle,
-                subtitle: l10n.settingsStreamPreviewSubtitle,
                 value: _draft.enableStreamPreview,
                 onChanged: (val) =>
                     setState(() => _draft.enableStreamPreview = val),
@@ -546,10 +766,11 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                 onChanged: (val) =>
                     setState(() => _draft.enableImagePersistence = val),
               ),
-              if (_draft.enableImagePersistence)
-                AppSettingTile(
+              AppPanelReveal(
+                visible: _draft.enableImagePersistence,
+                enableBlur: false,
+                child: AppSettingTile(
                   title: l10n.settingsMaxImagesTitle,
-                  subtitle: l10n.settingsMaxImagesSubtitle,
                   control: AppDropdown.simple(
                     value:
                         [
@@ -568,13 +789,13 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                         setState(() => _draft.maxPersistentImages = count),
                   ),
                 ),
+              ),
               const SizedBox(height: 12),
               if (!kIsWeb &&
                   defaultTargetPlatform == TargetPlatform.windows) ...[
                 AppSectionHeader(title: l10n.canvasActionRtxUpscale),
                 AppSettingTile(
                   title: l10n.settingsRtxScaleTitle,
-                  subtitle: l10n.settingsRtxScaleSubtitle,
                   control: AppDropdown<int>.simple(
                     value: _draft.rtxUpscaleScale,
                     items: const [2, 4],
@@ -589,88 +810,190 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
               AppSectionHeader(title: l10n.settingsSectionWebSearch),
               AppSettingTile(
                 title: l10n.settingsAnySearchKeyTitle,
-                subtitle: l10n.settingsAnySearchKeySubtitle,
                 control: SettingsKeyField(
                   controller: _draft.anySearchKeyController,
                   hintText: 'as_sk-...',
                 ),
               ),
               const SizedBox(height: 12),
+              AppSectionHeader(title: l10n.settingsSectionLibrarySync),
+              AppSettingTile(
+                title: l10n.settingsLibrarySyncEndpointTitle,
+                subtitle: l10n.librarySyncEndpointSubtitle,
+                control: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: SizedBox(
+                    height: 36,
+                    child: TextField(
+                      controller: _draft.promptSyncEndpointController,
+                      style: const TextStyle(fontSize: 12),
+                      decoration: InputDecoration(
+                        hintText: l10n.settingsLibrarySyncEndpointHint,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              AppSettingTile(
+                title: l10n.settingsLibrarySyncTokenTitle,
+                subtitle: l10n.librarySyncTokenSubtitle,
+                control: SettingsKeyField(
+                  controller: _draft.promptSyncTokenController,
+                  hintText: l10n.settingsLibrarySyncTokenHint,
+                  width: 260,
+                ),
+              ),
+              AppSettingTile(
+                title: l10n.settingsLibrarySyncNamespaceTitle,
+                subtitle: l10n.librarySyncNamespaceSubtitle,
+                control: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 36,
+                      child: TextField(
+                        controller: _draft.promptSyncNamespaceController,
+                        style: const TextStyle(fontSize: 12),
+                        decoration: InputDecoration(
+                          hintText: l10n.settingsLibrarySyncNamespaceHint,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AppActionButton(
+                      icon: _syncTestOk && _syncTestMessage.isNotEmpty
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.network_check_rounded,
+                      label: _syncTesting
+                          ? l10n.librarySyncTesting
+                          : l10n.librarySyncTestConnection,
+                      isLoading: _syncTesting,
+                      onPressed: _syncTesting ? null : _testLibrarySync,
+                    ),
+                  ],
+                ),
+                bottomChild: _syncTestMessage.isNotEmpty
+                    ? Row(
+                        children: [
+                          Icon(
+                            _syncTestOk
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.error_outline_rounded,
+                            size: 14,
+                            color: _syncTestOk
+                                ? context.colors.success
+                                : context.colors.error,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _syncTestMessage,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _syncTestOk
+                                    ? context.colors.success
+                                    : context.colors.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 12),
               AppSectionHeader(title: l10n.settingsSectionComfy),
               AppSettingTile.switchTile(
                 title: l10n.settingsComfyEnabledTitle,
-                subtitle: l10n.settingsComfyEnabledDesc,
                 value: _draft.comfyUiEnabled,
                 onChanged: (val) => setState(() => _draft.comfyUiEnabled = val),
               ),
-              if (_draft.comfyUiEnabled) ...[
-                AppSettingTile(
-                  title: l10n.settingsComfyBaseUrlTitle,
-                  control: SettingsKeyField(
-                    controller: _draft.comfyBaseUrlController,
-                    hintText: l10n.settingsComfyBaseUrlHint,
-                  ),
+              AppPanelReveal(
+                visible: _draft.comfyUiEnabled,
+                enableBlur: false,
+                child: Column(
+                  children: [
+                    AppSettingTile(
+                      title: l10n.settingsComfyBaseUrlTitle,
+                      control: SizedBox(
+                        width: 280,
+                        child: TextField(
+                          controller: _draft.comfyBaseUrlController,
+                          style: const TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            hintText: l10n.settingsComfyBaseUrlHint,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    AppSettingTile(
+                      title: l10n.settingsComfyNodeIdsTitle,
+                      control: const SizedBox.shrink(),
+                      bottomChild: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _draft.comfyPromptNodeController,
+                              style: const TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText: l10n.settingsComfyPromptNodeHint,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _draft.comfyResolutionNodeController,
+                              style: const TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText: l10n.settingsComfyResolutionNodeHint,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _draft.comfyParamsNodeController,
+                              style: const TextStyle(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText: l10n.settingsComfyParamsNodeHint,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                AppSettingTile(
-                  title: l10n.settingsComfyNodeIdsTitle,
-                  subtitle: l10n.settingsComfyNodeIdsHint,
-                  control: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        child: TextField(
-                          controller: _draft.comfyPromptNodeController,
-                          style: const TextStyle(fontSize: 12),
-                          decoration: InputDecoration(
-                            hintText: l10n.settingsComfyPromptNodeHint,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: 220,
-                        child: TextField(
-                          controller: _draft.comfyResolutionNodeController,
-                          style: const TextStyle(fontSize: 12),
-                          decoration: InputDecoration(
-                            hintText: l10n.settingsComfyResolutionNodeHint,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: 220,
-                        child: TextField(
-                          controller: _draft.comfyParamsNodeController,
-                          style: const TextStyle(fontSize: 12),
-                          decoration: InputDecoration(
-                            hintText: l10n.settingsComfyParamsNodeHint,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
               const SizedBox(height: 12),
               AppSectionHeader(title: l10n.settingsSectionTagAutocomplete),
               AppSettingTile.switchTile(
                 title: l10n.settingsTagAutocompleteTitle,
-                subtitle: l10n.settingsTagAutocompleteSubtitle,
                 value: _draft.enableTagAutocomplete,
                 onChanged: (val) =>
                     setState(() => _draft.enableTagAutocomplete = val),
@@ -682,35 +1005,45 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
                     : (_dictStatus.isNotEmpty
                           ? _dictStatus
                           : _dictInfoText(l10n)),
-                control: _dictUpdating
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : AppActionButton(
-                        icon: Icons.cloud_download_rounded,
-                        label: l10n.settingsDictUpdateNowButton,
-                        onPressed: _updateDictionary,
-                      ),
+                control: AnimatedSwitcher(
+                  duration: AppMotion.resolveDuration(
+                    context,
+                    AppMotionDurations.quick,
+                  ),
+                  switchInCurve: AppMotionCurves.smoothOut,
+                  switchOutCurve: AppMotionCurves.smoothOut,
+                  child: _dictUpdating
+                      ? const Padding(
+                          key: ValueKey<bool>(true),
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: AppMatrixDotLoader(
+                            dotSize: 2.5,
+                            gap: 2.0,
+                            variant: AppMatrixDotVariant.scan,
+                          ),
+                        )
+                      : AppActionButton(
+                          key: const ValueKey<bool>(false),
+                          icon: Icons.cloud_download_rounded,
+                          label: l10n.settingsDictUpdateNowButton,
+                          onPressed: _updateDictionary,
+                        ),
+                ),
               ),
               AppSettingTile.switchTile(
                 title: l10n.settingsDictAutoCheckTitle,
-                subtitle: l10n.settingsDictAutoCheckSubtitle,
                 value: _draft.enableTagDictionaryAutoUpdate,
                 onChanged: (val) =>
                     setState(() => _draft.enableTagDictionaryAutoUpdate = val),
               ),
               AppSettingTile.switchTile(
                 title: l10n.settingsTagTranslationsTitle,
-                subtitle: l10n.settingsTagTranslationsSubtitle,
                 value: _draft.showTagTranslations,
                 onChanged: (val) =>
                     setState(() => _draft.showTagTranslations = val),
               ),
               AppSettingTile.switchTile(
                 title: l10n.settingsTagColorsTitle,
-                subtitle: l10n.settingsTagColorsSubtitle,
                 value: _draft.showTagCategoryColors,
                 onChanged: (val) =>
                     setState(() => _draft.showTagCategoryColors = val),
@@ -719,7 +1052,6 @@ class _GeneralSettingsTabState extends State<GeneralSettingsTab> {
               AppSectionHeader(title: l10n.settingsSectionProtection),
               AppSettingTile.switchTile(
                 title: l10n.settingsOpusTitle,
-                subtitle: l10n.settingsOpusSubtitle,
                 value: _draft.opusFreeMode,
                 onChanged: (val) => setState(() => _draft.opusFreeMode = val),
               ),
@@ -744,19 +1076,30 @@ Color? _seedColorOf(String? text) {
 class _AccentSeedSwatch extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
+  final String? tooltip;
 
-  const _AccentSeedSwatch({required this.color, required this.onTap});
+  const _AccentSeedSwatch({
+    required this.color,
+    required this.onTap,
+    this.tooltip,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Tooltip(
-      message: context.l10n.settingsAccentSeed,
-      child: MouseRegion(
+      message: tooltip ?? context.l10n.settingsAccentSeed,
+      child: AppHoverLift(
+        lift: -1.5,
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: onTap,
-          child: Container(
+          child: AnimatedContainer(
+            duration: AppMotion.resolveDuration(
+              context,
+              AppMotionDurations.quick,
+            ),
+            curve: AppMotionCurves.smoothOut,
             width: 34,
             height: 34,
             decoration: BoxDecoration(
@@ -783,6 +1126,94 @@ class _AccentSeedSwatch extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 自定义背景色行控件：精选预设小色块 + 自定义取色器色块 + 恢复默认按钮
+class _BackgroundColorRow extends StatelessWidget {
+  final Color currentColor;
+  final Color defaultColor;
+  final List<Color> presets;
+  final bool hasCustomValue;
+  final String tooltip;
+  final String resetTooltip;
+  final ValueChanged<Color> onSelectPreset;
+  final VoidCallback onPickCustom;
+  final VoidCallback onReset;
+
+  const _BackgroundColorRow({
+    required this.currentColor,
+    required this.defaultColor,
+    required this.presets,
+    required this.hasCustomValue,
+    required this.tooltip,
+    required this.resetTooltip,
+    required this.onSelectPreset,
+    required this.onPickCustom,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      alignment: WrapAlignment.end,
+      children: [
+        for (final preset in presets)
+          GestureDetector(
+            onTap: () => onSelectPreset(preset),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: AnimatedContainer(
+                duration: AppMotion.resolveDuration(
+                  context,
+                  AppMotionDurations.quick,
+                ),
+                curve: AppMotionCurves.smoothOut,
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: preset,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(
+                    color: currentColor.toARGB32() == preset.toARGB32()
+                        ? colors.primary
+                        : colors.borderDefault,
+                    width: currentColor.toARGB32() == preset.toARGB32()
+                        ? 2.0
+                        : 1.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(width: 2),
+        _AccentSeedSwatch(
+          color: currentColor,
+          tooltip: tooltip,
+          onTap: onPickCustom,
+        ),
+        if (hasCustomValue && currentColor.toARGB32() != defaultColor.toARGB32())
+          Tooltip(
+            message: resetTooltip,
+            child: InkWell(
+              onTap: onReset,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.refresh_rounded,
+                  size: 16,
+                  color: colors.textMuted,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

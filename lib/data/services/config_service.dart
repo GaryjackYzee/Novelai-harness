@@ -1,15 +1,18 @@
 import 'package:flutter/foundation.dart';
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/harness/mcp/mcp_models.dart';
 import '../../core/harness/presets/agent_preset.dart';
 import '../../core/harness/skills/skills.dart';
 import '../../core/harness/tools/agent_tool.dart';
 import '../models/novelai_models.dart';
 import 'image_storage_directory_service.dart';
+import 'secret_store.dart';
 
 /// 主题模式偏好 (跟随系统 / 亮色 / 深色)
 ///
@@ -126,6 +129,25 @@ String? seedColorText(int? argb) {
   return '#${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 }
 
+/// 界面背景色来源 (默认 Notion 纸本/暗灰 / 跟随强调色柔和微染 / 自定义背景色)
+///
+/// 纯 Dart 枚举；四层背景与对比度推导见 ui/core/theme/md3_accent.dart。
+enum AppBackgroundMode { defaultNotion, followAccent, custom }
+
+/// 存储字符串 → 枚举 (未知/缺失值回退默认 Notion 背景)
+AppBackgroundMode parseBackgroundMode(String? raw) => switch (raw) {
+  'follow_accent' => AppBackgroundMode.followAccent,
+  'custom' => AppBackgroundMode.custom,
+  _ => AppBackgroundMode.defaultNotion,
+};
+
+/// 枚举 → 存储字符串
+String backgroundModeStorage(AppBackgroundMode mode) => switch (mode) {
+  AppBackgroundMode.defaultNotion => 'default',
+  AppBackgroundMode.followAccent => 'follow_accent',
+  AppBackgroundMode.custom => 'custom',
+};
+
 /// 全局配置数据模型
 class AppConfig {
   // NovelAI 设置
@@ -167,12 +189,25 @@ class AppConfig {
   /// 手动模式下的种子色 (存储为 #RRGGBB 文本，null = 未指定)
   final String? accentSeedColor;
 
+  /// 背景色来源 (默认 Notion / 跟随强调色微染 / 自定义背景色)
+  final AppBackgroundMode backgroundMode;
+
+  /// 自定义亮色模式画布背景色 (#RRGGBB，null = 使用默认暖纸 #F6F5F4)
+  final String? customLightBackgroundColor;
+
+  /// 自定义深色模式画布背景色 (#RRGGBB，null = 使用默认暗灰 #191919)
+  final String? customDarkBackgroundColor;
+
   /// 语言偏好 (跟随系统/中文/English)，由 AppLocaleController 映射到 MaterialApp
   final AppLocalePreference localePreference;
 
   /// 全局 UI 缩放系数 (浏览器式 Ctrl+=/- 整体缩放)，1.0 = 100%；
   /// 由 AppUiZoomController 在 MaterialApp 根节点 Transform 生效
   final double uiZoom;
+
+  /// 最大渲染帧率上限（`0` = 不限制，跟随显示器原生刷新率）；
+  /// 由 AppFrameRateController 与 AppWidgetsFlutterBinding 协同生效
+  final int maxFrameRate;
   final bool enableStreamPreview;
   final bool enableTagAutocomplete;
   final bool showTagTranslations;
@@ -230,6 +265,11 @@ class AppConfig {
   /// 如 normal / karras / exponential)
   final String comfyUiScheduler;
 
+  // 词库云同步设置 (Cloudflare Workers + D1)
+  final String promptSyncEndpoint;
+  final String promptSyncToken;
+  final String promptSyncNamespace;
+
   // LLM 设置 (多供应商配置)
   final List<LlmProviderConfig> llmProviders;
   final String activeLlmProviderId;
@@ -258,9 +298,10 @@ class AppConfig {
   final List<AgentPreset> presets;
   final String activePresetId;
 
-  // 自定义 Skill 库与自定义 Tool 库
+  // 自定义 Skill 库、自定义 Tool 库与 MCP 服务列表
   final List<Skill> customSkills;
   final List<CustomAgentTool> customTools;
+  final List<McpServerConfig> mcpServers;
 
   /// 当前激活的 LLM 供应商配置
   LlmProviderConfig get activeLlmProvider {
@@ -330,8 +371,12 @@ class AppConfig {
     this.accentMode = AppAccentMode.defaultBlue,
     this.accentVariant = AppAccentVariant.tonalSpot,
     this.accentSeedColor,
+    this.backgroundMode = AppBackgroundMode.defaultNotion,
+    this.customLightBackgroundColor,
+    this.customDarkBackgroundColor,
     this.localePreference = AppLocalePreference.system,
     this.uiZoom = 1.0,
+    this.maxFrameRate = 0,
     this.enableStreamPreview = true,
     this.enableTagAutocomplete = true,
     this.showTagTranslations = true,
@@ -359,6 +404,9 @@ class AppConfig {
     this.comfyUiParamsNodeId = '',
     this.comfyUiSampler = '',
     this.comfyUiScheduler = '',
+    this.promptSyncEndpoint = '',
+    this.promptSyncToken = '',
+    this.promptSyncNamespace = 'default',
     this.llmProviders = const [],
     this.activeLlmProviderId = 'deepseek',
     this.imageEditProviderId = '',
@@ -376,6 +424,7 @@ class AppConfig {
     this.activePresetId = 'novelai-v5-full-art-expert',
     this.customSkills = const [],
     this.customTools = const [],
+    this.mcpServers = const [],
   });
 
   AppConfig copyWith({
@@ -401,8 +450,14 @@ class AppConfig {
     AppAccentMode? accentMode,
     AppAccentVariant? accentVariant,
     String? accentSeedColor,
+    AppBackgroundMode? backgroundMode,
+    String? customLightBackgroundColor,
+    bool clearCustomLightBackgroundColor = false,
+    String? customDarkBackgroundColor,
+    bool clearCustomDarkBackgroundColor = false,
     AppLocalePreference? localePreference,
     double? uiZoom,
+    int? maxFrameRate,
     bool? enableStreamPreview,
     bool? enableTagAutocomplete,
     bool? showTagTranslations,
@@ -430,6 +485,9 @@ class AppConfig {
     String? comfyUiParamsNodeId,
     String? comfyUiSampler,
     String? comfyUiScheduler,
+    String? promptSyncEndpoint,
+    String? promptSyncToken,
+    String? promptSyncNamespace,
     List<LlmProviderConfig>? llmProviders,
     String? activeLlmProviderId,
     String? imageEditProviderId,
@@ -447,6 +505,7 @@ class AppConfig {
     String? activePresetId,
     List<Skill>? customSkills,
     List<CustomAgentTool>? customTools,
+    List<McpServerConfig>? mcpServers,
   }) {
     var updatedProviders = llmProviders ?? this.llmProviders;
     var targetActiveId = activeLlmProviderId ?? this.activeLlmProviderId;
@@ -474,8 +533,16 @@ class AppConfig {
       accentMode: accentMode ?? this.accentMode,
       accentVariant: accentVariant ?? this.accentVariant,
       accentSeedColor: accentSeedColor ?? this.accentSeedColor,
+      backgroundMode: backgroundMode ?? this.backgroundMode,
+      customLightBackgroundColor: clearCustomLightBackgroundColor
+          ? null
+          : (customLightBackgroundColor ?? this.customLightBackgroundColor),
+      customDarkBackgroundColor: clearCustomDarkBackgroundColor
+          ? null
+          : (customDarkBackgroundColor ?? this.customDarkBackgroundColor),
       localePreference: localePreference ?? this.localePreference,
       uiZoom: uiZoom ?? this.uiZoom,
+      maxFrameRate: maxFrameRate ?? this.maxFrameRate,
       enableStreamPreview: enableStreamPreview ?? this.enableStreamPreview,
       enableTagAutocomplete:
           enableTagAutocomplete ?? this.enableTagAutocomplete,
@@ -508,6 +575,9 @@ class AppConfig {
       comfyUiParamsNodeId: comfyUiParamsNodeId ?? this.comfyUiParamsNodeId,
       comfyUiSampler: comfyUiSampler ?? this.comfyUiSampler,
       comfyUiScheduler: comfyUiScheduler ?? this.comfyUiScheduler,
+      promptSyncEndpoint: promptSyncEndpoint ?? this.promptSyncEndpoint,
+      promptSyncToken: promptSyncToken ?? this.promptSyncToken,
+      promptSyncNamespace: promptSyncNamespace ?? this.promptSyncNamespace,
       llmProviders: updatedProviders,
       activeLlmProviderId: targetActiveId,
       imageEditProviderId: imageEditProviderId ?? this.imageEditProviderId,
@@ -529,6 +599,7 @@ class AppConfig {
       activePresetId: activePresetId ?? this.activePresetId,
       customSkills: customSkills ?? this.customSkills,
       customTools: customTools ?? this.customTools,
+      mcpServers: mcpServers ?? this.mcpServers,
     );
   }
 }
@@ -542,11 +613,18 @@ class ConfigService {
     defaultValue: true,
   );
 
-  ConfigService({ImageStorageDirectoryService? imageStorageDirectoryService})
-    : _imageStorageDirectories =
-          imageStorageDirectoryService ?? ImageStorageDirectoryService();
+  ConfigService({
+    ImageStorageDirectoryService? imageStorageDirectoryService,
+    SecretStore? secretStore,
+  }) : _imageStorageDirectories =
+           imageStorageDirectoryService ?? ImageStorageDirectoryService(),
+       _secretStore = secretStore ?? const SharedPreferencesSecretStore();
+
+  /// 应用内默认共享实例，确保窗口服务与 ViewModel 复用统一配置与写入队列。
+  static final ConfigService shared = ConfigService();
 
   final ImageStorageDirectoryService _imageStorageDirectories;
+  final SecretStore _secretStore;
 
   /// 启动与设置变更共用：安卓需真实读写探测，失败回退应用文档目录。
   Future<String> resolveImageSaveDirectory(String configuredDirectory) =>
@@ -574,8 +652,14 @@ class ConfigService {
   static const String _keyAccentMode = 'novelai_accent_mode';
   static const String _keyAccentVariant = 'novelai_accent_variant';
   static const String _keyAccentSeedColor = 'novelai_accent_seed_color';
+  static const String _keyBackgroundMode = 'novelai_background_mode';
+  static const String _keyCustomLightBackground =
+      'novelai_custom_light_background';
+  static const String _keyCustomDarkBackground =
+      'novelai_custom_dark_background';
   static const String _keyLocalePreference = 'novelai_locale_preference';
   static const String _keyUiZoom = 'novelai_ui_zoom';
+  static const String _keyMaxFrameRate = 'novelai_max_frame_rate';
   static const String _keyEnableStreamPreview = 'novelai_enable_stream_preview';
   static const String _keyEnableTagAutocomplete =
       'novelai_enable_tag_autocomplete';
@@ -629,6 +713,11 @@ class ConfigService {
   static const String _keyComfyUiSampler = 'novelai_comfyui_sampler';
   static const String _keyComfyUiScheduler = 'novelai_comfyui_scheduler';
 
+  // 词库云同步持久化 Keys
+  static const String _keyPromptSyncEndpoint = 'novelai_prompt_sync_endpoint';
+  static const String _keyPromptSyncToken = 'novelai_prompt_sync_token';
+  static const String _keyPromptSyncNamespace = 'novelai_prompt_sync_namespace';
+
   // 页面布局持久化 Keys
   static const String _keySplitLeftWidth = 'novelai_layout_split_left_width';
   static const String _keySplitRightWidth = 'novelai_layout_split_right_width';
@@ -640,6 +729,10 @@ class ConfigService {
   static const String _keyDeckActiveTab = 'novelai_layout_deck_active_tab';
   static const String _keyCanvasHistoryOpen =
       'novelai_layout_canvas_history_open';
+  static const String _keyLeftSidebarCollapsed =
+      'novelai_layout_left_sidebar_collapsed';
+  static const String _keyAndroidStoragePermissionPrompted =
+      'novelai_android_storage_permission_prompted';
 
   // 提示词输入框高度持久化 Keys
   static const String _keyPromptHeightStacked =
@@ -694,6 +787,7 @@ class ConfigService {
       'novelai_default_preset_v5_full_migrated';
   static const String _keyCustomSkills = 'agent_custom_skills_json';
   static const String _keyCustomTools = 'agent_custom_tools_json';
+  static const String _keyMcpServers = 'agent_mcp_servers_json';
 
   String _canonicalizeSelectedModelId(
     List<LlmProviderConfig> providers,
@@ -709,11 +803,23 @@ class ConfigService {
   }
 
   /// 加载配置 (优先 SharedPreferences，首次启动尝试自动读取 ~/.pi/agent/novelai.json 与环境变量)
-  Future<AppConfig> loadConfig() async {
+  Future<AppConfig> loadConfig() =>
+      _loadConfig(tolerateStorageDirectoryFailure: false);
+
+  /// 容错加载配置：存储目录不可用时回退为空串（临时内存模式）而不抛错，
+  /// 供启动降级恢复路径使用。
+  Future<AppConfig> loadConfigTolerant() =>
+      _loadConfig(tolerateStorageDirectoryFailure: true);
+
+  Future<AppConfig> _loadConfig({
+    required bool tolerateStorageDirectoryFailure,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    String naiKey = prefs.getString(_keyNovelAiKey) ?? '';
-    final String anySearchKey = prefs.getString(_keyAnySearchApiKey) ?? '';
+    // API Key 走 SecretStore（Windows 凭据库 / 平台安全存储），代理设置留在 prefs。
+    String naiKey = await _secretStore.read(_keyNovelAiKey) ?? '';
+    final String anySearchKey =
+        await _secretStore.read(_keyAnySearchApiKey) ?? '';
     final bool proxyEnabled = prefs.getBool(_keyProxyEnabled) ?? false;
     final String proxyHost = prefs.getString(_keyProxyHost) ?? '';
     final int proxyPort = prefs.getInt(_keyProxyPort) ?? 7890;
@@ -739,10 +845,20 @@ class ConfigService {
       prefs.getString(_keyAccentVariant),
     );
     final accentSeedColor = prefs.getString(_keyAccentSeedColor);
+    final backgroundMode = parseBackgroundMode(
+      prefs.getString(_keyBackgroundMode),
+    );
+    final customLightBackgroundColor = prefs.getString(
+      _keyCustomLightBackground,
+    );
+    final customDarkBackgroundColor = prefs.getString(_keyCustomDarkBackground);
     final localePref = parseLocalePreference(
       prefs.getString(_keyLocalePreference),
     );
     final uiZoom = clampUiZoom(prefs.getDouble(_keyUiZoom) ?? 1.0);
+    final maxFrameRate = clampMaxFrameRate(
+      prefs.getInt(_keyMaxFrameRate) ?? 0,
+    );
     bool enableStream = prefs.getBool(_keyEnableStreamPreview) ?? true;
     bool enableTagAc = prefs.getBool(_keyEnableTagAutocomplete) ?? true;
     bool showTagTrans = prefs.getBool(_keyShowTagTranslations) ?? true;
@@ -821,10 +937,15 @@ class ConfigService {
     }
 
     // 修复安卓旧版本选中的不可写公共目录；将修正路径落盘，重启保持一致。
-    final resolvedSaveDir = await resolveImageSaveDirectory(saveDir);
-    if (resolvedSaveDir != saveDir) {
-      saveDir = resolvedSaveDir;
-      await prefs.setString(_keySaveDir, saveDir);
+    try {
+      final resolvedSaveDir = await resolveImageSaveDirectory(saveDir);
+      if (resolvedSaveDir != saveDir) {
+        saveDir = resolvedSaveDir;
+        await _enqueueWrite(() => prefs.setString(_keySaveDir, saveDir));
+      }
+    } catch (_) {
+      if (!tolerateStorageDirectoryFailure) rethrow;
+      saveDir = '';
     }
 
     // LLM 多供应商配置加载与平滑迁移
@@ -958,6 +1079,19 @@ class ConfigService {
     debugPrint('[ignored] $error');}
     }
 
+    // MCP 服务列表加载
+    List<McpServerConfig> mcpServers = [];
+    final mcpServersJson = prefs.getString(_keyMcpServers);
+    if (mcpServersJson != null && mcpServersJson.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(mcpServersJson) as List<dynamic>;
+        mcpServers = decoded
+            .whereType<Map<String, dynamic>>()
+            .map(McpServerConfig.fromJson)
+            .toList();
+      } catch (_) {}
+    }
+
     // ComfyUI 模式配置加载
     final bool comfyEnabled = prefs.getBool(_keyComfyUiEnabled) ?? false;
     final String comfyBaseUrl =
@@ -970,6 +1104,12 @@ class ConfigService {
         prefs.getString(_keyComfyUiParamsNodeId) ?? '';
     final String comfySampler = prefs.getString(_keyComfyUiSampler) ?? '';
     final String comfyScheduler = prefs.getString(_keyComfyUiScheduler) ?? '';
+    final String promptSyncEndpoint =
+        prefs.getString(_keyPromptSyncEndpoint) ?? '';
+    final String promptSyncToken =
+        await _secretStore.read(_keyPromptSyncToken) ?? '';
+    final String promptSyncNamespace =
+        prefs.getString(_keyPromptSyncNamespace) ?? 'default';
 
     return AppConfig(
       novelAiKey: naiKey,
@@ -1003,8 +1143,12 @@ class ConfigService {
       accentMode: accentMode,
       accentVariant: accentVariant,
       accentSeedColor: accentSeedColor,
+      backgroundMode: backgroundMode,
+      customLightBackgroundColor: customLightBackgroundColor,
+      customDarkBackgroundColor: customDarkBackgroundColor,
       localePreference: localePref,
       uiZoom: uiZoom,
+      maxFrameRate: maxFrameRate,
       enableStreamPreview: enableStream,
       enableTagAutocomplete: enableTagAc,
       showTagTranslations: showTagTrans,
@@ -1034,6 +1178,9 @@ class ConfigService {
       comfyUiParamsNodeId: comfyParamsNodeId,
       comfyUiSampler: comfySampler,
       comfyUiScheduler: comfyScheduler,
+      promptSyncEndpoint: promptSyncEndpoint,
+      promptSyncToken: promptSyncToken,
+      promptSyncNamespace: promptSyncNamespace,
       llmProviders: providers,
       activeLlmProviderId: activeProviderId,
       imageEditProviderId: imageEditProviderId,
@@ -1042,11 +1189,9 @@ class ConfigService {
       agentCompactionEnabled: prefs.getBool(_keyAgentCompactionEnabled) ?? true,
       agentBackgroundCompaction:
           prefs.getBool(_keyAgentBackgroundCompaction) ?? true,
-      agentPersistentImages:
-          prefs.getBool(_keyAgentPersistentImages) ?? false,
+      agentPersistentImages: prefs.getBool(_keyAgentPersistentImages) ?? false,
       sessionMaxCount: prefs.getInt(_keySessionMaxCount) ?? 300,
-      sessionRetentionDays:
-          prefs.getInt(_keySessionRetentionDays) ?? 90,
+      sessionRetentionDays: prefs.getInt(_keySessionRetentionDays) ?? 90,
       compactionProviderId: compactionProviderId,
       compactionModelId: compactionModelId,
 
@@ -1054,22 +1199,27 @@ class ConfigService {
       activePresetId: activePresetId,
       customSkills: customSkills,
       customTools: customTools,
+      mcpServers: mcpServers,
     );
   }
 
-  // 多个配置快照按调用顺序提交，避免交错写入混合的新旧配置。
-  Future<void> _configWriteQueue = Future<void>.value();
-  final _unconfirmedPreferenceKeys = <String>{};
+  // 同一实例内所有 SharedPreferences 写入共用串行队列；生产代码共享 ConfigService.shared，
+  // 从而跨窗口/配置/工作台参数串行落盘，同时保持测试实例隔离。
+  Future<void> _writeQueue = Future<void>.value();
+  final Set<String> _unconfirmedPreferenceKeys = <String>{};
+
+  Future<T> _enqueueWrite<T>(Future<T> Function() action) {
+    final task = _writeQueue
+        .catchError((Object _) {})
+        .then((_) => action());
+    _writeQueue = task;
+    return task;
+  }
 
   /// 仅保存变化的字段；Windows 每个 setter 都会重写整个偏好文件。
   /// 保持现有 keys，避免关闭窗口时重复写入几十次大型 Skills/预设 JSON。
-  Future<void> saveConfig(AppConfig config) {
-    final task = _configWriteQueue
-        .catchError((Object _) {})
-        .then((_) => _saveConfig(config));
-    _configWriteQueue = task;
-    return task;
-  }
+  Future<void> saveConfig(AppConfig config) =>
+      _enqueueWrite(() => _saveConfig(config));
 
   Future<void> _saveConfig(AppConfig config) async {
     final prefs = await SharedPreferences.getInstance();
@@ -1086,9 +1236,19 @@ class ConfigService {
     final customToolsJson = jsonEncode(
       config.customTools.map((t) => t.toJson()).toList(),
     );
-    final values = <String, Object?>{
+    final mcpServersJson = jsonEncode(
+      config.mcpServers.map((s) => s.toJson()).toList(),
+    );
+    final secrets = <String, String>{
       _keyNovelAiKey: config.novelAiKey,
       _keyAnySearchApiKey: config.anySearchApiKey,
+      _keyPromptSyncToken: config.promptSyncToken,
+    };
+    for (final entry in secrets.entries) {
+      await _saveChangedSecret(entry.key, entry.value);
+    }
+    final values = <String, Object?>{
+      // 代理设置属于普通偏好，不进 SecretStore。
       _keyProxyEnabled: config.proxyEnabled,
       _keyProxyHost: config.proxyHost,
       _keyProxyPort: config.proxyPort,
@@ -1109,8 +1269,12 @@ class ConfigService {
       _keyAccentMode: accentModeStorage(config.accentMode),
       _keyAccentVariant: accentVariantStorage(config.accentVariant),
       _keyAccentSeedColor: config.accentSeedColor,
+      _keyBackgroundMode: backgroundModeStorage(config.backgroundMode),
+      _keyCustomLightBackground: config.customLightBackgroundColor,
+      _keyCustomDarkBackground: config.customDarkBackgroundColor,
       _keyLocalePreference: localePreferenceStorage(config.localePreference),
       _keyUiZoom: clampUiZoom(config.uiZoom),
+      _keyMaxFrameRate: clampMaxFrameRate(config.maxFrameRate),
       _keyEnableStreamPreview: config.enableStreamPreview,
       _keyEnableTagAutocomplete: config.enableTagAutocomplete,
       _keyShowTagTranslations: config.showTagTranslations,
@@ -1138,6 +1302,8 @@ class ConfigService {
       _keyComfyUiParamsNodeId: config.comfyUiParamsNodeId,
       _keyComfyUiSampler: config.comfyUiSampler,
       _keyComfyUiScheduler: config.comfyUiScheduler,
+      _keyPromptSyncEndpoint: config.promptSyncEndpoint,
+      _keyPromptSyncNamespace: config.promptSyncNamespace,
       _keyLlmProviders: providersJson,
       _keyActiveLlmProviderId: config.activeLlmProviderId,
       _keyImageEditProviderId: config.imageEditProviderId,
@@ -1154,6 +1320,7 @@ class ConfigService {
       _keyActivePresetId: config.activePresetId,
       _keyCustomSkills: customSkillsJson,
       _keyCustomTools: customToolsJson,
+      _keyMcpServers: mcpServersJson,
       _keyLlmBaseUrl: active.baseUrl,
       _keyLlmApiKey: active.apiKey,
       _keyLlmModel: active.activeModel.id,
@@ -1162,6 +1329,16 @@ class ConfigService {
     for (final entry in values.entries) {
       await _saveChangedPreference(prefs, entry.key, entry.value);
     }
+  }
+
+  Future<void> _saveChangedSecret(String key, String value) async {
+    final current = await _secretStore.read(key);
+    if (current == value && !_unconfirmedPreferenceKeys.contains(key)) {
+      return;
+    }
+    _unconfirmedPreferenceKeys.add(key);
+    await _secretStore.write(key, value);
+    _unconfirmedPreferenceKeys.remove(key);
   }
 
   Future<void> _saveChangedPreference(
@@ -1233,7 +1410,7 @@ class ConfigService {
   Future<void> saveStudioParameters(
     NaiGenerationParams generation,
     InpaintParams inpaint,
-  ) async {
+  ) => _enqueueWrite(() async {
     final encoded = jsonEncode({
       'generation': generation.toJson(),
       'inpaint': inpaint
@@ -1248,7 +1425,7 @@ class ConfigService {
     if (!await prefs.setString(_keyStudioParameters, encoded)) {
       throw const FileSystemException('工作台参数保存失败');
     }
-  }
+  });
 
   /// 加载外部图源收藏（scope:id）。
   Future<List<String>> loadFavoriteSourceIds() async {
@@ -1471,10 +1648,10 @@ class ConfigService {
   }
 
   /// 保存当前草稿提示词
-  Future<void> saveLastPrompt(String prompt) async {
+  Future<void> saveLastPrompt(String prompt) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLastPrompt, prompt);
-  }
+  });
 
   /// 加载固定词缀开关状态
   Future<bool> loadApplyFixedPrompts() async {
@@ -1483,10 +1660,10 @@ class ConfigService {
   }
 
   /// 保存固定词缀开关状态
-  Future<void> saveApplyFixedPrompts(bool apply) async {
+  Future<void> saveApplyFixedPrompts(bool apply) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyApplyFixedPrompts, apply);
-  }
+  });
 
   /// 加载多角色提示词列表
   Future<List<NaiCharacterPrompt>> loadCharacterPrompts() async {
@@ -1507,13 +1684,14 @@ class ConfigService {
   }
 
   /// 保存多角色提示词列表
-  Future<void> saveCharacterPrompts(List<NaiCharacterPrompt> characters) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _keyCharacterPrompts,
-      jsonEncode(characters.map((c) => c.toJson()).toList()),
-    );
-  }
+  Future<void> saveCharacterPrompts(List<NaiCharacterPrompt> characters) =>
+      _enqueueWrite(() async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          _keyCharacterPrompts,
+          jsonEncode(characters.map((c) => c.toJson()).toList()),
+        );
+      });
 
   /// 加载全局角色位置模式 (true = AI 自动布局，false = 自定义定位)
   Future<bool> loadCharacterAiPosition() async {
@@ -1522,10 +1700,11 @@ class ConfigService {
   }
 
   /// 保存全局角色位置模式
-  Future<void> saveCharacterAiPosition(bool aiPosition) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyCharacterAiPosition, aiPosition);
-  }
+  Future<void> saveCharacterAiPosition(bool aiPosition) =>
+      _enqueueWrite(() async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyCharacterAiPosition, aiPosition);
+      });
 
   /// 加载种子模式 (random, increase, fixed)
   Future<NaiSeedMode> loadSeedMode() async {
@@ -1535,10 +1714,10 @@ class ConfigService {
   }
 
   /// 保存种子模式
-  Future<void> saveSeedMode(NaiSeedMode mode) async {
+  Future<void> saveSeedMode(NaiSeedMode mode) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySeedMode, mode.id);
-  }
+  });
 
   /// 加载种子生成控制时机 (before, after)
   Future<NaiSeedTiming> loadSeedTiming() async {
@@ -1548,10 +1727,10 @@ class ConfigService {
   }
 
   /// 保存种子生成控制时机
-  Future<void> saveSeedTiming(NaiSeedTiming timing) async {
+  Future<void> saveSeedTiming(NaiSeedTiming timing) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySeedTiming, timing.id);
-  }
+  });
 
   // --- 页面布局状态持久化 ---
 
@@ -1577,23 +1756,35 @@ class ConfigService {
   static const double minUiZoom = 0.8;
   static const double maxUiZoom = 1.75;
 
+  /// 帧率上限合法档位（0 = 不限制，正整数 = 目标 FPS）
+  static const List<int> supportedMaxFrameRates = [0, 30, 60, 90, 120, 144];
+  static const int minFrameRate = 24;
+  static const int maxFrameRateLimit = 240;
+
+  /// 帧率上限安全档位：0 或负数归一化为 0（不限制），其余钳到 24~240 FPS
+  static int clampMaxFrameRate(int value) {
+    if (value <= 0) return 0;
+    return value.clamp(minFrameRate, maxFrameRateLimit);
+  }
+
   /// 窗口最小可用尺寸单一事实源：`main.dart` 的 minimumSize 与窗口状态钳制共用，
   /// 两者必须一致，否则用户缩到小窗口后重启会被旧下限弹回大尺寸。
   static const double minWindowWidth = 360.0;
   static const double minWindowHeight = 500.0;
 
   /// 快捷键即时调整 UI 缩放时的单字段落盘 (不整包重写 config)
-  Future<void> saveUiZoom(double zoom) async {
+  Future<void> saveUiZoom(double zoom) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await _saveChangedPreference(prefs, _keyUiZoom, clampUiZoom(zoom));
-  }
+  });
 
   /// 保存分栏左右宽度
-  Future<void> saveSplitWidths(double left, double right) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_keySplitLeftWidth, left);
-    await prefs.setDouble(_keySplitRightWidth, right);
-  }
+  Future<void> saveSplitWidths(double left, double right) =>
+      _enqueueWrite(() async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble(_keySplitLeftWidth, left);
+        await prefs.setDouble(_keySplitRightWidth, right);
+      });
 
   /// 加载侧边栏激活标签
   Future<String> loadSidebarActiveTab({
@@ -1604,10 +1795,10 @@ class ConfigService {
   }
 
   /// 保存侧边栏激活标签
-  Future<void> saveSidebarActiveTab(String tab) async {
+  Future<void> saveSidebarActiveTab(String tab) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keySidebarActiveTab, tab);
-  }
+  });
 
   /// 加载提示词管理模式 (true: 标签页, false: 垂直堆叠)
   Future<bool> loadPromptTabbedMode({bool defaultMode = false}) async {
@@ -1616,10 +1807,10 @@ class ConfigService {
   }
 
   /// 保存提示词管理模式
-  Future<void> savePromptTabbedMode(bool isTabbed) async {
+  Future<void> savePromptTabbedMode(bool isTabbed) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyPromptTabbedMode, isTabbed);
-  }
+  });
 
   /// 加载提示词标签页激活项 (0: Prompt, 1: Undesired Content)
   Future<int> loadPromptActiveTab({int defaultTab = 0}) async {
@@ -1628,10 +1819,10 @@ class ConfigService {
   }
 
   /// 保存提示词标签页激活项
-  Future<void> savePromptActiveTab(int tab) async {
+  Future<void> savePromptActiveTab(int tab) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyPromptActiveTab, tab);
-  }
+  });
 
   /// 加载提示词扩展甲板激活项 (0: Character Prompts, 1: Fixed Affixes)
   Future<int> loadDeckActiveTab({int defaultTab = 0}) async {
@@ -1640,10 +1831,10 @@ class ConfigService {
   }
 
   /// 保存提示词扩展甲板激活项
-  Future<void> saveDeckActiveTab(int tab) async {
+  Future<void> saveDeckActiveTab(int tab) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyDeckActiveTab, tab);
-  }
+  });
 
   /// 加载画板历史侧栏展开状态
   Future<bool> loadCanvasHistoryOpen({bool defaultOpen = false}) async {
@@ -1652,10 +1843,23 @@ class ConfigService {
   }
 
   /// 保存画板历史侧栏展开状态
-  Future<void> saveCanvasHistoryOpen(bool isOpen) async {
+  Future<void> saveCanvasHistoryOpen(bool isOpen) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyCanvasHistoryOpen, isOpen);
+  });
+
+  /// 加载左侧边栏收起状态
+  Future<bool> loadLeftSidebarCollapsed({bool defaultCollapsed = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyLeftSidebarCollapsed) ?? defaultCollapsed;
   }
+
+  /// 保存左侧边栏收起状态
+  Future<void> saveLeftSidebarCollapsed(bool isCollapsed) =>
+      _enqueueWrite(() async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyLeftSidebarCollapsed, isCollapsed);
+      });
 
   /// 加载提示词输入框高度
   Future<
@@ -1710,7 +1914,7 @@ class ConfigService {
     double? suffix,
     double? characterPrompt,
     double? characterNegative,
-  }) async {
+  }) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     if (promptStacked != null) {
       await prefs.setDouble(_keyPromptHeightStacked, promptStacked);
@@ -1736,7 +1940,7 @@ class ConfigService {
     if (characterNegative != null) {
       await prefs.setDouble(_keyCharacterNegativeHeight, characterNegative);
     }
-  }
+  });
 
   /// 加载 Agent 对话草稿输入文本
   Future<String> loadChatDraft() async {
@@ -1745,10 +1949,10 @@ class ConfigService {
   }
 
   /// 保存 Agent 对话草稿输入文本
-  Future<void> saveChatDraft(String draft) async {
+  Future<void> saveChatDraft(String draft) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyChatDraft, draft);
-  }
+  });
 
   // --- 桌面窗口状态持久化 ---
 
@@ -1794,7 +1998,7 @@ class ConfigService {
     double? posX,
     double? posY,
     bool isMaximized = false,
-  }) async {
+  }) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await _saveChangedPreference(prefs, _keyWindowWidth, width);
     await _saveChangedPreference(prefs, _keyWindowHeight, height);
@@ -1805,13 +2009,26 @@ class ConfigService {
       await _saveChangedPreference(prefs, _keyWindowPosY, posY);
     }
     await _saveChangedPreference(prefs, _keyWindowMaximized, isMaximized);
-  }
+  });
 
   /// 保存窗口最大化状态
-  Future<void> saveWindowMaximized(bool isMaximized) async {
+  Future<void> saveWindowMaximized(bool isMaximized) => _enqueueWrite(() async {
     final prefs = await SharedPreferences.getInstance();
     await _saveChangedPreference(prefs, _keyWindowMaximized, isMaximized);
+  });
+
+  /// 是否已在 Android 端引导请求过存储/图片权限（避免用户拒绝后每次重启重复弹窗）
+  Future<bool> hasPromptedAndroidStoragePermission() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAndroidStoragePermissionPrompted) ?? false;
   }
+
+  /// 记录已触发过 Android 存储/图片权限引导弹窗
+  Future<void> markAndroidStoragePermissionPrompted() =>
+      _enqueueWrite(() async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyAndroidStoragePermissionPrompted, true);
+      });
 
   Map<String, dynamic>? _tryLoadLocalPiNovelAiJson() {
     try {

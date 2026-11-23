@@ -85,12 +85,6 @@ class NaiGenerationParams {
   final String stylePositive;
   final String styleNegative;
 
-  /// 生成前是否从请求里剔除 [bannedWords]。
-  final bool stripBannedWords;
-
-  /// 用户维护的屏蔽词，换行/逗号/分号分隔。编辑器原文不变。
-  final String bannedWords;
-
   /// 画风串 tag 是否进入导出元数据（不影响生成）。
   final bool styleTagsInMetadata;
   final NaiModel model;
@@ -115,6 +109,14 @@ class NaiGenerationParams {
   final String? prefixPrompt;
   final String? suffixPrompt;
   final bool applyFixedPrompts;
+
+  /// 是否从返回给 Agent 的参数文本里去掉 [bannedWords]。
+  /// 不改编辑框、存档，也不改送往 NovelAI / ComfyUI 的原文。
+  final bool stripBannedWords;
+
+  /// 用户维护的违禁词，换行、逗号或分号分隔。
+  /// 仅在 [stripBannedWords] 开启时，从 Agent 读到的参数文本里去掉。
+  final String bannedWords;
 
   /// 多角色提示词列表 (仅 V4+ 模型生效，V5 最多 22 个、V4/V4.5 最多 6 个)
   final List<NaiCharacterPrompt> characterPrompts;
@@ -145,8 +147,6 @@ class NaiGenerationParams {
     this.stripNegativeTags = '',
     this.stylePositive = '',
     this.styleNegative = '',
-    this.stripBannedWords = false,
-    this.bannedWords = '',
     this.styleTagsInMetadata = true,
     this.model = NaiModel.v5Full,
     this.effort = NaiEffort.high,
@@ -168,6 +168,8 @@ class NaiGenerationParams {
     this.prefixPrompt,
     this.suffixPrompt,
     this.applyFixedPrompts = true,
+    this.stripBannedWords = false,
+    this.bannedWords = '',
     this.characterPrompts = const [],
     this.characterAiPosition = true,
     this.img2imgBytes,
@@ -176,6 +178,15 @@ class NaiGenerationParams {
     this.referenceImages = const [],
     this.preciseReferences = const [],
   });
+
+  /// 返回给 Agent 前按违禁词开关处理一段文本。
+  /// 关闭或列表为空时原样返回。生成请求不使用此方法。
+  String textForAgent(String text) {
+    if (!stripBannedWords || text.isEmpty || bannedWords.trim().isEmpty) {
+      return text;
+    }
+    return BannedWordSanitizer.strip(text, bannedWords);
+  }
 
   /// 组合最终正向词 (词缀 + 核心词 + 透明背景标签)
   String get finalPrompt {
@@ -201,15 +212,6 @@ class NaiGenerationParams {
 
   /// 实际发送给模型的提示词：在 effectivePrompt 末尾追加 stripTags。
   /// 元数据注释仍使用 effectivePrompt，因此这些 tag 不会进入导出元数据。
-  /// 返回给 Agent 前按屏蔽词开关处理一段文本（生成请求不使用）。
-  String textForAgent(String text) {
-    if (!stripBannedWords || text.isEmpty || bannedWords.trim().isEmpty) {
-      return text;
-    }
-    return BannedWordSanitizer.strip(text, bannedWords);
-  }
-
-
   String get generationPrompt {
     final tags = stripTags.trim();
     if (tags.isEmpty) return effectivePrompt;
@@ -755,6 +757,8 @@ class NaiGenerationParams {
     'prefixPrompt': prefixPrompt,
     'suffixPrompt': suffixPrompt,
     'applyFixedPrompts': applyFixedPrompts,
+    'stripBannedWords': stripBannedWords,
+    'bannedWords': bannedWords,
     'characterPrompts': characterPrompts.map((c) => c.toJson()).toList(),
     'characterAiPosition': characterAiPosition,
     // 私密 tag 与图生图强度/噪声必须持久化；图片字节与参考图列表体积大，
@@ -764,8 +768,6 @@ class NaiGenerationParams {
     'stylePositive': stylePositive,
     'styleNegative': styleNegative,
     'styleTagsInMetadata': styleTagsInMetadata,
-    'stripBannedWords': stripBannedWords,
-    'bannedWords': bannedWords,
     'img2imgStrength': img2imgStrength,
     'img2imgNoise': img2imgNoise,
   };

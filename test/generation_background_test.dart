@@ -67,6 +67,7 @@ class _StreamRepository extends NovelAiRepository {
     bool autoSave = true,
     String imageSaveTemplate = '',
   }) {
+    // ignore: close_sinks
     final controller = StreamController<NaiStreamProgress>();
     streamController = controller;
     return controller.stream;
@@ -124,7 +125,7 @@ void main() {
     }
     await viewModel.flushPendingSaves();
     viewModel.dispose();
-    repository.streamController?.close();
+    await repository.streamController?.close();
     try {
       tempDir.deleteSync(recursive: true);
     } catch (_) {

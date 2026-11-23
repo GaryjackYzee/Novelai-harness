@@ -101,6 +101,15 @@
   "accentVariantFruitSalad": "Fruit Salad",
   "settingsAccentSeed": "Seed Color",
   "settingsAccentSeedSubtitle": "Applies in Manual mode: open the picker to choose any color",
+  "settingsBackgroundMode": "Background",
+  "settingsBackgroundModeSubtitle": "Customize workspace canvas and surfaces: default, softly tinted by accent, or custom color",
+  "backgroundModeDefault": "Default",
+  "backgroundModeFollowAccent": "Follow Accent",
+  "backgroundModeCustom": "Custom",
+  "settingsBackgroundLightColor": "Light Background",
+  "settingsBackgroundDarkColor": "Dark Background",
+  "settingsBackgroundColor": "Canvas Background",
+  "settingsBackgroundReset": "Reset",
   "colorPickerTitle": "Pick a Color",
   "colorPickerHue": "Hue",
   "colorPickerSaturation": "Saturation",
@@ -311,9 +320,14 @@
   },
   "settingsImageEditTip": "Image edit does not consume Anlas points, billing follows the drawing model provider; models without auto-detected capabilities can enable 'Image Output' manually in model settings",
   "settingsSearchModelHint": "Search model name or ID",
-  "settingsModelSortDefault": "Default Order",
+  "settingsModelSortDefault": "Original Order",
   "settingsModelSortNameAsc": "Name A-Z",
   "settingsModelSortNameDesc": "Name Z-A",
+  "settingsModelSortContextDesc": "Context: High to Low",
+  "settingsModelSortMaxTokensDesc": "Max Output: High to Low",
+  "settingsModelSortThinkingFirst": "Thinking First",
+  "settingsModelSortMultimodalFirst": "Multimodal First",
+  "settingsModelSortImageOutputFirst": "Drawing Models First",
   "settingsFilterImageOnly": "Drawing Models Only",
   "settingsFilterImageOnlyTooltip": "Only show models with image output capabilities (e.g. nano banana / gpt-image)",
   "settingsModelCount": "{current} / {total} models",
@@ -702,11 +716,12 @@
   "charPromptIsolationHint": "Isolated character prompts",
   "charPromptUnsupportedModel": "Current model does not support character prompts (V4+ only). Settings below are kept but will not be used in generation.",
   "charPromptEmptyTitle": "No character prompts yet",
-  "charPromptEmptyDescription": "Click Female / Male / Other preset buttons above to start multi-character generation",
+  "charPromptEmptyDescription": "Click Add Character above to choose a preset and start multi-character generation",
   "charPromptExitCanvasEditTooltip": "Exit canvas position editing",
   "charPromptEnterCanvasEditTooltip": "Edit character position on canvas",
   "charPromptCanvasEditing": "Editing",
   "charPromptCanvasEdit": "Canvas Edit",
+  "charPromptAddCharacter": "Add Character",
   "charPromptAddFemaleTooltip": "Add female character (initial prompt: girl)",
   "charPromptAddMaleTooltip": "Add male character (initial prompt: boy)",
   "charPromptAddOtherTooltip": "Add other character (empty initial prompt)",
@@ -735,6 +750,23 @@
   "affixResizePrefixTooltip": "Drag to resize prefix height (double-click to reset)",
   "affixSuffixTitle": "Suffix (placed after main prompt)",
   "affixResizeSuffixTooltip": "Drag to resize suffix height (double-click to reset)",
+  "affixSaveStyleLabel": "Save Style",
+  "affixSaveStyleTooltip": "Save current prefix, suffix, and negative prompt as a style preset",
+  "affixStylePresetsLabel": "Style Library",
+  "affixStylePresetsTooltip": "Fill prefix, suffix, and negative prompt from a saved style preset",
+  "affixStylePresetsEmpty": "No style presets in library yet. Click \"Save Style\" to create one.",
+  "affixSaveStyleEmptyNotice": "Prefix, suffix, and negative prompt are all empty",
+  "affixAppliedStyleNotice": "Applied style preset: {title}",
+  "@affixAppliedStyleNotice": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "bannedWordsTitle": "Strip banned words",
+  "bannedWordsSubtitle": "Hidden from assistant only; still sent to generation",
+  "bannedWordsHint": "Comma-separated terms to hide from assistant...",
   "annotHistoryTitle": "History ",
   "annotHistoryEmpty": "No images",
   "annotHistoryAddedAsReference": "Added history image to canvas as reference",
@@ -914,7 +946,7 @@
   "metadataBlindWatermarkContent": "Blind Watermark Content",
   "metadataBlindWatermarkNotFound": "No blind watermark detected",
   "metadataDialogTitle": "Image Metadata Reader",
-  "metadataPromptTitle": "Prompt",
+  "metadataPromptTitle": "Positive Prompt",
   "metadataCopiedPrompt": "Prompt copied to clipboard",
   "metadataNegativePromptTitle": "Negative Prompt",
   "metadataCopiedNegativePrompt": "Negative prompt copied to clipboard",
@@ -981,7 +1013,7 @@
   "metadataParamUcPreset": "UC Preset",
   "metadataParamTransparentBg": "Transparent Background",
   "metadataParamEnabled": "Enabled",
-  "metadataRawJsonTitle": "Raw Metadata (JSON / Text)",
+  "metadataRawJsonTitle": "Raw Metadata",
   "metadataCopyRawTooltip": "Copy raw text",
   "metadataCopiedRaw": "Raw metadata copied to clipboard",
   "metadataExtractBlindWatermark": "Extract Blind Watermark",
@@ -1020,6 +1052,9 @@
   "sidebarTabParameters": "Parameters",
   "sidebarTabInpaint": "Inpaint",
   "sidebarSettingsTooltip": "Global settings (API Key / Storage / LLM)",
+  "sidebarCollapse": "Collapse",
+  "sidebarCollapseTooltip": "Collapse left sidebar",
+  "sidebarExpandTooltip": "Expand left sidebar",
   "promptResizeTooltip": "Drag to resize height (double-click to reset)",
   "studioClipboardImageDefaultName": "clipboard_image.png",
   "studioImportedReference": "Imported reference image",
@@ -1036,7 +1071,7 @@
   "boardDropInternalHint": "Release mouse to place reference image",
   "boardDropExternalHint": "Release mouse to import external reference image",
   "boardExitAnnotation": "Exit Annotation",
-  "boardSendAllToAi": "Send All Annotations to AI",
+  "boardSendAllToAi": "Send Notes",
   "boardWireMissedTarget": "No selection or pin hit, connection cancelled",
   "boardToolPan": "Pan",
   "boardToolRect": "Selection Box",
@@ -1045,7 +1080,7 @@
   "boardToolAddImage": "+ Reference",
   "boardToolPasteImage": "Paste image ({shortcut})",
   "boardToolResetView": "Reset View",
-  "boardImageCardMainTitle": "Main Image (Current Generation)",
+  "boardImageCardMainTitle": "Main",
   "boardImageCardRefTitle": "Reference Image ({width}x{height})",
   "@boardImageCardRefTitle": {
     "placeholders": {
@@ -1193,9 +1228,30 @@
   "libraryMenuAppendToPrompt": "Append to Workbench Prompt",
   "libraryMenuReplacePrompt": "Replace Workbench Prompt",
   "libraryMenuAddAsCharacter": "Add as Character Card",
+  "libraryMenuSendToAgent": "Send to Assistant Input",
+  "libraryMenuApplyStyleReplace": "Apply Style (Replace Affixes & Negative)",
+  "libraryMenuApplyStyleAppend": "Append to Affixes & Negative",
   "libraryMenuCopyPrompt": "Copy Prompt",
   "libraryMenuEdit": "Edit",
   "libraryCardApply": "Apply to Workbench",
+  "libraryCardApplyStyle": "Apply Style",
+  "libraryCardSendToAgentTooltip": "Send to assistant input",
+  "librarySentCharacterToAgent": "Sent character \"{title}\" to assistant input",
+  "@librarySentCharacterToAgent": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "libraryApplyStyleSuccess": "Applied style preset: {title}",
+  "@libraryApplyStyleSuccess": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "libraryCardAddAsCharacterTooltip": "Add as workbench character card",
   "libraryCardAddCharacter": "+ Character",
   "libraryCardNoPreview": "No Preview",
@@ -1247,10 +1303,17 @@
   "libraryEditFieldPrompt": "Main Prompt",
   "libraryEditFillFromPrompt": "Fill from Workbench",
   "libraryEditFieldPromptHint": "Enter positive prompt (e.g. 1girl, hatsune miku, cybernetic...)",
+  "libraryEditFieldPrefix": "Prefix",
+  "libraryEditFieldPrefixHint": "Style/artist tags placed before main prompt (e.g. artist:..., watercolor style...)",
+  "libraryEditFieldSuffix": "Suffix",
+  "libraryEditFieldSuffixHint": "Style suffix placed after main prompt (e.g. very aesthetic, soft lighting...)",
+  "libraryEditFillAllStyleFromWorkbench": "Fill Style from Workbench",
+  "libraryEditWorkspaceStyleEmpty": "Workbench prefix, suffix, and negative prompt are all empty",
+  "libraryEditStyleContentEmpty": "Please enter at least one of prefix, suffix, or negative prompt",
   "libraryEditFieldNegative": "Negative Prompt",
-  "libraryEditCharacterOnlyBadge": "Character category only",
+  "libraryEditCharacterOnlyBadge": "Character & Style",
   "libraryEditFillFromNegative": "Fill from Negative",
-  "libraryEditFieldNegativeHint": "Character-specific negative tags (e.g. worst quality, bad hands...)",
+  "libraryEditFieldNegativeHint": "Character or style negative tags (e.g. worst quality, bad hands...)",
   "libraryEditFieldTags": "Search Tags",
   "libraryEditFieldTagsHint": "For quick filtering, separated by commas (e.g. miku, watercolor, cyber)",
   "libraryEditSaveButton": "Save Changes",
@@ -1302,7 +1365,9 @@
   },
   "chatImageParseFailedNotice": "Image parsing failed, please try another image",
   "chatModelNoVisionBeforeSendNotice": "Current model does not support image input, please switch to a multimodal model before sending",
-  "chatInputHint": "Enter drawing ideas, or type /nai <prompt> for quick generation...",
+  "chatInputHint": "Enter drawing ideas, @ to link character, or /nai for quick generation...",
+  "chatCharacterMentionHeader": "Library Characters",
+  "chatLinkedCharacterRemoveTooltip": "Remove linked character",
   "chatSendTooltip": "Send (Enter)",
   "chatSendingTooltip": "Replying",
   "chatThinkingLabel": "Thinking:",
@@ -2021,11 +2086,17 @@
   "bootLoadFailedTitle": "Failed to load startup configuration",
   "bootLoadFailedHint": "The image storage directory is unavailable. Check storage permissions and free space, then retry.",
   "bootRetry": "Retry",
+  "bootGrantPermission": "Grant storage permission",
+  "bootOpenSettings": "Open app settings",
+  "bootContinueAnyway": "Continue anyway (temporary memory)",
+  "bootStorageFallbackBanner": "Image storage directory unavailable; running in temporary memory mode. Check permissions or free space.",
   "settingsSectionContextManagement": "Context management",
   "settingsAutoCompaction": "Automatic compaction",
   "settingsAutoCompactionHint": "Keep recent messages and summarize older content without deleting the original history.",
   "settingsBackgroundCompaction": "Background compaction",
   "settingsBackgroundCompactionHint": "Start compaction at 70% of the safe context window; wait only when the limit is reached.",
+  "settingsAgentPersistentImages": "Persist image attachments",
+  "settingsAgentPersistentImagesHint": "Image attachments from earlier turns are re-sent to the vision model every turn instead of being collapsed; this noticeably increases token usage and may break prompt caching.",
   "settingsCompactionProvider": "Compaction provider",
   "settingsCompactionProviderHint": "Use the main model if no separate model is selected or available. Compaction requests are billed separately.",
   "settingsCompactionModel": "Compaction model",
@@ -2197,6 +2268,18 @@
   "promptsUcPreset": "UC preset",
   "referenceImageBadge": "REF",
   "toolFallbackName": "Tool",
+  "chatAssistantLabel": "AI Assistant",
+  "chatCopyMessageTooltip": "Copy message",
+  "chatCopiedTooltip": "Copied",
+  "chatEditAndRewindTooltip": "Edit & rewind following messages",
+  "chatRewindToHereTooltip": "Rewind to this reply",
+  "chatScrollToBottomTooltip": "Scroll to bottom",
+  "chatEmptyWelcomeTitle": "What would you like to create?",
+  "chatEmptySuggestionDraw": "Design a scene and generate an image",
+  "chatEmptySuggestionRefine": "Refine current prompt tags & weights",
+  "chatEmptySuggestionAnalyze": "Analyze the canvas image and suggest edits",
+  "chatToolArgsLabel": "Arguments",
+  "chatToolOutputLabel": "Output",
   "@settingsUiZoomSubtitle": {
     "placeholders": {
       "modifier": {
@@ -2204,6 +2287,381 @@
       }
     }
   },
+  "settingsFrameRateLimit": "Frame Rate Limit",
+  "settingsFrameRateLimitSubtitle": "Cap the maximum render FPS on high-refresh displays to reduce GPU raster load and jank",
+  "frameRateUnlimited": "Uncapped (Display)",
+  "frameRateFpsOption": "{fps} FPS",
+  "@frameRateFpsOption": {
+    "placeholders": {
+      "fps": {
+        "type": "int"
+      }
+    }
+  },
+  "inpaintExit": "Exit Inpaint",
+  "canvasQuickGenerate": "Generate",
+  "canvasQuickAbort": "Stop",
+  "libraryReturn": "Back",
+  "canvasActionReadMetadata": "Read Image Metadata",
+  "metadataNoParamsNotice": "No generation metadata detected. You can try extracting a blind watermark or importing as a reference.",
+  "metadataPickImageFailed": "Failed to read image: {error}",
+  "@metadataPickImageFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSectionProviderBehavior": "Request Behavior",
+  "settingsModelSectionCapabilities": "Capabilities",
+  "settingsModelSectionParameters": "Parameters & Limits",
+  "settingsModelSectionCache": "Prompt Cache",
+  "settingsConfirmDeleteProviderTitle": "Delete Provider",
+  "settingsConfirmDeleteProviderMessage": "Delete provider \"{name}\" and its model configurations?",
+  "@settingsConfirmDeleteProviderMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsEndpointCopied": "Endpoint URL copied",
+  "presetDuplicateToEdit": "Duplicate to Edit",
+  "presetCopyPrompt": "Copy Prompt",
+  "presetCopiedPrompt": "System prompt copied",
+  "presetConfirmDeleteTitle": "Delete Preset",
+  "presetConfirmDeleteMessage": "Delete preset \"{name}\"?",
+  "@presetConfirmDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "presetEnableAll": "Enable all",
+  "presetDisableAll": "Disable all",
+  "skillSearchHint": "Search skill name, ID, or description",
+  "skillNoMatching": "No matching skills",
+  "skillConfirmDeleteTitle": "Delete Skill",
+  "skillConfirmDeleteMessage": "Delete custom skill \"{name}\"? This takes effect immediately.",
+  "@skillConfirmDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillImportFileDesc": "Supports .zip, .skill packages, or a single SKILL.md file",
+  "skillImportFolderDesc": "Import a local folder containing SKILL.md and resources",
+  "skillImportPasteDesc": "Paste SKILL.md text directly and parse",
+  "toolSearchHint": "Search tool name, ID, or description",
+  "toolNoMatching": "No matching tools",
+  "toolConfirmDeleteTitle": "Delete Custom Tool",
+  "toolConfirmDeleteMessage": "Delete custom tool \"{name}\"? This takes effect immediately.",
+  "@toolConfirmDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "toolFormatSchema": "Format JSON",
+  "toolFormatSchemaInvalid": "Invalid JSON; cannot format",
+  "settingsSectionLibrarySync": "Library Cloud Sync",
+  "settingsLibrarySyncEndpointTitle": "Sync Service URL",
+  "settingsLibrarySyncEndpointHint": "https://your-worker.workers.dev",
+  "settingsLibrarySyncTokenTitle": "Access Token",
+  "settingsLibrarySyncTokenHint": "SYNC_TOKEN configured in Worker",
+  "settingsLibrarySyncNamespaceTitle": "Namespace",
+  "settingsLibrarySyncNamespaceHint": "default",
+  "librarySyncButton": "Cloud Sync",
+  "librarySyncingLabel": "Syncing...",
+  "librarySyncSettingsMenu": "Cloud Sync Settings...",
+  "librarySyncMergeMenu": "Sync Now (Two-way Merge)",
+  "librarySyncForcePushMenu": "Force Upload (Overwrite Cloud)",
+  "librarySyncForcePullMenu": "Force Pull (Overwrite Local)",
+  "librarySyncDialogTitle": "Library Cloud Sync",
+  "librarySyncDialogSubtitle": "Sync prompt combos and deduplicated preview images via Cloudflare Workers + D1.",
+  "librarySyncTestConnection": "Test Connection",
+  "librarySyncTesting": "Testing...",
+  "librarySyncTestSuccess": "Connected: {entries} cloud entries · {images} images (rev r{revision})",
+  "@librarySyncTestSuccess": {
+    "placeholders": {
+      "entries": {
+        "type": "int"
+      },
+      "images": {
+        "type": "int"
+      },
+      "revision": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySyncTestFailed": "Connection failed: {error}",
+  "@librarySyncTestFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "librarySyncSaveConfig": "Save Config",
+  "librarySyncConfigSaved": "Cloud sync configuration saved",
+  "librarySyncLastSynced": "Last synced: {time}",
+  "@librarySyncLastSynced": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "librarySyncNeverSynced": "Not synced yet",
+  "librarySyncDoneUpToDate": "Sync complete; local and cloud are up to date (r{revision})",
+  "@librarySyncDoneUpToDate": {
+    "placeholders": {
+      "revision": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySyncDoneSummary": "Synced: pushed {pushed} · pulled {pulled} · local del {deletedLocal} · cloud del {deletedRemote} · img ↑{uploadedImages}/↓{downloadedImages}",
+  "@librarySyncDoneSummary": {
+    "placeholders": {
+      "pushed": {
+        "type": "int"
+      },
+      "pulled": {
+        "type": "int"
+      },
+      "deletedLocal": {
+        "type": "int"
+      },
+      "deletedRemote": {
+        "type": "int"
+      },
+      "uploadedImages": {
+        "type": "int"
+      },
+      "downloadedImages": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySyncForcePushDone": "Force uploaded {count} entries to cloud ({images} images uploaded)",
+  "@librarySyncForcePushDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "images": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySyncForcePullDone": "Force pulled {count} entries from cloud ({images} images downloaded)",
+  "@librarySyncForcePullDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "images": {
+        "type": "int"
+      }
+    }
+  },
+  "librarySyncFailed": "Cloud sync failed: {error}",
+  "@librarySyncFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "librarySyncForcePushConfirmTitle": "Force Upload to Cloud",
+  "librarySyncForcePushConfirmMessage": "This will overwrite the cloud namespace with your current local library (extra cloud entries will be marked deleted). Continue?",
+  "librarySyncForcePullConfirmTitle": "Force Pull from Cloud",
+  "librarySyncForcePullConfirmMessage": "This will replace your local library with the cloud copy. Unsynced local additions or edits will be overwritten. Continue?",
+  "librarySyncStatusUnconfigured": "Not Configured",
+  "librarySyncStatusConfigured": "Configured",
+  "librarySyncStatusConnected": "Connected",
+  "librarySyncStatusError": "Error",
+  "librarySyncConfigSection": "Connection Settings",
+  "librarySyncConfigCollapsedHint": "Expand to edit Worker URL, token, or namespace",
+  "librarySyncOverwriteSection": "Force Overwrite & Recovery",
+  "librarySyncOverwriteSectionHint": "Use only when resolving conflicts or resetting a library",
+  "librarySyncForcePushHint": "Overwrite cloud with local library (extra cloud items will be deleted)",
+  "librarySyncForcePullHint": "Replace local library with cloud copy (unsynced local edits will be lost)",
+  "librarySyncOverwriteConfirmButton": "Confirm Overwrite",
+  "librarySyncEndpointSubtitle": "Your deployed Cloudflare Worker URL",
+  "librarySyncTokenSubtitle": "Matches SYNC_TOKEN Secret configured on the Worker",
+  "librarySyncNamespaceSubtitle": "Isolate multiple libraries (defaults to default)",
+  "canvasQuickPromptTooltip": "Open compact prompt panel",
+  "quickPromptOpenFullTooltip": "Open full prompt panel",
+  "quickPromptCharactersCount": "{enabled}/{total} active",
+  "@quickPromptCharactersCount": {
+    "placeholders": {
+      "enabled": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "notifications": "Notifications",
+  "notificationsTooltip": "Notifications & error log",
+  "notificationCenterTitle": "Notifications",
+  "notificationCenterEmpty": "No notifications yet",
+  "notificationCenterCopyAll": "Copy all",
+  "notificationCenterClearAll": "Clear all",
+  "notificationCenterCopied": "Copied to clipboard",
+  "notificationSourceGeneration": "Generate",
+  "notificationSourceInpaint": "Inpaint",
+  "notificationSourceAgent": "Agent",
+  "notificationSourceAccount": "Account",
+  "notificationSourceComfyUi": "ComfyUI",
+  "notificationSourceStorage": "Storage",
+  "notificationSourceSystem": "System",
+  "vmAccountRefreshFailed": "Failed to refresh NovelAI account: {error}",
+  "@vmAccountRefreshFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTabExtensions": "Skills & MCP",
+  "settingsSubtitleExtensions": "Manage skill packages (drag & drop ZIP import) and external MCP servers via CodeMode",
+  "extensionsSegmentSkills": "Skills",
+  "extensionsSegmentMcp": "MCP Servers",
+  "skillFilterAll": "All",
+  "skillFilterBuiltin": "Built-in",
+  "skillFilterCustom": "Custom",
+  "skillFilterPackaged": "Packaged",
+  "skillBadgeModified": "Modified",
+  "skillResetDefault": "Reset to default",
+  "skillResetDefaultSuccess": "Reset built-in skill \"{name}\" to default",
+  "@skillResetDefaultSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "skillBuiltinOverrideHint": "Editing a built-in skill saves a local override that can be reset at any time.",
+  "skillDropHintTitle": "Drop .zip / .skill / .md or a skill folder here to import",
+  "skillDropHintSubtitle": "Supports standard Agent Skills archives (single or multi-skill bundles) as well as buttons below",
+  "skillDropActiveTitle": "Release to parse and preview skill package",
+  "skillImportArchive": "Import archive / file",
+  "skillBatchImportTitle": "Batch Import Skills",
+  "skillBatchImportSubtitle": "Found {count} skills in the archive. Select the ones to import:",
+  "@skillBatchImportSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillBatchImportButton": "Import selected ({count})",
+  "@skillBatchImportButton": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillBatchImportConflict": "ID conflict (already exists)",
+  "skillBatchImportSuccess": "Imported {count} skills",
+  "@skillBatchImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "skillResourcePreviewEmpty": "Click a resource file above to preview its contents",
+  "skillResourceBinaryHint": "Binary resource ({bytes} bytes), stored inside the managed skill package.",
+  "@skillResourceBinaryHint": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      }
+    }
+  },
+  "skillManageLibraryButton": "Manage Skills",
+  "skillDuplicateAndEnable": "Duplicate Preset & Enable",
+  "presetAllowMcpTools": "Allow MCP Tools (CodeMode)",
+  "presetAllowMcpToolsHint": "Connected MCP server tools are indexed in CodeMode secondary tools and invoked via describe_tools & run_pipeline without bloating top-level schemas.",
+  "mcpCodeModeNotice": "Connected MCP tools are indexed lazily through CodeMode (describe_tools + run_pipeline), keeping top-level function schemas lean and prompt caches stable.",
+  "mcpAddServer": "Add MCP Server",
+  "mcpImportJson": "Import JSON",
+  "mcpExportJson": "Copy JSON",
+  "mcpReconnectAll": "Reconnect All",
+  "mcpEmptyTitle": "No MCP servers configured",
+  "mcpEmptySubtitle": "Supports Streamable HTTP / SSE (all platforms) and local Stdio commands (desktop), or paste standard mcpServers JSON.",
+  "mcpStatusConnected": "Connected",
+  "mcpStatusConnecting": "Connecting",
+  "mcpStatusDisconnected": "Disconnected",
+  "mcpStatusError": "Error",
+  "mcpToolsCount": "{count} tools",
+  "@mcpToolsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpReconnect": "Reconnect",
+  "mcpDialogNewTitle": "Add MCP Server",
+  "mcpDialogEditTitle": "Edit MCP Server · {name}",
+  "@mcpDialogEditTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcpFieldName": "Server Name",
+  "mcpFieldNameHint": "e.g. Filesystem / Context7 / Local Tools",
+  "mcpFieldId": "Server ID",
+  "mcpFieldIdHint": "Used for tool prefix mcp_<id>_<tool>, auto-generated if empty",
+  "mcpFieldTransport": "Transport",
+  "mcpTransportHttp": "HTTP / SSE",
+  "mcpTransportStdio": "Stdio Command",
+  "mcpFieldUrl": "Endpoint URL",
+  "mcpFieldUrlHint": "https://example.com/mcp or http://127.0.0.1:3000/mcp",
+  "mcpFieldHeaders": "HTTP Headers (Key: Value per line, optional)",
+  "mcpFieldHeadersHint": "Authorization: Bearer your-token",
+  "mcpFieldCommand": "Executable Command",
+  "mcpFieldCommandHint": "e.g. npx / uvx / python / node",
+  "mcpFieldArgs": "Arguments (one per line, optional)",
+  "mcpFieldArgsHint": "-y\n@modelcontextprotocol/server-filesystem\nD:/Workspace",
+  "mcpFieldEnv": "Environment Variables (KEY=VALUE per line, optional)",
+  "mcpFieldEnvHint": "API_KEY=your-key",
+  "mcpFieldTimeout": "Timeout (seconds)",
+  "mcpStdioDesktopOnly": "Stdio commands are only supported on desktop (Windows / macOS / Linux).",
+  "mcpImportJsonTitle": "Import mcpServers JSON",
+  "mcpImportJsonHelp": "Compatible with Claude Desktop / Cursor / Antigravity mcpServers JSON format. Existing IDs will be updated.",
+  "mcpImportJsonSuccess": "Imported {count} MCP server(s)",
+  "@mcpImportJsonSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mcpExportJsonCopied": "Copied mcpServers JSON to clipboard",
+  "mcpConfirmDeleteTitle": "Delete MCP Server",
+  "mcpConfirmDeleteMessage": "Delete MCP server \"{name}\" and disconnect it?",
+  "@mcpConfirmDeleteMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mcpValidationError": "Please enter a valid server name and endpoint URL (or command).",
   "type": "String",
   "tabSources": "Sources",
   "sourcesTitle": "Source gallery",
@@ -2461,15 +2919,9 @@
       }
     }
   },
-  "settingsTabExtensions": "Extensions",
   "settingsExtAccounts": "Account pool",
   "settingsExtQueue": "Message queue",
   "settingsExtHint": "WD14 tagging and style presets are on the Prompts page.",
-  "bannedWordsTitle": "Hide banned words from agent",
-  "bannedWordsSubtitle": "Only affects parameter text returned to the agent; editors and generation requests keep the original.",
-  "bannedWordsHint": "One per line, or comma separated",
-  "settingsAgentPersistentImages": "Persist historical images",
-  "settingsAgentPersistentImagesHint": "Resend images from earlier turns every round; higher token usage and may break prompt caching.",
   "settingsSessionMaxCount": "Sessions to keep",
   "settingsSessionMaxCountHint": "Maximum number of session files; the oldest are removed beyond this (the latest is always kept).",
   "settingsSessionRetentionDays": "Session retention (days)",

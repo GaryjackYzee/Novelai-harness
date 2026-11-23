@@ -39,6 +39,7 @@ mixin _StudioLayoutMixin on _StudioCore {
   int get promptActiveTab => _promptActiveTab;
   int get deckActiveTab => _deckActiveTab;
   bool get canvasHistoryOpen => _canvasHistoryOpen;
+  bool get isLeftSidebarCollapsed => _leftSidebarCollapsed;
 
   // 提示词输入框高度 Getters
   double get promptHeightStacked => _promptHeightStacked;
@@ -167,11 +168,38 @@ mixin _StudioLayoutMixin on _StudioCore {
   }
 
   @override
-  void setActiveSidebarTab(StudioSidebarTab tab) {
-    if (_activeSidebarTab == tab) return;
-    _activeSidebarTab = tab;
-    _configService.saveSidebarActiveTab(tab.name);
+  void setActiveSidebarTab(StudioSidebarTab tab, {bool expandSidebar = true}) {
+    final tabChanged = _activeSidebarTab != tab;
+    final shouldExpand = expandSidebar && _leftSidebarCollapsed;
+    if (!tabChanged && !shouldExpand) return;
+    if (tabChanged) {
+      if (tab == StudioSidebarTab.inpaint &&
+          (_activeSidebarTab == StudioSidebarTab.parameters ||
+              _activeSidebarTab == StudioSidebarTab.prompts)) {
+        _tabBeforeInpaint = _activeSidebarTab;
+      } else if (tab == StudioSidebarTab.parameters ||
+          tab == StudioSidebarTab.prompts) {
+        _tabBeforeInpaint = tab;
+      }
+      _activeSidebarTab = tab;
+      _configService.saveSidebarActiveTab(tab.name);
+    }
+    if (shouldExpand) {
+      _leftSidebarCollapsed = false;
+      _configService.saveLeftSidebarCollapsed(false);
+    }
     notifyListeners();
+  }
+
+  @override
+  void exitInpaintMode({bool expandSidebar = false}) {
+    if (_activeSidebarTab != StudioSidebarTab.inpaint) return;
+    final target =
+        (_tabBeforeInpaint == StudioSidebarTab.parameters ||
+            _tabBeforeInpaint == StudioSidebarTab.prompts)
+        ? _tabBeforeInpaint
+        : StudioSidebarTab.parameters;
+    setActiveSidebarTab(target, expandSidebar: expandSidebar);
   }
 
   void setPromptTabbedMode(bool isTabbed) {
@@ -200,5 +228,16 @@ mixin _StudioLayoutMixin on _StudioCore {
     _canvasHistoryOpen = isOpen;
     _configService.saveCanvasHistoryOpen(isOpen);
     notifyListeners();
+  }
+
+  void setLeftSidebarCollapsed(bool collapsed) {
+    if (_leftSidebarCollapsed == collapsed) return;
+    _leftSidebarCollapsed = collapsed;
+    _configService.saveLeftSidebarCollapsed(collapsed);
+    notifyListeners();
+  }
+
+  void toggleLeftSidebarCollapsed() {
+    setLeftSidebarCollapsed(!_leftSidebarCollapsed);
   }
 }

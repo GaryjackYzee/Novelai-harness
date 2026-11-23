@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../../data/services/image_save_path_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/theme_context_extensions.dart';
-import '../../../core/widgets/app_collapsible_section.dart';
 import '../../../core/widgets/app_dropdown.dart';
 import '../../../core/widgets/app_setting_tile.dart';
+import '../../../core/widgets/app_transitions.dart';
 
 /// 纯表单视图：预览/校验由草稿提供，复用设置卡片、下拉与折叠原子组件。
-class ImageSaveTemplateSettings extends StatelessWidget {
+class ImageSaveTemplateSettings extends StatefulWidget {
   final TextEditingController controller;
   final String preview;
   final ImageSaveTemplateError? error;
@@ -37,12 +37,30 @@ class ImageSaveTemplateSettings extends StatelessWidget {
   }
 
   @override
+  State<ImageSaveTemplateSettings> createState() =>
+      _ImageSaveTemplateSettingsState();
+}
+
+class _ImageSaveTemplateSettingsState extends State<ImageSaveTemplateSettings> {
+  int _errorShakeTrigger = 0;
+
+  @override
+  void didUpdateWidget(covariant ImageSaveTemplateSettings oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.error != null && widget.error != oldWidget.error) {
+      _errorShakeTrigger++;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final errorText = errorTextOf(context, error);
+    final errorText = ImageSaveTemplateSettings.errorTextOf(
+      context,
+      widget.error,
+    );
     return AppSettingTile(
       title: l10n.settingsImageSaveTemplateTitle,
-      subtitle: l10n.settingsImageSaveTemplateSubtitle,
       control: const SizedBox.shrink(),
       bottomChild: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,7 +91,7 @@ class ImageSaveTemplateSettings extends StatelessWidget {
                   ),
                 ],
                 onChanged: (value) {
-                  if (value.isNotEmpty) controller.text = value;
+                  if (value.isNotEmpty) widget.controller.text = value;
                 },
               ),
               AppDropdown.simple(
@@ -90,52 +108,39 @@ class ImageSaveTemplateSettings extends StatelessWidget {
                 labelOf: (value) => value.isEmpty
                     ? l10n.settingsImageSaveInsertMacro
                     : '{$value}',
-                onChanged: onInsertMacro,
+                onChanged: widget.onInsertMacro,
               ),
             ],
           ),
           const SizedBox(height: 10),
-          TextField(
-            key: const ValueKey('image-save-template'),
-            controller: controller,
-            minLines: 1,
-            maxLines: 3,
-            style: const TextStyle(fontSize: 12),
-            decoration: InputDecoration(
-              hintText: ImageSavePathService.defaultTemplate,
-              errorText: errorText,
-              errorMaxLines: 4,
-              contentPadding: const EdgeInsets.all(10),
+          AppErrorShake(
+            trigger: _errorShakeTrigger,
+            child: TextField(
+              key: const ValueKey('image-save-template'),
+              controller: widget.controller,
+              minLines: 1,
+              maxLines: 3,
+              style: const TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                hintText: ImageSavePathService.defaultTemplate,
+                errorText: errorText,
+                errorMaxLines: 4,
+                contentPadding: const EdgeInsets.all(10),
+              ),
             ),
           ),
-          if (error == null) ...[
+          if (widget.error == null) ...[
             const SizedBox(height: 8),
             Text(
               l10n.settingsImageSaveTemplatePreview,
               style: TextStyle(fontSize: 11, color: context.colors.textMuted),
             ),
             SelectableText(
-              preview,
+              widget.preview,
               key: const ValueKey('image-save-preview'),
               style: const TextStyle(fontSize: 12),
             ),
           ],
-          const SizedBox(height: 8),
-          Text(
-            l10n.settingsImageSaveTemplateHelp,
-            style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-          ),
-          AppCollapsibleSection(
-            title: l10n.settingsImageSaveMacros,
-            isCard: false,
-            child: Text(
-              l10n.settingsImageSaveMacroHelp,
-              style: TextStyle(
-                fontSize: 12,
-                color: context.colors.textSecondary,
-              ),
-            ),
-          ),
         ],
       ),
     );

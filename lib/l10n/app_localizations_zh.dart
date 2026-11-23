@@ -211,6 +211,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAccentSeedSubtitle => '手动模式下生效：点击打开取色器自由指定任意颜色';
 
   @override
+  String get settingsBackgroundMode => '背景色';
+
+  @override
+  String get settingsBackgroundModeSubtitle =>
+      '切换工作台画布与面板底色：默认纸本/暗灰、跟随强调色微染或自由指定';
+
+  @override
+  String get backgroundModeDefault => '默认';
+
+  @override
+  String get backgroundModeFollowAccent => '跟随强调色';
+
+  @override
+  String get backgroundModeCustom => '自定义';
+
+  @override
+  String get settingsBackgroundLightColor => '亮色背景';
+
+  @override
+  String get settingsBackgroundDarkColor => '深色背景';
+
+  @override
+  String get settingsBackgroundColor => '画布背景色';
+
+  @override
+  String get settingsBackgroundReset => '恢复默认';
+
+  @override
   String get colorPickerTitle => '选择颜色';
 
   @override
@@ -636,13 +664,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSearchModelHint => '搜索模型名称或 ID';
 
   @override
-  String get settingsModelSortDefault => '默认顺序';
+  String get settingsModelSortDefault => '原始顺序';
 
   @override
   String get settingsModelSortNameAsc => '名称 A-Z';
 
   @override
   String get settingsModelSortNameDesc => '名称 Z-A';
+
+  @override
+  String get settingsModelSortContextDesc => '上下文从大到小';
+
+  @override
+  String get settingsModelSortMaxTokensDesc => '最大输出从大到小';
+
+  @override
+  String get settingsModelSortThinkingFirst => '支持思考优先';
+
+  @override
+  String get settingsModelSortMultimodalFirst => '支持多模态优先';
+
+  @override
+  String get settingsModelSortImageOutputFirst => '绘图模型优先';
 
   @override
   String get settingsFilterImageOnly => '仅绘图模型';
@@ -1407,8 +1450,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get charPromptEmptyTitle => '暂无独立角色提示词';
 
   @override
-  String get charPromptEmptyDescription =>
-      '点击右上角「女 / 男 / 其他」预设按钮即可开启多角色防串色隔离生图';
+  String get charPromptEmptyDescription => '点击右上角「添加角色」按钮即可开启多角色防串色隔离生图';
 
   @override
   String get charPromptExitCanvasEditTooltip => '退出画板位置编辑';
@@ -1421,6 +1463,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get charPromptCanvasEdit => '画板编辑';
+
+  @override
+  String get charPromptAddCharacter => '添加角色';
 
   @override
   String get charPromptAddFemaleTooltip => '添加女角色 (初始提示词 girl)';
@@ -1488,6 +1533,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get affixResizeSuffixTooltip => '拖动调整后缀词高度 (双击重置)';
+
+  @override
+  String get affixSaveStyleLabel => '存为画风';
+
+  @override
+  String get affixSaveStyleTooltip => '将当前前缀词、后缀词和负面提示词保存为画风预设';
+
+  @override
+  String get affixStylePresetsLabel => '画风库';
+
+  @override
+  String get affixStylePresetsTooltip => '从词库一键填入画风预设（前置词、后置词与负面词）';
+
+  @override
+  String get affixStylePresetsEmpty => '词库暂无风格条目，可先点击「存为画风」创建';
+
+  @override
+  String get affixSaveStyleEmptyNotice => '当前前置词、后缀词和负面提示词均为空';
+
+  @override
+  String affixAppliedStyleNotice(String title) {
+    return '已填入画风预设: $title';
+  }
+
+  @override
+  String get bannedWordsTitle => '排除违禁词';
+
+  @override
+  String get bannedWordsSubtitle => '仅对助手隐藏，不影响生图';
+
+  @override
+  String get bannedWordsHint => '输入要对助手隐藏的词条，用逗号分隔...';
 
   @override
   String get annotHistoryTitle => '历史记录 ';
@@ -1858,13 +1935,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get metadataDialogTitle => '图像元数据读取';
 
   @override
-  String get metadataPromptTitle => '正向提示词 (Prompt)';
+  String get metadataPromptTitle => '正向提示词';
 
   @override
   String get metadataCopiedPrompt => '已复制正向提示词';
 
   @override
-  String get metadataNegativePromptTitle => '负向提示词 (Negative Prompt)';
+  String get metadataNegativePromptTitle => '负向提示词';
 
   @override
   String get metadataCopiedNegativePrompt => '已复制负向提示词';
@@ -1894,7 +1971,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get metadataCharacterPromptsTitle => '多角色提示词 (Character Prompts)';
+  String get metadataCharacterPromptsTitle => '多角色提示词';
 
   @override
   String metadataCharacterIndex(int index) {
@@ -1946,7 +2023,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get metadataParamEnabled => '开启';
 
   @override
-  String get metadataRawJsonTitle => '原始元数据 (Raw JSON / Text)';
+  String get metadataRawJsonTitle => '原始元数据';
 
   @override
   String get metadataCopyRawTooltip => '复制原始文本';
@@ -2016,6 +2093,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarSettingsTooltip => '全局配置 (API Key / 存储 / LLM)';
 
   @override
+  String get sidebarCollapse => '收起';
+
+  @override
+  String get sidebarCollapseTooltip => '收起左侧栏';
+
+  @override
+  String get sidebarExpandTooltip => '展开左侧栏';
+
+  @override
   String get promptResizeTooltip => '拖动调整高度 (双击重置)';
 
   @override
@@ -2045,7 +2131,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get boardExitAnnotation => '退出批注';
 
   @override
-  String get boardSendAllToAi => '发送全部批注到 AI';
+  String get boardSendAllToAi => '发送批注';
 
   @override
   String get boardWireMissedTarget => '未命中选区/图钉，已取消连线';
@@ -2074,7 +2160,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get boardToolResetView => '适应视口';
 
   @override
-  String get boardImageCardMainTitle => '主图 (当前生成图)';
+  String get boardImageCardMainTitle => '主图';
 
   @override
   String boardImageCardRefTitle(int width, int height) {
@@ -2253,6 +2339,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryMenuAddAsCharacter => '添加为多角色卡片';
 
   @override
+  String get libraryMenuSendToAgent => '发送到助手输入框';
+
+  @override
+  String get libraryMenuApplyStyleReplace => '一键填入画风 (覆盖词缀与负面词)';
+
+  @override
+  String get libraryMenuApplyStyleAppend => '追加到词缀与负面词';
+
+  @override
   String get libraryMenuCopyPrompt => '复制提示词';
 
   @override
@@ -2260,6 +2355,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get libraryCardApply => '应用到工作台';
+
+  @override
+  String get libraryCardApplyStyle => '应用画风';
+
+  @override
+  String get libraryCardSendToAgentTooltip => '发送到助手输入框';
+
+  @override
+  String librarySentCharacterToAgent(String title) {
+    return '已将角色「$title」发送到助手输入框';
+  }
+
+  @override
+  String libraryApplyStyleSuccess(String title) {
+    return '已填入画风预设: $title';
+  }
 
   @override
   String get libraryCardAddAsCharacterTooltip => '添加为工作台多角色卡片';
@@ -2340,17 +2451,40 @@ class AppLocalizationsZh extends AppLocalizations {
       '输入正向提示词 (如: 1girl, hatsune miku, cybernetic...)';
 
   @override
+  String get libraryEditFieldPrefix => '前置词 (Prefix)';
+
+  @override
+  String get libraryEditFieldPrefixHint =>
+      '放置于主提示词最前的画风/画师前缀 (如: artist:..., watercolor style...)';
+
+  @override
+  String get libraryEditFieldSuffix => '后置词 (Suffix)';
+
+  @override
+  String get libraryEditFieldSuffixHint =>
+      '放置于主提示词最后的画风后缀 (如: very aesthetic, soft lighting...)';
+
+  @override
+  String get libraryEditFillAllStyleFromWorkbench => '从工作台填入画风';
+
+  @override
+  String get libraryEditWorkspaceStyleEmpty => '工作台前置词、后缀词和负面提示词均为空';
+
+  @override
+  String get libraryEditStyleContentEmpty => '请至少填写前置词、后缀词或负面提示词中的一项';
+
+  @override
   String get libraryEditFieldNegative => '负面提示词';
 
   @override
-  String get libraryEditCharacterOnlyBadge => '仅角色分类可用';
+  String get libraryEditCharacterOnlyBadge => '角色 / 风格可用';
 
   @override
   String get libraryEditFillFromNegative => '填入工作台负向词';
 
   @override
   String get libraryEditFieldNegativeHint =>
-      '角色专有负面词 (如: worst quality, bad hands, mutated...)';
+      '角色/画风专有负面词 (如: worst quality, bad hands, mutated...)';
 
   @override
   String get libraryEditFieldTags => '检索标签 (Tags)';
@@ -2421,7 +2555,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatModelNoVisionBeforeSendNotice => '当前模型不支持图片输入，发送前请切换到多模态模型';
 
   @override
-  String get chatInputHint => '输入绘画构思，或输入 /nai <词> 快速生图...';
+  String get chatInputHint => '输入绘画构思，@ 关联词库角色，或 /nai 快速生图...';
+
+  @override
+  String get chatCharacterMentionHeader => '词库角色';
+
+  @override
+  String get chatLinkedCharacterRemoveTooltip => '移除关联角色';
 
   @override
   String get chatSendTooltip => '发送（Enter）';
@@ -3373,6 +3513,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bootRetry => '重试';
 
   @override
+  String get bootGrantPermission => '授予存储权限';
+
+  @override
+  String get bootOpenSettings => '打开应用设置';
+
+  @override
+  String get bootContinueAnyway => '继续进入（仅内存缓存）';
+
+  @override
+  String get bootStorageFallbackBanner => '图片存储目录不可用，当前以临时内存模式运行；请检查权限或剩余空间。';
+
+  @override
   String get settingsSectionContextManagement => '上下文管理';
 
   @override
@@ -3386,6 +3538,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsBackgroundCompactionHint => '安全窗口使用到 70% 时提前压缩；到达上限才等待。';
+
+  @override
+  String get settingsAgentPersistentImages => '图片持久发送';
+
+  @override
+  String get settingsAgentPersistentImagesHint =>
+      '历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。';
 
   @override
   String get settingsCompactionProvider => '压缩供应商';
@@ -3689,6 +3848,623 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get toolFallbackName => '工具';
+
+  @override
+  String get chatAssistantLabel => 'AI 助手';
+
+  @override
+  String get chatCopyMessageTooltip => '复制内容';
+
+  @override
+  String get chatCopiedTooltip => '已复制';
+
+  @override
+  String get chatEditAndRewindTooltip => '编辑并撤回后续对话';
+
+  @override
+  String get chatRewindToHereTooltip => '回退到此回复';
+
+  @override
+  String get chatScrollToBottomTooltip => '回到底部';
+
+  @override
+  String get chatEmptyWelcomeTitle => '有什么可以帮您创作？';
+
+  @override
+  String get chatEmptySuggestionDraw => '帮我构思画面并生成图片';
+
+  @override
+  String get chatEmptySuggestionRefine => '优化当前提示词标签与权重';
+
+  @override
+  String get chatEmptySuggestionAnalyze => '分析画板图片并给出修改建议';
+
+  @override
+  String get chatToolArgsLabel => '调用参数';
+
+  @override
+  String get chatToolOutputLabel => '返回结果';
+
+  @override
+  String get settingsFrameRateLimit => '帧率上限';
+
+  @override
+  String get settingsFrameRateLimitSubtitle =>
+      '限制高刷新率显示器的最高渲染帧率，降低 GPU 光栅负载与卡顿';
+
+  @override
+  String get frameRateUnlimited => '不限制（随显示器）';
+
+  @override
+  String frameRateFpsOption(int fps) {
+    return '$fps FPS';
+  }
+
+  @override
+  String get inpaintExit => '退出修复';
+
+  @override
+  String get canvasQuickGenerate => '生成';
+
+  @override
+  String get canvasQuickAbort => '终止';
+
+  @override
+  String get libraryReturn => '返回';
+
+  @override
+  String get canvasActionReadMetadata => '读取图片参数';
+
+  @override
+  String get metadataNoParamsNotice => '未检测到生成参数，可尝试提取盲水印或作为参考图导入';
+
+  @override
+  String metadataPickImageFailed(String error) {
+    return '读取图片失败: $error';
+  }
+
+  @override
+  String get settingsSectionProviderBehavior => '请求行为';
+
+  @override
+  String get settingsModelSectionCapabilities => '模型能力';
+
+  @override
+  String get settingsModelSectionParameters => '采样与限制';
+
+  @override
+  String get settingsModelSectionCache => '提示词缓存';
+
+  @override
+  String get settingsConfirmDeleteProviderTitle => '删除供应商';
+
+  @override
+  String settingsConfirmDeleteProviderMessage(String name) {
+    return '确定删除供应商「$name」及其下的模型配置吗？';
+  }
+
+  @override
+  String get settingsEndpointCopied => '已复制完整接口地址';
+
+  @override
+  String get presetDuplicateToEdit => '复制并自定义';
+
+  @override
+  String get presetCopyPrompt => '复制提示词';
+
+  @override
+  String get presetCopiedPrompt => '已复制系统提示词';
+
+  @override
+  String get presetConfirmDeleteTitle => '删除预设';
+
+  @override
+  String presetConfirmDeleteMessage(String name) {
+    return '确定删除预设「$name」吗？';
+  }
+
+  @override
+  String get presetEnableAll => '全部启用';
+
+  @override
+  String get presetDisableAll => '全部停用';
+
+  @override
+  String get skillSearchHint => '搜索技能名称、标识或描述';
+
+  @override
+  String get skillNoMatching => '没有匹配的技能';
+
+  @override
+  String get skillConfirmDeleteTitle => '删除技能';
+
+  @override
+  String skillConfirmDeleteMessage(String name) {
+    return '确定删除自定义技能「$name」吗？此操作会立即生效。';
+  }
+
+  @override
+  String get skillImportFileDesc => '支持 .zip、.skill 技能包或单个 SKILL.md 文件';
+
+  @override
+  String get skillImportFolderDesc => '导入包含 SKILL.md 与配套资源的本地目录';
+
+  @override
+  String get skillImportPasteDesc => '直接粘贴 SKILL.md 文本内容并解析';
+
+  @override
+  String get toolSearchHint => '搜索工具名称、标识或描述';
+
+  @override
+  String get toolNoMatching => '没有匹配的工具';
+
+  @override
+  String get toolConfirmDeleteTitle => '删除自定义工具';
+
+  @override
+  String toolConfirmDeleteMessage(String name) {
+    return '确定删除自定义工具「$name」吗？此操作会立即生效。';
+  }
+
+  @override
+  String get toolFormatSchema => '格式化 JSON';
+
+  @override
+  String get toolFormatSchemaInvalid => 'JSON 格式无效，无法格式化';
+
+  @override
+  String get settingsSectionLibrarySync => '词库云同步';
+
+  @override
+  String get settingsLibrarySyncEndpointTitle => '同步服务地址';
+
+  @override
+  String get settingsLibrarySyncEndpointHint =>
+      'https://your-worker.workers.dev';
+
+  @override
+  String get settingsLibrarySyncTokenTitle => '访问密钥 (Token)';
+
+  @override
+  String get settingsLibrarySyncTokenHint => '在 Worker 中配置的 SYNC_TOKEN';
+
+  @override
+  String get settingsLibrarySyncNamespaceTitle => '命名空间';
+
+  @override
+  String get settingsLibrarySyncNamespaceHint => 'default';
+
+  @override
+  String get librarySyncButton => '云同步';
+
+  @override
+  String get librarySyncingLabel => '同步中...';
+
+  @override
+  String get librarySyncSettingsMenu => '云同步设置...';
+
+  @override
+  String get librarySyncMergeMenu => '立即云同步 (双向合并)';
+
+  @override
+  String get librarySyncForcePushMenu => '强制上传覆盖云端';
+
+  @override
+  String get librarySyncForcePullMenu => '强制拉取覆盖本地';
+
+  @override
+  String get librarySyncDialogTitle => '词库云同步';
+
+  @override
+  String get librarySyncDialogSubtitle =>
+      '通过 Cloudflare Workers + D1 免费同步词组合与去重预览图。';
+
+  @override
+  String get librarySyncTestConnection => '测试连接';
+
+  @override
+  String get librarySyncTesting => '测试中...';
+
+  @override
+  String librarySyncTestSuccess(int entries, int images, int revision) {
+    return '连接成功：云端 $entries 条词条 · $images 张预览图 (版本 r$revision)';
+  }
+
+  @override
+  String librarySyncTestFailed(String error) {
+    return '连接失败：$error';
+  }
+
+  @override
+  String get librarySyncSaveConfig => '保存配置';
+
+  @override
+  String get librarySyncConfigSaved => '已保存云同步配置';
+
+  @override
+  String librarySyncLastSynced(String time) {
+    return '上次同步：$time';
+  }
+
+  @override
+  String get librarySyncNeverSynced => '尚未同步过';
+
+  @override
+  String librarySyncDoneUpToDate(int revision) {
+    return '云同步完成，本地与云端已一致 (r$revision)';
+  }
+
+  @override
+  String librarySyncDoneSummary(
+    int pushed,
+    int pulled,
+    int deletedLocal,
+    int deletedRemote,
+    int uploadedImages,
+    int downloadedImages,
+  ) {
+    return '同步完成：上传 $pushed · 拉取 $pulled · 删本地 $deletedLocal · 删云端 $deletedRemote · 图 ↑$uploadedImages/↓$downloadedImages';
+  }
+
+  @override
+  String librarySyncForcePushDone(int count, int images) {
+    return '已强制上传覆盖云端 ($count 条，上传图片 $images 张)';
+  }
+
+  @override
+  String librarySyncForcePullDone(int count, int images) {
+    return '已强制拉取覆盖本地 ($count 条，下载图片 $images 张)';
+  }
+
+  @override
+  String librarySyncFailed(String error) {
+    return '云同步失败：$error';
+  }
+
+  @override
+  String get librarySyncForcePushConfirmTitle => '强制上传覆盖云端';
+
+  @override
+  String get librarySyncForcePushConfirmMessage =>
+      '将用本地当前全部词条覆盖云端命名空间中的记录（云端多余条目会被标记删除）。确定继续吗？';
+
+  @override
+  String get librarySyncForcePullConfirmTitle => '强制拉取覆盖本地';
+
+  @override
+  String get librarySyncForcePullConfirmMessage =>
+      '将用云端词库完全替换本地当前词库，本地未同步的新增或修改将被覆盖且无法撤销。确定继续吗？';
+
+  @override
+  String get librarySyncStatusUnconfigured => '未配置';
+
+  @override
+  String get librarySyncStatusConfigured => '已配置';
+
+  @override
+  String get librarySyncStatusConnected => '已连接';
+
+  @override
+  String get librarySyncStatusError => '连接异常';
+
+  @override
+  String get librarySyncConfigSection => '连接配置';
+
+  @override
+  String get librarySyncConfigCollapsedHint => '展开可修改 Worker 地址、密钥或命名空间';
+
+  @override
+  String get librarySyncOverwriteSection => '强制覆盖与恢复';
+
+  @override
+  String get librarySyncOverwriteSectionHint => '仅在冲突无法合并或需要整库重置时使用';
+
+  @override
+  String get librarySyncForcePushHint => '以本地为准覆盖云端（云端多余条目将标记为已删除）';
+
+  @override
+  String get librarySyncForcePullHint => '以云端为准替换本地（本地未同步的修改会丢失）';
+
+  @override
+  String get librarySyncOverwriteConfirmButton => '确认覆盖';
+
+  @override
+  String get librarySyncEndpointSubtitle => '已部署的 Cloudflare Worker 访问地址';
+
+  @override
+  String get librarySyncTokenSubtitle => '与 Worker 中配置的 SYNC_TOKEN Secret 一致';
+
+  @override
+  String get librarySyncNamespaceSubtitle => '用于隔离多套词库（默认 default）';
+
+  @override
+  String get canvasQuickPromptTooltip => '打开精简提示词面板';
+
+  @override
+  String get quickPromptOpenFullTooltip => '展开完整提示词面板';
+
+  @override
+  String quickPromptCharactersCount(int enabled, int total) {
+    return '$enabled/$total 已启用';
+  }
+
+  @override
+  String get notifications => '通知';
+
+  @override
+  String get notificationsTooltip => '通知与错误记录';
+
+  @override
+  String get notificationCenterTitle => '通知记录';
+
+  @override
+  String get notificationCenterEmpty => '暂无通知记录';
+
+  @override
+  String get notificationCenterCopyAll => '复制全部';
+
+  @override
+  String get notificationCenterClearAll => '清空记录';
+
+  @override
+  String get notificationCenterCopied => '已复制到剪贴板';
+
+  @override
+  String get notificationSourceGeneration => '生图';
+
+  @override
+  String get notificationSourceInpaint => '局部修复';
+
+  @override
+  String get notificationSourceAgent => '助手';
+
+  @override
+  String get notificationSourceAccount => '账号';
+
+  @override
+  String get notificationSourceComfyUi => 'ComfyUI';
+
+  @override
+  String get notificationSourceStorage => '存储';
+
+  @override
+  String get notificationSourceSystem => '系统';
+
+  @override
+  String vmAccountRefreshFailed(String error) {
+    return '刷新 NovelAI 账号信息失败：$error';
+  }
+
+  @override
+  String get settingsTabExtensions => '技能与 MCP';
+
+  @override
+  String get settingsSubtitleExtensions =>
+      '管理专业技能包（支持压缩包拖拽导入）与外部 MCP 服务（通过 CodeMode 按需编排）';
+
+  @override
+  String get extensionsSegmentSkills => '技能库';
+
+  @override
+  String get extensionsSegmentMcp => 'MCP 服务';
+
+  @override
+  String get skillFilterAll => '全部';
+
+  @override
+  String get skillFilterBuiltin => '内置';
+
+  @override
+  String get skillFilterCustom => '自定义';
+
+  @override
+  String get skillFilterPackaged => '含资源包';
+
+  @override
+  String get skillBadgeModified => '已修改';
+
+  @override
+  String get skillResetDefault => '恢复默认';
+
+  @override
+  String skillResetDefaultSuccess(String name) {
+    return '已恢复内置技能「$name」为出厂默认';
+  }
+
+  @override
+  String get skillBuiltinOverrideHint => '修改内置技能将保存为本地覆盖版本，可随时恢复出厂默认。';
+
+  @override
+  String get skillDropHintTitle => '拖拽 .zip / .skill / .md 或技能文件夹到此处导入';
+
+  @override
+  String get skillDropHintSubtitle =>
+      '支持标准 Agent Skills 压缩包（含单技能或多技能合集），也支持下方按钮导入';
+
+  @override
+  String get skillDropActiveTitle => '松开鼠标即可解析并预览技能包';
+
+  @override
+  String get skillImportArchive => '导入压缩包 / 文件';
+
+  @override
+  String get skillBatchImportTitle => '批量导入技能包';
+
+  @override
+  String skillBatchImportSubtitle(int count) {
+    return '在压缩包中检测到 $count 个技能，勾选需要导入的条目：';
+  }
+
+  @override
+  String skillBatchImportButton(int count) {
+    return '导入选中 ($count)';
+  }
+
+  @override
+  String get skillBatchImportConflict => 'ID 冲突（已存在）';
+
+  @override
+  String skillBatchImportSuccess(int count) {
+    return '已导入 $count 个技能';
+  }
+
+  @override
+  String get skillResourcePreviewEmpty => '点击上方文件名可预览包内资源内容';
+
+  @override
+  String skillResourceBinaryHint(int bytes) {
+    return '该资源为二进制文件（$bytes 字节），已随技能包托管保存。';
+  }
+
+  @override
+  String get skillManageLibraryButton => '管理技能库';
+
+  @override
+  String get skillDuplicateAndEnable => '复制预设并启用';
+
+  @override
+  String get presetAllowMcpTools => '允许 MCP 工具（CodeMode）';
+
+  @override
+  String get presetAllowMcpToolsHint =>
+      '开启后，已连接的 MCP 服务工具将自动收纳到 CodeMode 二级索引，由 describe_tools 与 run_pipeline 按需调度，不占用顶层上下文。';
+
+  @override
+  String get mcpCodeModeNotice =>
+      '所有已连接的 MCP 工具都会通过 CodeMode（describe_tools + run_pipeline）按需索引与编排，不直接塞入顶层工具 Schema，既省 Token 又稳缓存。';
+
+  @override
+  String get mcpAddServer => '添加 MCP 服务';
+
+  @override
+  String get mcpImportJson => '粘贴 JSON 导入';
+
+  @override
+  String get mcpExportJson => '复制 JSON';
+
+  @override
+  String get mcpReconnectAll => '全部重连';
+
+  @override
+  String get mcpEmptyTitle => '尚未配置 MCP 服务';
+
+  @override
+  String get mcpEmptySubtitle =>
+      '支持 Streamable HTTP / SSE（全平台）与本地 Stdio 命令（桌面端），也可直接粘贴标准 mcpServers JSON。';
+
+  @override
+  String get mcpStatusConnected => '已连接';
+
+  @override
+  String get mcpStatusConnecting => '连接中';
+
+  @override
+  String get mcpStatusDisconnected => '未连接';
+
+  @override
+  String get mcpStatusError => '连接失败';
+
+  @override
+  String mcpToolsCount(int count) {
+    return '$count 个工具';
+  }
+
+  @override
+  String get mcpReconnect => '重连';
+
+  @override
+  String get mcpDialogNewTitle => '添加 MCP 服务';
+
+  @override
+  String mcpDialogEditTitle(String name) {
+    return '编辑 MCP 服务 · $name';
+  }
+
+  @override
+  String get mcpFieldName => '服务名称';
+
+  @override
+  String get mcpFieldNameHint => '例如：Filesystem / Context7 / 本地工具';
+
+  @override
+  String get mcpFieldId => '服务标识 (ID)';
+
+  @override
+  String get mcpFieldIdHint => '用于工具前缀 mcp_<id>_<tool>，留空自动生成';
+
+  @override
+  String get mcpFieldTransport => '传输协议';
+
+  @override
+  String get mcpTransportHttp => 'HTTP / SSE';
+
+  @override
+  String get mcpTransportStdio => 'Stdio 本地命令';
+
+  @override
+  String get mcpFieldUrl => '端点 URL';
+
+  @override
+  String get mcpFieldUrlHint =>
+      'https://example.com/mcp 或 http://127.0.0.1:3000/mcp';
+
+  @override
+  String get mcpFieldHeaders => 'HTTP 请求头（每行 Key: Value，可选）';
+
+  @override
+  String get mcpFieldHeadersHint => 'Authorization: Bearer your-token';
+
+  @override
+  String get mcpFieldCommand => '可执行命令 (command)';
+
+  @override
+  String get mcpFieldCommandHint => '例如：npx / uvx / python / node';
+
+  @override
+  String get mcpFieldArgs => '命令参数（每行一个参数，可选）';
+
+  @override
+  String get mcpFieldArgsHint =>
+      '-y\n@modelcontextprotocol/server-filesystem\nD:/Workspace';
+
+  @override
+  String get mcpFieldEnv => '环境变量（每行 KEY=VALUE，可选）';
+
+  @override
+  String get mcpFieldEnvHint => 'API_KEY=your-key';
+
+  @override
+  String get mcpFieldTimeout => '请求超时（秒）';
+
+  @override
+  String get mcpStdioDesktopOnly =>
+      'Stdio 本地命令仅支持桌面端（Windows / macOS / Linux）。';
+
+  @override
+  String get mcpImportJsonTitle => '导入 mcpServers JSON';
+
+  @override
+  String get mcpImportJsonHelp =>
+      '兼容 Claude Desktop / Cursor / Antigravity 的 mcpServers JSON 格式，同名服务将覆盖更新。';
+
+  @override
+  String mcpImportJsonSuccess(int count) {
+    return '已导入 $count 个 MCP 服务';
+  }
+
+  @override
+  String get mcpExportJsonCopied => '已复制 mcpServers JSON 到剪贴板';
+
+  @override
+  String get mcpConfirmDeleteTitle => '删除 MCP 服务';
+
+  @override
+  String mcpConfirmDeleteMessage(String name) {
+    return '确定要删除 MCP 服务「$name」并断开其连接吗？';
+  }
+
+  @override
+  String get mcpValidationError => '请填写完整的服务名称与端点地址（或命令）。';
 
   @override
   String get type => 'String';
@@ -4383,9 +5159,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get settingsTabExtensions => '扩展';
-
-  @override
   String get settingsExtAccounts => '账号池管理';
 
   @override
@@ -4393,22 +5166,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsExtHint => 'WD14 反推与画风串在「提示词」页使用。';
-
-  @override
-  String get bannedWordsTitle => '对 Agent 隐藏屏蔽词';
-
-  @override
-  String get bannedWordsSubtitle => '只影响返回给 Agent 的参数文本；编辑框与生成请求保持原文。';
-
-  @override
-  String get bannedWordsHint => '每行一个，或用逗号分隔';
-
-  @override
-  String get settingsAgentPersistentImages => '图片持久发送';
-
-  @override
-  String get settingsAgentPersistentImagesHint =>
-      '历史轮次的图片附件不再折叠，每轮重发给视觉模型；显著增加 Token 消耗，也可能击穿提示缓存。';
 
   @override
   String get settingsSessionMaxCount => '会话保留数量';

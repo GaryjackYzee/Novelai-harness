@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../../../data/models/tag_models.dart';
 import '../../../../data/services/prompt_ast_engine.dart';
 import '../../../../data/services/tag_dictionary_service.dart';
 import '../../../core/theme/theme_context_extensions.dart';
@@ -27,11 +28,10 @@ class _WeightRegion {
       rangeStart < end && rangeEnd > start;
 }
 
-/// 扫描整段文本的跨逗号权重区域
-///
-/// 包含两类：
-/// - 数值权重 `N::`：头标记延伸到下一个 `::` (头尾标记均可) 或文本末尾
-/// - 括号权重 `{}` / `[]`：最外层配对括号整体作为区域，跨逗号连续染色
+final RegExp _weightHeadPattern = RegExp(r'(-?\d+(?:\.\d+)?)::');
+final RegExp _weightTailNumPattern = RegExp(r'(-?\d+(?:\.\d+)?)$');
+
+/// 扫描整段文本的跨逗号数值权重区域
 List<_WeightRegion> _scanWeightRegions(String text) {
   return [
     ..._scanNumericWeightRegions(text),
@@ -42,10 +42,9 @@ List<_WeightRegion> _scanWeightRegions(String text) {
 /// 扫描整段文本的跨逗号数值权重区域 `N::`
 List<_WeightRegion> _scanNumericWeightRegions(String text) {
   final regions = <_WeightRegion>[];
-  final headPattern = RegExp(r'(-?\d+(?:\.\d+)?)::');
   var consumed = 0;
 
-  for (final match in headPattern.allMatches(text)) {
+  for (final match in _weightHeadPattern.allMatches(text)) {
     // 头标记落在前一个区域内部 (已被当作终止符消费) 时跳过
     if (match.start < consumed) continue;
 
@@ -57,9 +56,9 @@ List<_WeightRegion> _scanNumericWeightRegions(String text) {
     if (nextTail >= 0) {
       // 终止 :: 前若紧邻数字，说明它是下一个权重头的一部分，
       // 当前区域应结束在数字之前 (头尾皆可作终止符)
-      final headNum = RegExp(
-        r'(-?\d+(?:\.\d+)?)$',
-      ).firstMatch(text.substring(headEnd, nextTail));
+      final headNum = _weightTailNumPattern.firstMatch(
+        text.substring(headEnd, nextTail),
+      );
       if (headNum != null) {
         end = nextTail - headNum.group(0)!.length;
       } else {
@@ -162,6 +161,11 @@ class RichPromptTextController extends TextEditingController {
   bool enableHighlight;
   bool showCategoryColors;
 
+  String? _cachedParsedText;
+  int _cachedDictRevision = -1;
+  List<NaiPromptToken> _cachedTokens = const [];
+  List<_WeightRegion> _cachedWeightRegions = const [];
+
   RichPromptTextController({
     super.text,
     this.enableHighlight = true,
@@ -199,17 +203,29 @@ class RichPromptTextController extends TextEditingController {
       return TextSpan(text: rawText, style: baseStyle);
     }
 
-    final tokens = PromptAstEngine.parsePromptTokens(
-      rawText,
-      categoryLookup: (name) => TagDictionaryService.instance.categoryOf(name),
-    );
+    final dictRevision = TagDictionaryService.instance.revision;
+    final List<NaiPromptToken> tokens;
+    final List<_WeightRegion> weightRegions;
+    if (_cachedParsedText == rawText && _cachedDictRevision == dictRevision) {
+      tokens = _cachedTokens;
+      weightRegions = _cachedWeightRegions;
+    } else {
+      tokens = PromptAstEngine.parsePromptTokens(
+        rawText,
+        categoryLookup: (name) => TagDictionaryService.instance.categoryOf(name),
+      );
+      weightRegions = tokens.isEmpty
+          ? const []
+          : _scanWeightRegions(rawText);
+      _cachedParsedText = rawText;
+      _cachedDictRevision = dictRevision;
+      _cachedTokens = tokens;
+      _cachedWeightRegions = weightRegions;
+    }
 
     if (tokens.isEmpty) {
       return TextSpan(text: rawText, style: baseStyle);
     }
-
-    // 跨逗号数值权重区域 (未闭合的 N:: 头会延伸到下一个 :: 或末尾)
-    final weightRegions = _scanWeightRegions(rawText);
 
     Color regionBg(_WeightRegion region) {
       if (region.multiplier > 1.001) {
