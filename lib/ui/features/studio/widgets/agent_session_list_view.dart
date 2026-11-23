@@ -156,6 +156,46 @@ class _AgentSessionListViewState extends State<AgentSessionListView> {
     }
   }
 
+  Future<void> _discardSessionMemory(SessionInfo session) async {
+    final expected = widget.viewModel.sessionMemoryCount(session.id);
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: context.l10n.sessionDiscardMemoryTitle,
+      message: context.l10n.sessionDiscardMemoryConfirm(
+        session.title,
+        expected,
+      ),
+      confirmLabel: context.l10n.sessionDiscardMemoryButton,
+      cancelLabel: context.l10n.sessionCancel,
+      isDestructive: true,
+    );
+    if (!mounted || confirmed != true) return;
+    try {
+      final result = await widget.viewModel.discardSessionMemory(session.id);
+      if (!mounted) return;
+      showAppToast(
+        context,
+        message: result.contextCleared
+            ? context.l10n.sessionDiscardMemoryDone(result.removed)
+            : context.l10n.sessionDiscardMemoryDoneContextFailed(
+                result.removed,
+              ),
+        tone: result.contextCleared
+            ? AppToastTone.success
+            : AppToastTone.warning,
+        enableBlur: false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showAppToast(
+        context,
+        message: '$error',
+        tone: AppToastTone.error,
+        enableBlur: false,
+      );
+    }
+  }
+
   void _showSessionContextMenu(
     BuildContext context,
     SessionInfo session,
@@ -170,6 +210,11 @@ class _AgentSessionListViewState extends State<AgentSessionListView> {
           icon: Icons.edit_outlined,
           label: l10n.sessionRenameAction,
           onTap: _busy ? null : () => _showRenameDialog(session),
+        ),
+        ContextMenuItem(
+          icon: Icons.cleaning_services_outlined,
+          label: l10n.sessionDiscardMemoryAction,
+          onTap: _busy ? null : () => _discardSessionMemory(session),
         ),
         ContextMenuItem(
           icon: Icons.delete_outline_rounded,

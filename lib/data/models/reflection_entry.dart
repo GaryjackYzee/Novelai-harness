@@ -9,6 +9,7 @@ class ReflectionEntry {
     required this.summary,
     required this.lessons,
     required this.createdAt,
+    this.sessionId = '',
   });
 
   final String id;
@@ -20,6 +21,9 @@ class ReflectionEntry {
   final List<String> lessons;
   final DateTime createdAt;
 
+  /// 产生该条目的会话 id；旧数据为空。
+  final String sessionId;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
@@ -27,6 +31,7 @@ class ReflectionEntry {
     'summary': summary,
     'lessons': lessons,
     'createdAt': createdAt.toIso8601String(),
+    'sessionId': sessionId,
   };
 
   factory ReflectionEntry.fromJson(Map<String, dynamic> json) {
@@ -42,6 +47,7 @@ class ReflectionEntry {
           const <String>[],
       createdAt:
           DateTime.tryParse('${json['createdAt'] ?? ''}') ?? DateTime.now(),
+      sessionId: '${json['sessionId'] ?? ''}',
     );
   }
 

@@ -5220,4 +5220,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sourcesAppendAlready => '该 tag 已在正面提示词中';
+
+  @override
+  String get sessionDiscardMemoryAction => '丢弃本会话记忆';
+
+  @override
+  String get sessionDiscardMemoryTitle => '丢弃会话记忆';
+
+  @override
+  String get sessionDiscardMemoryButton => '确认丢弃';
+
+  @override
+  String sessionDiscardMemoryConfirm(Object count, Object title) {
+    return '将删除「$title」这个会话产生的 $count 条长期记忆/梳理串，并清空其上下文笔记；不会删除对话记录。';
+  }
+
+  @override
+  String sessionDiscardMemoryDone(Object count) {
+    return '已丢弃 $count 条记忆';
+  }
+
+  @override
+  String get sourcesMemory => '记忆';
+
+  @override
+  String get sourcesMemoryEmpty => '还没有长期记忆，点「新增记忆」写入跨会话偏好。';
+
+  @override
+  String get memoryAddTitle => '新增记忆';
+
+  @override
+  String get memoryEditTitle => '编辑记忆';
+
+  @override
+  String get memoryHint => '写入跨会话长期记忆（最多 500 字）';
+
+  @override
+  String get memoryClearAll => '清空全部';
+
+  @override
+  String get memoryClearConfirm => '确定清空全部长期记忆？此操作不可撤销。';
+
+  @override
+  String get memorySearchHint => '搜索记忆';
+
+  @override
+  String get memorySearchEmpty => '没有匹配的记忆';
+
+  @override
+  String sessionDiscardMemoryDoneContextFailed(Object count) {
+    return '已丢弃 $count 条记忆，但上下文笔记删除失败（文件可能被占用）';
+  }
 }

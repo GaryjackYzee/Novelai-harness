@@ -238,6 +238,7 @@ mixin _StudioCore on ChangeNotifier {
   String _accountMode = 'fixed';
   String _defaultAccountId = '';
   final List<String> _memoryEntries = <String>[];
+  final Map<String, Set<String>> _memoryEntrySessions = <String, Set<String>>{};
   final List<ReflectionEntry> _reflections = <ReflectionEntry>[];
   bool _hasUnseenLatest = false;
 
@@ -1169,6 +1170,7 @@ mixin _StudioCore on ChangeNotifier {
           .map((item) => item.trim())
           .toList(growable: false),
       createdAt: DateTime.now(),
+      sessionId: currentSessionId ?? '',
     );
     _reflections.insert(0, entry);
     if (_reflections.length > 200) _reflections.removeLast();
@@ -1189,20 +1191,137 @@ mixin _StudioCore on ChangeNotifier {
   Future<void> addMemoryEntry(String text) async {
     final value = text.trim();
     if (value.isEmpty) return;
-    _memoryEntries.insert(
-      0,
-      value.length > 500 ? value.substring(0, 500) : value,
-    );
-    if (_memoryEntries.length > 100) _memoryEntries.removeLast();
+    final stored = value.length > 500 ? value.substring(0, 500) : value;
+    _memoryEntries.insert(0, stored);
+    final sessionId = currentSessionId;
+    if (sessionId != null && sessionId.isNotEmpty) {
+      _memoryEntrySessions.putIfAbsent(stored, () => <String>{}).add(sessionId);
+    }
+    while (_memoryEntries.length > 100) {
+      final removed = _memoryEntries.removeLast();
+      _memoryEntrySessions.remove(removed);
+    }
     notifyListeners();
     await _configService.saveMemoryEntries(_memoryEntries);
+    await _configService.saveMemoryEntrySessions(_memoryEntrySessions);
   }
 
   Future<void> removeMemoryEntry(int index) async {
     if (index < 0 || index >= _memoryEntries.length) return;
-    _memoryEntries.removeAt(index);
+    final removed = _memoryEntries.removeAt(index);
+    _memoryEntrySessions.remove(removed);
     notifyListeners();
     await _configService.saveMemoryEntries(_memoryEntries);
+    await _configService.saveMemoryEntrySessions(_memoryEntrySessions);
+  }
+
+  Future<void> updateMemoryEntry(int index, String text) async {
+    final value = text.trim();
+    if (index < 0 || index >= _memoryEntries.length || value.isEmpty) return;
+    final old = _memoryEntries[index];
+    final stored = value.length > 500 ? value.substring(0, 500) : value;
+    final sessionIds = _memoryEntrySessions.remove(old);
+    _memoryEntries[index] = stored;
+    if (sessionIds != null && sessionIds.isNotEmpty) {
+      _memoryEntrySessions[stored] = sessionIds;
+    }
+    notifyListeners();
+    await _configService.saveMemoryEntries(_memoryEntries);
+    await _configService.saveMemoryEntrySessions(_memoryEntrySessions);
+  }
+
+  Future<void> clearMemoryEntries() async {
+    _memoryEntries.clear();
+    _memoryEntrySessions.clear();
+    notifyListeners();
+    await _configService.saveMemoryEntries(const <String>[]);
+    await _configService.saveMemoryEntrySessions(const <String, Set<String>>{});
+  }
+
+  /// 某个会话产生的记忆条数（用于删除确认）。
+  int sessionMemoryCount(String sessionId) {
+    final target = sessionId.trim();
+    if (target.isEmpty) return 0;
+    final memory = _memoryEntries.where((entry) {
+      final sessionIds = _memoryEntrySessions[entry];
+      return sessionIds != null &&
+          sessionIds.length == 1 &&
+          sessionIds.contains(target);
+    }).length;
+    final reflections = _reflections
+        .where((entry) => entry.sessionId == target)
+        .length;
+    return memory + reflections;
+  }
+
+  /// 丢弃某个会话产生的长期记忆、梳理串与上下文笔记。
+  Future<({int removed, bool contextCleared})> discardSessionMemory(
+    String sessionId,
+  ) async {
+    final target = sessionId.trim();
+    if (target.isEmpty) return (removed: 0, contextCleared: true);
+    final previousEntries = List<String>.from(_memoryEntries);
+    final previousSessions = {
+      for (final entry in _memoryEntrySessions.entries)
+        entry.key: Set<String>.from(entry.value),
+    };
+    final previousReflections = List<ReflectionEntry>.from(_reflections);
+    var removedCount = 0;
+    final remaining = <String>[];
+    for (final entry in _memoryEntries) {
+      final sessionIds = _memoryEntrySessions[entry];
+      if (sessionIds == null || !sessionIds.contains(target)) {
+        remaining.add(entry);
+        continue;
+      }
+      sessionIds.remove(target);
+      if (sessionIds.isEmpty) {
+        _memoryEntrySessions.remove(entry);
+        removedCount += 1;
+      }
+      remaining.add(entry);
+    }
+    _memoryEntries
+      ..clear()
+      ..addAll(remaining);
+    final removedReflections = _reflections
+        .where((entry) => entry.sessionId == target)
+        .toList(growable: false);
+    if (removedReflections.isNotEmpty) {
+      _reflections.removeWhere((entry) => entry.sessionId == target);
+      removedCount += removedReflections.length;
+    }
+    try {
+      await ReflectionStore.instance.removeBySession(target);
+      await _configService.saveMemoryEntries(_memoryEntries);
+      await _configService.saveMemoryEntrySessions(_memoryEntrySessions);
+    } on Object {
+      _memoryEntries
+        ..clear()
+        ..addAll(previousEntries);
+      _memoryEntrySessions
+        ..clear()
+        ..addAll(previousSessions);
+      _reflections
+        ..clear()
+        ..addAll(previousReflections);
+      for (final entry in removedReflections) {
+        try {
+          await ReflectionStore.instance.upsert(entry);
+        } on Object {
+          // 回滚尽力而为
+        }
+      }
+      rethrow;
+    }
+    final contextCleared = await _sessionLog.clearSessionContextState(target);
+    if (target == currentSessionId) {
+      _harness.memory.clear();
+      _harness.memoryChanged();
+      _sessionLog.saveContextState(_harness.exportContextState());
+    }
+    notifyListeners();
+    return (removed: removedCount, contextCleared: contextCleared);
   }
 
   /// 资料库目录与文件状态。
@@ -1832,6 +1951,12 @@ class StudioViewModel extends ChangeNotifier
     _memoryEntries
       ..clear()
       ..addAll(await _configService.loadMemoryEntries());
+    _memoryEntrySessions
+      ..clear()
+      ..addAll(await _configService.loadMemoryEntrySessions());
+    _memoryEntrySessions.removeWhere(
+      (text, _) => !_memoryEntries.contains(text),
+    );
     _reflections.clear();
     try {
       _reflections.addAll(await ReflectionStore.instance.list());

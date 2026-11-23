@@ -2939,5 +2939,20 @@
   "promptsConvertNewlinesTooltip": "把 \\n 转成换行",
   "sourcesAppendToPrompt": "追加到正面提示词",
   "sourcesAppendSuccess": "已追加到正面提示词",
-  "sourcesAppendAlready": "该 tag 已在正面提示词中"
+  "sourcesAppendAlready": "该 tag 已在正面提示词中",
+  "sessionDiscardMemoryAction": "丢弃本会话记忆",
+  "sessionDiscardMemoryTitle": "丢弃会话记忆",
+  "sessionDiscardMemoryButton": "确认丢弃",
+  "sessionDiscardMemoryConfirm": "将删除「{title}」这个会话产生的 {count} 条长期记忆/梳理串，并清空其上下文笔记；不会删除对话记录。",
+  "sessionDiscardMemoryDone": "已丢弃 {count} 条记忆",
+  "sourcesMemory": "记忆",
+  "sourcesMemoryEmpty": "还没有长期记忆，点「新增记忆」写入跨会话偏好。",
+  "memoryAddTitle": "新增记忆",
+  "memoryEditTitle": "编辑记忆",
+  "memoryHint": "写入跨会话长期记忆（最多 500 字）",
+  "memoryClearAll": "清空全部",
+  "memoryClearConfirm": "确定清空全部长期记忆？此操作不可撤销。",
+  "memorySearchHint": "搜索记忆",
+  "memorySearchEmpty": "没有匹配的记忆",
+  "sessionDiscardMemoryDoneContextFailed": "已丢弃 {count} 条记忆，但上下文笔记删除失败（文件可能被占用）"
 }

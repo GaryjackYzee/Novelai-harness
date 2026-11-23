@@ -189,12 +189,14 @@ class AitagService {
   /// Download a pixiv image through AITag's referer requirement.
   static const int _maxImageRequests = 4;
   int _activeImageRequests = 0;
-  final List<Completer<void>> _imageWaiters = <Completer<void>>[];
+  final List<({int priority, Completer<void> completer})> _imageWaiters =
+      <({int priority, Completer<void> completer})>[];
 
-  Future<T> _withImageSlot<T>(Future<T> Function() action) async {
+  Future<T> _withImageSlot<T>(int priority, Future<T> Function() action) async {
     while (_activeImageRequests >= _maxImageRequests) {
       final waiter = Completer<void>();
-      _imageWaiters.add(waiter);
+      _imageWaiters.add((priority: priority, completer: waiter));
+      _imageWaiters.sort((a, b) => a.priority.compareTo(b.priority));
       await waiter.future;
     }
     _activeImageRequests += 1;
@@ -203,17 +205,17 @@ class AitagService {
     } finally {
       _activeImageRequests -= 1;
       if (_imageWaiters.isNotEmpty) {
-        _imageWaiters.removeAt(0).complete();
+        _imageWaiters.removeAt(0).completer.complete();
       }
     }
   }
 
-  Future<Uint8List> fetchImage(String url) {
+  Future<Uint8List> fetchImage(String url, {int priority = 0}) {
     final trimmed = url.trim();
     if (trimmed.isEmpty) {
       return Future<Uint8List>.error(const AitagException('缺少图片地址'));
     }
-    return _withImageSlot(() async {
+    return _withImageSlot(priority, () async {
       Object? lastError;
       for (var attempt = 0; attempt < 2; attempt += 1) {
         try {

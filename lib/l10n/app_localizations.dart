@@ -9626,6 +9626,96 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'该 tag 已在正面提示词中'**
   String get sourcesAppendAlready;
+
+  /// No description provided for @sessionDiscardMemoryAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'丢弃本会话记忆'**
+  String get sessionDiscardMemoryAction;
+
+  /// No description provided for @sessionDiscardMemoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'丢弃会话记忆'**
+  String get sessionDiscardMemoryTitle;
+
+  /// No description provided for @sessionDiscardMemoryButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认丢弃'**
+  String get sessionDiscardMemoryButton;
+
+  /// No description provided for @sessionDiscardMemoryConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除「{title}」这个会话产生的 {count} 条长期记忆/梳理串，并清空其上下文笔记；不会删除对话记录。'**
+  String sessionDiscardMemoryConfirm(Object count, Object title);
+
+  /// No description provided for @sessionDiscardMemoryDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已丢弃 {count} 条记忆'**
+  String sessionDiscardMemoryDone(Object count);
+
+  /// No description provided for @sourcesMemory.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆'**
+  String get sourcesMemory;
+
+  /// No description provided for @sourcesMemoryEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有长期记忆，点「新增记忆」写入跨会话偏好。'**
+  String get sourcesMemoryEmpty;
+
+  /// No description provided for @memoryAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增记忆'**
+  String get memoryAddTitle;
+
+  /// No description provided for @memoryEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑记忆'**
+  String get memoryEditTitle;
+
+  /// No description provided for @memoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'写入跨会话长期记忆（最多 500 字）'**
+  String get memoryHint;
+
+  /// No description provided for @memoryClearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空全部'**
+  String get memoryClearAll;
+
+  /// No description provided for @memoryClearConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定清空全部长期记忆？此操作不可撤销。'**
+  String get memoryClearConfirm;
+
+  /// No description provided for @memorySearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索记忆'**
+  String get memorySearchHint;
+
+  /// No description provided for @memorySearchEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的记忆'**
+  String get memorySearchEmpty;
+
+  /// No description provided for @sessionDiscardMemoryDoneContextFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已丢弃 {count} 条记忆，但上下文笔记删除失败（文件可能被占用）'**
+  String sessionDiscardMemoryDoneContextFailed(Object count);
 }
 
 class _AppLocalizationsDelegate

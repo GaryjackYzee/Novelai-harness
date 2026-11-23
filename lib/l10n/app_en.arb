@@ -2939,5 +2939,20 @@
   "promptsConvertNewlinesTooltip": "Convert \\n to line breaks",
   "sourcesAppendToPrompt": "Append to prompt",
   "sourcesAppendSuccess": "Appended to positive prompt",
-  "sourcesAppendAlready": "These tags are already in the positive prompt"
+  "sourcesAppendAlready": "These tags are already in the positive prompt",
+  "sessionDiscardMemoryAction": "Discard session memory",
+  "sessionDiscardMemoryTitle": "Discard session memory",
+  "sessionDiscardMemoryButton": "Discard",
+  "sessionDiscardMemoryConfirm": "Delete {count} long-term memories/reflections and clear context notes produced by \"{title}\". The transcript is kept.",
+  "sessionDiscardMemoryDone": "Discarded {count} memories",
+  "sourcesMemory": "Memory",
+  "sourcesMemoryEmpty": "No long-term memory yet. Use Add memory to store cross-session preferences.",
+  "memoryAddTitle": "Add memory",
+  "memoryEditTitle": "Edit memory",
+  "memoryHint": "Long-term cross-session memory (max 500 chars)",
+  "memoryClearAll": "Clear all",
+  "memoryClearConfirm": "Clear all long-term memories? This cannot be undone.",
+  "memorySearchHint": "Search memory",
+  "memorySearchEmpty": "No matching memory",
+  "sessionDiscardMemoryDoneContextFailed": "Discarded {count} memories, but context notes could not be removed (file may be locked)."
 }

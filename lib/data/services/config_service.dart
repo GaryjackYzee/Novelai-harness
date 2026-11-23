@@ -1616,6 +1616,42 @@ class ConfigService {
     await prefs.setStringList('novelai_memory_entries', entries);
   }
 
+  /// 长期记忆条目的会话来源映射（memory 文本 -> sessionId）。
+  Future<Map<String, Set<String>>> loadMemoryEntrySessions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('novelai_memory_entry_sessions');
+    if (raw == null || raw.trim().isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final result = <String, Set<String>>{};
+        for (final entry in decoded.entries) {
+          final value = entry.value;
+          final ids = <String>{};
+          if (value is String && value.isNotEmpty) ids.add(value);
+          if (value is List) ids.addAll(value.whereType<String>());
+          if (ids.isNotEmpty) result['${entry.key}'] = ids;
+        }
+        return result;
+      }
+    } on Object {
+      // 损坏时按无来源处理
+    }
+    return const {};
+  }
+
+  Future<void> saveMemoryEntrySessions(
+    Map<String, Set<String>> sessions,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'novelai_memory_entry_sessions',
+      jsonEncode({
+        for (final entry in sessions.entries) entry.key: entry.value.toList(),
+      }),
+    );
+  }
+
   /// 加载资料库目录。
   Future<String> loadLibraryDir() async {
     final prefs = await SharedPreferences.getInstance();

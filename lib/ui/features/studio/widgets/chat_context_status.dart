@@ -11,6 +11,90 @@ import '../../../core/widgets/app_section_header.dart';
 import '../../../core/widgets/app_transitions.dart';
 import '../../../core/widgets/overlay_anchor.dart';
 
+/// 输入框上方的横条：一眼看到上下文字数与占比。
+class ChatContextBar extends StatelessWidget {
+  final ContextUsage usage;
+  final String modelName;
+  final String sessionUsage;
+
+  const ChatContextBar({
+    super.key,
+    required this.usage,
+    required this.modelName,
+    required this.sessionUsage,
+  });
+
+  static String _compact(int value) {
+    final text = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < text.length; i += 1) {
+      if (i > 0 && (text.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(text[i]);
+    }
+    return buffer.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    final fraction = usage.fraction.clamp(0.0, 1.0);
+    final progressColor = usage.error != null || fraction >= 0.85
+        ? colors.error
+        : (fraction >= 0.7 ? colors.warning : colors.primary);
+    final percent = (fraction * 100).round();
+    return Tooltip(
+      message: '${l10n.chatContextEstimate(usage.tokens, usage.window)} · '
+          '${l10n.chatContextNotes(usage.noteCount)}',
+      child: InkWell(
+        onTap: () => ChatContextStatus(
+          usage: usage,
+          modelName: modelName,
+          sessionUsage: sessionUsage,
+        ).showDetails(context),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
+          child: Row(
+            children: [
+              Icon(
+                Icons.memory_rounded,
+                size: 12,
+                color: colors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: fraction,
+                    minHeight: 4,
+                    backgroundColor: colors.borderDefault,
+                    color: progressColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  '${_compact(usage.tokens)} / ${_compact(usage.window)} · $percent%'
+                  ' · ${l10n.chatContextNotes(usage.noteCount)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: usage.error != null ? colors.error : colors.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 请求上下文用量环形胶囊；桌面悬停看摘要，桌面/手机点按均可弹出完整用量面板。
 /// 接收展示快照，不持有 ViewModel 或操作会话记忆。
 class ChatContextStatus extends StatelessWidget {
@@ -37,6 +121,8 @@ class ChatContextStatus extends StatelessWidget {
 
   String _label(AppLocalizations l10n) =>
       '${l10n.chatContextEstimate(usage.tokens, usage.window)} · ${_status(l10n)}';
+
+  void showDetails(BuildContext context) => _showDetails(context);
 
   void _showDetails(BuildContext context) {
     showAnchoredPopover<void>(

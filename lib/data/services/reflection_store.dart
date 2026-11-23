@@ -25,9 +25,17 @@ class ReflectionStore {
         source TEXT NOT NULL,
         summary TEXT NOT NULL,
         lessons TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        session_id TEXT NOT NULL DEFAULT ''
       )
     ''');
+    final columns = db.select('PRAGMA table_info(reflections)');
+    final hasSession = columns.any((row) => row['name'] == 'session_id');
+    if (!hasSession) {
+      db.execute(
+        "ALTER TABLE reflections ADD COLUMN session_id TEXT NOT NULL DEFAULT ''",
+      );
+    }
     _db = db;
     return db;
   }
@@ -35,7 +43,7 @@ class ReflectionStore {
   Future<List<ReflectionEntry>> list() async {
     final db = await _open();
     final rows = db.select(
-      'SELECT id, title, source, summary, lessons, created_at FROM reflections ORDER BY created_at DESC',
+      'SELECT id, title, source, summary, lessons, created_at, session_id FROM reflections ORDER BY created_at DESC',
     );
     return rows.map(_rowOf).toList(growable: false);
   }
@@ -43,7 +51,7 @@ class ReflectionStore {
   Future<void> upsert(ReflectionEntry entry) async {
     final db = await _open();
     db.execute(
-      'INSERT OR REPLACE INTO reflections (id, title, source, summary, lessons, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT OR REPLACE INTO reflections (id, title, source, summary, lessons, created_at, session_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       <Object?>[
         entry.id,
         entry.title,
@@ -51,8 +59,16 @@ class ReflectionStore {
         entry.summary,
         jsonEncode(entry.lessons),
         entry.createdAt.toIso8601String(),
+        entry.sessionId,
       ],
     );
+  }
+
+  Future<int> removeBySession(String sessionId) async {
+    if (sessionId.isEmpty) return 0;
+    final db = await _open();
+    db.execute('DELETE FROM reflections WHERE session_id = ?', <Object?>[sessionId]);
+    return db.updatedRows;
   }
 
   Future<void> remove(String id) async {
@@ -77,6 +93,7 @@ class ReflectionStore {
       summary: '${row['summary']}',
       lessons: lessons,
       createdAt: DateTime.tryParse('${row['created_at']}') ?? DateTime.now(),
+      sessionId: '${row['session_id'] ?? ''}',
     );
   }
 }

@@ -855,6 +855,15 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
           // 本地 fork：排队消息悬浮条
           _buildQueueBar(),
 
+          if (widget.viewModel.contextUsage.window > 0) ...[
+            ChatContextBar(
+              usage: widget.viewModel.contextUsage,
+              modelName: '${activeProvider.name} · ${activeModel.name}',
+              sessionUsage: _buildSessionUsageTooltip(context.l10n),
+            ),
+            const SizedBox(height: 2),
+          ],
+
           _buildMessageComposer(
             activeProvider: activeProvider,
             activeModel: activeModel,

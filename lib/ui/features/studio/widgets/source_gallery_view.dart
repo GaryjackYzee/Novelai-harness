@@ -91,13 +91,13 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
   /// 发送到聊天框进行中的条目 (scope:id)，避免重复点击叠加请求。
   final Set<String> _chatBusy = <String>{};
 
-  Future<Uint8List> _thumbFor(AitagWork work) {
+  Future<Uint8List> _thumbFor(AitagWork work, [int priority = 0]) {
     final existing = _thumbs.remove(work.id);
     if (existing != null) {
       _thumbs[work.id] = existing;
       return existing;
     }
-    final future = _aitag.fetchImage(work.thumbUrl);
+    final future = _aitag.fetchImage(work.thumbUrl, priority: priority);
     _thumbs[work.id] = future;
     while (_thumbs.length > _maxCachedThumbs) {
       _thumbs.remove(_thumbs.keys.first);
@@ -162,6 +162,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
   List<CodexEntry> _codexEntries = <CodexEntry>[];
   List<CodexCategory> _codexCategories = <CodexCategory>[];
   String _codexCategory = '';
+  String _memoryQuery = '';
   int _codexTotal = 0;
   int _codexPage = 1;
   int _codexPages = 1;
@@ -862,6 +863,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
       _tab = tab;
       _error = null;
       _search.clear();
+      _memoryQuery = '';
     });
     _loadFirst();
   }
@@ -895,6 +897,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
               2 => _buildLocalGrid(context),
               3 => _buildLibraryTab(context),
               4 => _buildReflectionTab(context),
+              7 => _buildMemoryTab(context),
               6 => _buildFavoritesTab(context),
               _ => _buildDanbooruGrid(context),
             },
@@ -968,6 +971,12 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
                         label: Text(l10n.sourcesReflections),
                         selected: _tab == 4,
                         onSelected: (_) => _switchTab(4),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(l10n.sourcesMemory),
+                        selected: _tab == 7,
+                        onSelected: (_) => _switchTab(7),
                       ),
                       const SizedBox(width: 12),
                       ProxyFeatureSwitch(
@@ -1183,11 +1192,11 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
     return _buildMasonry(
       context,
       children: [
-        for (final work in works)
+        for (final (index, work) in works.indexed)
           _AitagCard(
             work: work,
             localPath: _sourceFavorites.byId('aitag', work.id)?.localPath,
-            loadThumb: _thumbFor,
+            loadThumb: (item) => _thumbFor(item, index),
             badge: _aitagBadgeFor(work),
             favorite: _isAitagFavorite(work),
             busy: _chatBusy.contains('aitag:${work.id}'),
@@ -1780,6 +1789,188 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
         ),
       ),
     );
+  }
+
+  Widget _buildMemoryTab(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = context.colors;
+    final entries = widget.viewModel.memoryEntries;
+    final query = _memoryQuery.trim().toLowerCase();
+    final visible = <(int, String)>[
+      for (var index = 0; index < entries.length; index += 1)
+        if (query.isEmpty || entries[index].toLowerCase().contains(query))
+          (index, entries[index]),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+          child: Row(
+            children: [
+              Text(
+                '${l10n.sourcesMemory} (${entries.length})',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 240),
+                    child: SizedBox(
+                      height: 32,
+                      child: TextField(
+                        onChanged: (value) =>
+                            setState(() => _memoryQuery = value),
+                        style: const TextStyle(fontSize: 11),
+                        decoration: InputDecoration(
+                          hintText: l10n.memorySearchHint,
+                          isDense: true,
+                          prefixIcon: const Icon(Icons.search, size: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: () => _editMemory(context, null, ''),
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(l10n.memoryAddTitle),
+              ),
+              if (entries.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => _clearMemory(context),
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                  label: Text(l10n.memoryClearAll),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: visible.isEmpty
+              ? Center(
+                  child: Text(
+                    _memoryQuery.trim().isEmpty
+                        ? l10n.sourcesMemoryEmpty
+                        : l10n.memorySearchEmpty,
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: visible.length,
+                  itemBuilder: (context, position) {
+                    final index = visible[position].$1;
+                    final text = visible[position].$2;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        dense: true,
+                        title: Text(
+                          text,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: l10n.memoryEditTitle,
+                              onPressed: () =>
+                                  _editMemory(context, index, text),
+                              icon: const Icon(Icons.edit_outlined, size: 16),
+                            ),
+                            IconButton(
+                              tooltip: l10n.sessionDeleteAction,
+                              onPressed: () =>
+                                  widget.viewModel.removeMemoryEntry(index),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _editMemory(
+    BuildContext context,
+    int? index,
+    String initial,
+  ) async {
+    var draft = initial;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          index == null
+              ? dialogContext.l10n.memoryAddTitle
+              : dialogContext.l10n.memoryEditTitle,
+        ),
+        content: TextFormField(
+          initialValue: initial,
+          autofocus: true,
+          minLines: 4,
+          maxLines: 8,
+          onChanged: (value) => draft = value,
+          decoration: InputDecoration(
+            hintText: dialogContext.l10n.memoryHint,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(dialogContext.l10n.sessionCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(draft),
+            child: Text(dialogContext.l10n.sessionSave),
+          ),
+        ],
+      ),
+    );
+    if (result == null || result.trim().isEmpty) return;
+    if (index == null) {
+      await widget.viewModel.addMemoryEntry(result);
+    } else {
+      await widget.viewModel.updateMemoryEntry(index, result);
+    }
+  }
+
+  Future<void> _clearMemory(BuildContext context) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: context.l10n.memoryClearAll,
+      message: context.l10n.memoryClearConfirm,
+      confirmLabel: context.l10n.sessionDeleteConfirmButton,
+      cancelLabel: context.l10n.sessionCancel,
+      isDestructive: true,
+    );
+    if (confirmed == true) {
+      await widget.viewModel.clearMemoryEntries();
+    }
   }
 
   Widget _buildReflectionTab(BuildContext context) {

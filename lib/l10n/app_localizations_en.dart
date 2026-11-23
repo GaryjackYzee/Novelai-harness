@@ -5566,4 +5566,57 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sourcesAppendAlready =>
       'These tags are already in the positive prompt';
+
+  @override
+  String get sessionDiscardMemoryAction => 'Discard session memory';
+
+  @override
+  String get sessionDiscardMemoryTitle => 'Discard session memory';
+
+  @override
+  String get sessionDiscardMemoryButton => 'Discard';
+
+  @override
+  String sessionDiscardMemoryConfirm(Object count, Object title) {
+    return 'Delete $count long-term memories/reflections and clear context notes produced by \"$title\". The transcript is kept.';
+  }
+
+  @override
+  String sessionDiscardMemoryDone(Object count) {
+    return 'Discarded $count memories';
+  }
+
+  @override
+  String get sourcesMemory => 'Memory';
+
+  @override
+  String get sourcesMemoryEmpty =>
+      'No long-term memory yet. Use Add memory to store cross-session preferences.';
+
+  @override
+  String get memoryAddTitle => 'Add memory';
+
+  @override
+  String get memoryEditTitle => 'Edit memory';
+
+  @override
+  String get memoryHint => 'Long-term cross-session memory (max 500 chars)';
+
+  @override
+  String get memoryClearAll => 'Clear all';
+
+  @override
+  String get memoryClearConfirm =>
+      'Clear all long-term memories? This cannot be undone.';
+
+  @override
+  String get memorySearchHint => 'Search memory';
+
+  @override
+  String get memorySearchEmpty => 'No matching memory';
+
+  @override
+  String sessionDiscardMemoryDoneContextFailed(Object count) {
+    return 'Discarded $count memories, but context notes could not be removed (file may be locked).';
+  }
 }

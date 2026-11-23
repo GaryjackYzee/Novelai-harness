@@ -681,6 +681,21 @@ class SessionLogService implements SessionRecorder {
     );
   }
 
+  /// 清除指定会话的上下文笔记 sidecar（不删除对话记录）。
+  Future<bool> clearSessionContextState(String sessionId) async {
+    final file = _findSessionFileById(sessionId);
+    if (file == null) return true;
+    try {
+      for (final suffix in ['.context.json', '.context.json.tmp']) {
+        final sidecar = File('${file.path}$suffix');
+        if (await sidecar.exists()) await sidecar.delete();
+      }
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
   /// 删除指定 sessionId 的会话文件
   Future<bool> deleteSession(String sessionId) async {
     if (_baseDir == null) return false;
