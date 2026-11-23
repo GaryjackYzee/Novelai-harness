@@ -1896,8 +1896,10 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
                             ),
                             IconButton(
                               tooltip: l10n.sessionDeleteAction,
-                              onPressed: () =>
-                                  widget.viewModel.removeMemoryEntry(index),
+                              onPressed: () async {
+                                await widget.viewModel.removeMemoryEntry(index);
+                                if (mounted) setState(() {});
+                              },
                               icon: const Icon(
                                 Icons.delete_outline_rounded,
                                 size: 16,
@@ -1957,6 +1959,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
     } else {
       await widget.viewModel.updateMemoryEntry(index, result);
     }
+    if (mounted) setState(() {});
   }
 
   Future<void> _clearMemory(BuildContext context) async {
@@ -1970,6 +1973,7 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
     );
     if (confirmed == true) {
       await widget.viewModel.clearMemoryEntries();
+      if (mounted) setState(() {});
     }
   }
 
