@@ -191,6 +191,16 @@ class PromptEditorCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         _QuickActionButton(
+                          tooltip: l10n.promptsConvertNewlinesTooltip,
+                          icon: Icons.keyboard_return_rounded,
+                          onTap: () =>
+                              PromptEditActions.convertEscapedNewlines(
+                                controller,
+                                onChanged,
+                              ),
+                        ),
+                        const SizedBox(width: 4),
+                        _QuickActionButton(
                           tooltip: l10n.promptsFormatTooltip,
                           icon: Icons.auto_fix_high_outlined,
                           onTap: () => PromptEditActions.formatPrompt(

@@ -63,6 +63,21 @@ class PromptEditActions {
     });
   }
 
+  /// 把用户输入的字面量 `\n` 转成真正的换行符。
+  static void convertEscapedNewlines(
+    TextEditingController controller,
+    ValueChanged<String> onChanged,
+  ) {
+    final text = controller.text;
+    if (!text.contains(r'\n')) return;
+    final newText = text.replaceAll(r'\n', '\n');
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+    onChanged(newText);
+  }
+
   /// 全文格式化与 SD 语法转换 (`Ctrl+Shift+F`)
   static void formatPrompt(
     TextEditingController controller,

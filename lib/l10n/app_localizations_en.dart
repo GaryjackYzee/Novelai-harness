@@ -5553,4 +5553,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get reflectionNoLessons =>
       'No lessons yet; the next reflection will include assistant outcome and user corrections.';
+
+  @override
+  String get promptsConvertNewlinesTooltip => 'Convert \\n to line breaks';
 }

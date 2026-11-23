@@ -2935,5 +2935,6 @@
   "vmCharTagConfirmTitle": "确认人物 tag 修改",
   "vmCharTagConfirm": "确认写入",
   "vmCharTagCancel": "取消",
-  "reflectionNoLessons": "这条还没有经验条目，下次复盘会把助手处理与用户纠正一并写入。"
+  "reflectionNoLessons": "这条还没有经验条目，下次复盘会把助手处理与用户纠正一并写入。",
+  "promptsConvertNewlinesTooltip": "把 \\n 转成换行"
 }

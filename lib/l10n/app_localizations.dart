@@ -9602,6 +9602,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'这条还没有经验条目，下次复盘会把助手处理与用户纠正一并写入。'**
   String get reflectionNoLessons;
+
+  /// No description provided for @promptsConvertNewlinesTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'把 \\n 转成换行'**
+  String get promptsConvertNewlinesTooltip;
 }
 
 class _AppLocalizationsDelegate

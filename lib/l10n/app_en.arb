@@ -2935,5 +2935,6 @@
   "vmCharTagConfirmTitle": "Confirm character tag change",
   "vmCharTagConfirm": "Confirm",
   "vmCharTagCancel": "Cancel",
-  "reflectionNoLessons": "No lessons yet; the next reflection will include assistant outcome and user corrections."
+  "reflectionNoLessons": "No lessons yet; the next reflection will include assistant outcome and user corrections.",
+  "promptsConvertNewlinesTooltip": "Convert \\n to line breaks"
 }
