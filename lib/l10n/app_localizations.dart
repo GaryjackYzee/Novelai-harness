@@ -9596,6 +9596,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'取消'**
   String get vmCharTagCancel;
+
+  /// No description provided for @reflectionNoLessons.
+  ///
+  /// In zh, this message translates to:
+  /// **'这条还没有经验条目，下次复盘会把助手处理与用户纠正一并写入。'**
+  String get reflectionNoLessons;
 }
 
 class _AppLocalizationsDelegate

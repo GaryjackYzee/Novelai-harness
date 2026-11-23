@@ -5549,4 +5549,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vmCharTagCancel => 'Cancel';
+
+  @override
+  String get reflectionNoLessons =>
+      'No lessons yet; the next reflection will include assistant outcome and user corrections.';
 }

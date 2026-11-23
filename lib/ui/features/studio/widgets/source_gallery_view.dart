@@ -1858,8 +1858,16 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
                           entry.summary,
                           style: const TextStyle(fontSize: 12),
                         ),
-                        if (entry.lessons.isNotEmpty) ...[
-                          const SizedBox(height: 8),
+                        const SizedBox(height: 8),
+                        if (entry.lessons.isEmpty)
+                          Text(
+                            context.l10n.reflectionNoLessons,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.colors.textMuted,
+                            ),
+                          )
+                        else
                           for (
                             var index = 0;
                             index < entry.lessons.length;
@@ -1869,7 +1877,6 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
                               '${index + 1}. ${entry.lessons[index]}',
                               style: const TextStyle(fontSize: 12),
                             ),
-                        ],
                       ],
                     ),
                   ),

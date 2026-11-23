@@ -5205,4 +5205,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vmCharTagCancel => '取消';
+
+  @override
+  String get reflectionNoLessons => '这条还没有经验条目，下次复盘会把助手处理与用户纠正一并写入。';
 }

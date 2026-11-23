@@ -271,34 +271,50 @@ mixin _StudioChatMixin on _StudioCore {
           ? messages.sublist(messages.length - 16)
           : messages;
       final userTexts = <String>[];
+      final assistantTexts = <String>[];
       for (final message in recent) {
-        if (message.role != AgentRole.user) continue;
         final text = message.content.trim();
-        if (text.isNotEmpty) userTexts.add(text);
+        if (text.isEmpty) continue;
+        if (message.role == AgentRole.user) {
+          userTexts.add(text);
+        } else if (message.role == AgentRole.assistant) {
+          assistantTexts.add(text);
+        }
       }
       if (userTexts.isEmpty) return;
       final topics = userTexts
           .take(3)
           .map((text) => text.length > 40 ? text.substring(0, 40) : text)
           .join(' / ');
-      final corrections = userTexts
+      final correctionList = userTexts
           .where(
             (text) =>
                 text.contains('不对') ||
                 text.contains('错了') ||
                 text.contains('别') ||
                 text.contains('不要') ||
-                text.contains('应该是'),
+                text.contains('应该是') ||
+                text.contains('改成'),
           )
           .take(3)
           .map((text) => text.length > 40 ? text.substring(0, 40) : text)
-          .join(' / ');
+          .toList(growable: false);
+      final corrections = correctionList.join(' / ');
+      final assistantDigest = assistantTexts.isEmpty
+          ? ''
+          : assistantTexts.last.replaceAll(RegExp(r'\s+'), ' ');
+      final assistantSnippet = assistantDigest.length > 80
+          ? assistantDigest.substring(0, 80)
+          : assistantDigest;
       final stamp = DateTime.now()
           .toIso8601String()
           .replaceFirst('T', ' ')
           .substring(0, 16);
       final buffer = StringBuffer('自动复盘 $stamp：');
       buffer.write('近期主题：$topics');
+      if (assistantSnippet.isNotEmpty) {
+        buffer.write('；助手处理：$assistantSnippet');
+      }
       if (corrections.isNotEmpty) {
         buffer.write('；用户纠正：$corrections');
       }
@@ -312,7 +328,9 @@ mixin _StudioChatMixin on _StudioCore {
       await addReflection(
         title: topics.isEmpty ? '自动复盘' : topics,
         summary: buffer.toString(),
-        lessons: corrections.isEmpty ? const <String>[] : <String>[corrections],
+        lessons: correctionList.isEmpty
+            ? <String>[if (assistantSnippet.isNotEmpty) assistantSnippet]
+            : correctionList,
         source: 'auto',
       );
     } on Object {
