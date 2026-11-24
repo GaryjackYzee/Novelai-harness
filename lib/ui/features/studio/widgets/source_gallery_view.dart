@@ -97,12 +97,25 @@ class _SourceGalleryViewState extends State<SourceGalleryView> {
       _thumbs[work.id] = existing;
       return existing;
     }
-    final future = _aitag.fetchImage(work.thumbUrl, priority: priority);
+    final future = _fetchAitagThumb(work, priority);
     _thumbs[work.id] = future;
     while (_thumbs.length > _maxCachedThumbs) {
       _thumbs.remove(_thumbs.keys.first);
     }
     return future;
+  }
+
+  Future<Uint8List> _fetchAitagThumb(AitagWork work, int priority) async {
+    final original = work.thumbUrl;
+    final thumb = AitagService.thumbnailUrl(original);
+    if (thumb != original) {
+      try {
+        return await _aitag.fetchImage(thumb, priority: priority);
+      } on Object {
+        // 缩略图 404 时回退原图
+      }
+    }
+    return _aitag.fetchImage(original, priority: priority);
   }
 
   Future<Uint8List> _codexThumbFor(String url) {

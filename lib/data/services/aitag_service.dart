@@ -49,6 +49,24 @@ class AitagService {
 
   /// AITag 列表里的原图多来自 Pixiv (i.pximg.net)，必须带 Pixiv Referer，
   /// 否则会被防盗链返回 403；其他 CDN 仍使用 AITag Referer。
+  /// 把 Pixiv 原图地址转换成 540 缩略图，避免列表直接拉数 MB 原图。
+  static String thumbnailUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.host.toLowerCase().endsWith('pximg.net')) {
+      return url;
+    }
+    if (!uri.path.contains('/img-original/')) return url;
+    var path = uri.path.replaceFirst(
+      '/img-original/',
+      '/c/540x540_70/img-master/',
+    );
+    path = path.replaceFirstMapped(
+      RegExp(r'_(p\d+)\.(png|jpg|jpeg)$', caseSensitive: false),
+      (match) => '_${match.group(1)}_master1200.jpg',
+    );
+    return uri.replace(path: path).toString();
+  }
+
   static Map<String, String> _imageHeadersFor(Uri uri) {
     final host = uri.host.toLowerCase();
     final referer = host.endsWith('pximg.net')

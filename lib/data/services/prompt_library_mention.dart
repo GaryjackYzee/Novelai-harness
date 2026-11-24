@@ -68,7 +68,7 @@ ActiveCharacterMention? extractActiveCharacterMention(
 List<PromptComboEntry> matchCharacterMentionSuggestions(
   String query,
   List<PromptComboEntry> entries, {
-  int limit = 0,
+  int limit = 12,
 }) {
   final chars = entries.where((e) => e.isCharacter).toList(growable: false);
   if (chars.isEmpty) return const [];
@@ -366,7 +366,7 @@ ActiveCharacterMention? extractActiveHashMention(String text, int cursor) {
 List<PromptComboEntry> matchTagMentionSuggestions(
   String query,
   List<PromptComboEntry> entries, {
-  int limit = 12,
+  int limit = 0,
 }) {
   final q = query.trim().toLowerCase();
   bool matches(PromptComboEntry entry) {
@@ -389,7 +389,10 @@ List<PromptComboEntry> matchTagMentionSuggestions(
       if (a.isFavorite != b.isFavorite) return a.isFavorite ? -1 : 1;
       return 0;
     });
-  return sorted.length > limit ? sorted.sublist(0, limit) : sorted;
+  if (limit > 0 && sorted.length > limit) {
+    return sorted.sublist(0, limit);
+  }
+  return sorted;
 }
 
 
