@@ -132,6 +132,76 @@ class SessionLogService implements SessionRecorder {
   final _sessionInfoCache =
       <String, ({int size, DateTime modified, SessionInfo? info})>{};
 
+  /// 把当前会话文件快照到 `branches/<branchId>.jsonl`，供回溯分支恢复。
+  Future<String?> snapshotCurrentSession(String branchId) async {
+    final file = _currentFile;
+    final base = _baseDir;
+    if (file == null || base == null) return null;
+    await flush();
+    final dir = Directory(p.join(base.path, 'branches'));
+    await dir.create(recursive: true);
+    final target = File(p.join(dir.path, '$branchId.jsonl'));
+    await file.copy(target.path);
+    return target.path;
+  }
+
+  /// 用给定消息重写当前会话文件（恢复分支后保持同一会话 id）。
+  Future<void> replaceCurrentSessionMessages(
+    List<AgentMessage> messages,
+  ) async {
+    final file = _currentFile;
+    if (file == null) return;
+    await flush();
+    Map<String, dynamic>? header;
+    try {
+      final firstLine = (await file.readAsLines()).firstOrNull;
+      if (firstLine != null && firstLine.trim().isNotEmpty) {
+        final decoded = jsonDecode(firstLine);
+        if (decoded is Map) header = Map<String, dynamic>.from(decoded);
+      }
+    } on Object {
+      header = null;
+    }
+    if (header == null) return;
+    await file.writeAsString('${jsonEncode(header)}\n', flush: true);
+    _sessionFileCreated = true;
+    _lastEntryId = null;
+    for (final message in messages) {
+      recordMessage(message);
+    }
+    await flush();
+    _sessionInfoCache.remove(file.path);
+  }
+
+  String? branchFileName(String path) =>
+      path.trim().isEmpty ? null : p.basename(path);
+
+  String? resolveBranchFile(String name) {
+    final base = _baseDir;
+    if (base == null || name.trim().isEmpty) return null;
+    return p.join(base.path, 'branches', p.basename(name));
+  }
+
+  Future<void> deleteBranchFile(String? pathOrName) async {
+    if (pathOrName == null || pathOrName.trim().isEmpty) return;
+    final base = _baseDir;
+    final path = p.basename(pathOrName);
+    final target = base == null ? File(pathOrName) : File(p.join(base.path, 'branches', path));
+    try {
+      if (await target.exists()) await target.delete();
+    } on Object {
+      // 清理失败不影响索引
+    }
+  }
+
+  /// 从分支快照文件恢复消息（不切换当前会话文件）。
+  Future<List<AgentMessage>?> loadMessagesFromFile(String path) async {
+    final file = File(path);
+    if (!await file.exists()) return null;
+    final snapshot = _loadSnapshotFromFile(file);
+    return snapshot?.messages;
+  }
+
   bool get isInitialized => _baseDir != null;
 
   /// 请求上下文检查点与会话同目录存储，不改写原始 JSONL 历史。

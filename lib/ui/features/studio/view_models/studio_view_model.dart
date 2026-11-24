@@ -24,6 +24,7 @@ import '../../../../core/harness/skills/skills.dart';
 import '../../../../core/harness/tools/agent_tool.dart';
 // AiEditImageTool 在 part 分部 studio_vm_harness.dart 中注册使用
 import '../../../../core/harness/tools/ai_edit_image_tool.dart';
+import 'chat_checkpoints.dart';
 import '../../../core/locale/app_locale_controller.dart';
 import '../../../core/theme/app_accent_controller.dart';
 import '../../../core/theme/frame_rate_controller.dart';
@@ -240,6 +241,7 @@ mixin _StudioCore on ChangeNotifier {
   final List<String> _memoryEntries = <String>[];
   final Map<String, Set<String>> _memoryEntrySessions = <String, Set<String>>{};
   final List<ReflectionEntry> _reflections = <ReflectionEntry>[];
+  final List<ChatBranch> _chatBranches = <ChatBranch>[];
   bool _hasUnseenLatest = false;
 
   /// 自适应取色：最近一次已提取主色的图片 id (去重，避免重复 Isolate 提取)
@@ -1151,6 +1153,9 @@ mixin _StudioCore on ChangeNotifier {
   }
 
   /// 梳理串（复盘/梦境记录）。
+  List<ChatBranch> get chatBranches =>
+      List<ChatBranch>.unmodifiable(_chatBranches);
+
   List<ReflectionEntry> get reflections =>
       List<ReflectionEntry>.unmodifiable(_reflections);
 
@@ -1954,6 +1959,13 @@ class StudioViewModel extends ChangeNotifier
     _memoryEntrySessions
       ..clear()
       ..addAll(await _configService.loadMemoryEntrySessions());
+    _chatBranches
+      ..clear()
+      ..addAll(
+        (await _configService.loadChatBranches())
+            .map(chatBranchFromJson)
+            .where((branch) => branch.id.isNotEmpty),
+      );
     _memoryEntrySessions.removeWhere(
       (text, _) => !_memoryEntries.contains(text),
     );

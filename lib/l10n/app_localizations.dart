@@ -9752,6 +9752,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已发送词库条目给 Agent：{title}'**
   String librarySentEntryToAgent(Object title);
+
+  /// No description provided for @vmBranchRestored.
+  ///
+  /// In zh, this message translates to:
+  /// **'已恢复分支：{label}'**
+  String vmBranchRestored(Object label);
+
+  /// No description provided for @rewindBranchLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'分支'**
+  String get rewindBranchLabel;
 }
 
 class _AppLocalizationsDelegate

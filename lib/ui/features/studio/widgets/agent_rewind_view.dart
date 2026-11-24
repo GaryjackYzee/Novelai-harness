@@ -366,6 +366,88 @@ class _AgentRewindViewState extends State<AgentRewindView> {
     );
   }
 
+  Future<void> _restoreBranch(ChatBranch branch) async {
+    await widget.viewModel.restoreChatBranch(branch.id);
+    if (mounted) widget.onBack();
+  }
+
+  Widget _buildBranchNodes(
+    BuildContext context,
+    List<ChatBranch> branches,
+  ) {
+    final colors = context.colors;
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.only(left: 18, top: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < branches.length; i += 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 10,
+                    height: 28,
+                    child: CustomPaint(
+                      painter: _BranchConnectorPainter(
+                        color: colors.borderHover,
+                        isLast: i == branches.length - 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.call_split_rounded,
+                    size: 13,
+                    color: colors.textMuted,
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      onTap: () => _restoreBranch(branches[i]),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 5,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${l10n.rewindBranchLabel} · ${branches[i].label}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _formatTime(branches[i].createdAt),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontFamily: 'monospace',
+                                color: colors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCheckpointList(
     BuildContext context,
     List<ChatCheckpoint> checkpoints,
@@ -373,6 +455,17 @@ class _AgentRewindViewState extends State<AgentRewindView> {
     final colors = context.colors;
     final l10n = context.l10n;
     final theme = ScrollbarTheme.of(context);
+    final sessionId = widget.viewModel.currentSessionId ?? '';
+    final visibleForkIds = checkpoints
+        .map((checkpoint) => checkpoint.userMessage.id)
+        .toSet();
+    final rootBranches = widget.viewModel.chatBranches
+        .where(
+          (branch) =>
+              branch.sessionId == sessionId &&
+              !visibleForkIds.contains(branch.forkMessageId),
+        )
+        .toList(growable: false);
 
     final list = ListView.separated(
       controller: _scrollController,
@@ -385,6 +478,13 @@ class _AgentRewindViewState extends State<AgentRewindView> {
         final isLastTurn = index == checkpoints.length - 1;
         final itemKey = _itemKeys.putIfAbsent(index, GlobalKey.new);
 
+        final branches = widget.viewModel.chatBranches
+            .where(
+              (branch) =>
+                  branch.sessionId == (widget.viewModel.currentSessionId ?? '') &&
+                  branch.forkMessageId == cp.userMessage.id,
+            )
+            .toList(growable: false);
         final card = _CheckpointCard(
           key: itemKey,
           isSelected: isSelected,
@@ -515,6 +615,15 @@ class _AgentRewindViewState extends State<AgentRewindView> {
           ),
         );
 
+        final item = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (index == 0 && rootBranches.isNotEmpty)
+              _buildBranchNodes(context, rootBranches),
+            card,
+            if (branches.isNotEmpty) _buildBranchNodes(context, branches),
+          ],
+        );
         if (index < 8) {
           return AppStaggerReveal(
             key: ValueKey('rewind_stagger_${cp.index}'),
@@ -527,10 +636,10 @@ class _AgentRewindViewState extends State<AgentRewindView> {
                 : AppMotionDurations.stagger,
             distance: AppMotionDistances.base,
             maxStaggerIndex: 8,
-            child: card,
+            child: item,
           );
         }
-        return card;
+        return item;
       },
     );
 
@@ -620,4 +729,28 @@ class _CheckpointCardState extends State<_CheckpointCard> {
       ),
     );
   }
+}
+
+
+class _BranchConnectorPainter extends CustomPainter {
+  final Color color;
+  final bool isLast;
+
+  const _BranchConnectorPainter({required this.color, required this.isLast});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.2;
+    final x = size.width / 2;
+    canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    if (isLast) {
+      canvas.drawLine(Offset(x, size.height), Offset(size.width, size.height), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BranchConnectorPainter oldDelegate) =>
+      oldDelegate.isLast != isLast || oldDelegate.color != color;
 }

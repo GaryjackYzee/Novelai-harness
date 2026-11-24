@@ -55,3 +55,45 @@ List<ChatCheckpoint> extractChatCheckpoints(List<AgentMessage> messages) {
 
   return checkpoints;
 }
+
+
+/// 一次回溯前保留的旧分支快照。
+class ChatBranch {
+  final String id;
+  final String sessionId;
+  final String forkMessageId;
+  final String label;
+  final DateTime createdAt;
+  final List<AgentMessage> messages;
+  final String? filePath;
+
+  const ChatBranch({
+    required this.id,
+    required this.sessionId,
+    required this.forkMessageId,
+    required this.label,
+    required this.createdAt,
+    required this.messages,
+    this.filePath,
+  });
+}
+
+
+Map<String, dynamic> chatBranchToJson(ChatBranch branch) => {
+  'id': branch.id,
+  'sessionId': branch.sessionId,
+  'forkMessageId': branch.forkMessageId,
+  'label': branch.label,
+  'createdAt': branch.createdAt.toIso8601String(),
+  'filePath': branch.filePath,
+};
+
+ChatBranch chatBranchFromJson(Map<String, dynamic> json) => ChatBranch(
+  id: '${json['id'] ?? ''}',
+  sessionId: '${json['sessionId'] ?? ''}',
+  forkMessageId: '${json['forkMessageId'] ?? ''}',
+  label: '${json['label'] ?? ''}',
+  createdAt: DateTime.tryParse('${json['createdAt'] ?? ''}') ?? DateTime.now(),
+  messages: const [],
+  filePath: json['filePath'] is String ? json['filePath'] as String : null,
+);

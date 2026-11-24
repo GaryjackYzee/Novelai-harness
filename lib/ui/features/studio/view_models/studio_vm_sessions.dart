@@ -118,6 +118,36 @@ mixin _StudioSessionsMixin on _StudioCore {
   ///
   /// 用户消息：截断该条及之后的对话，文本和图片放回输入框，不发送。
   /// 其他消息：保留该条，只丢弃其后的内容。
+  Future<void> restoreChatBranch(String branchId) async {
+    if (_isChatStreaming) await abortChat();
+    final branch = _chatBranches
+        .where((item) => item.id == branchId)
+        .firstOrNull;
+    if (branch == null) return;
+    var messages = List<AgentMessage>.from(branch.messages);
+    final stored = branch.filePath;
+    if (stored != null && stored.isNotEmpty) {
+      final resolved = File(stored).existsSync()
+          ? stored
+          : _sessionLog.resolveBranchFile(stored);
+      if (resolved != null) {
+        try {
+          final restored = await _sessionLog.loadMessagesFromFile(resolved);
+          if (restored != null && restored.isNotEmpty) messages = restored;
+        } on Object {
+          // 快照不可读时退回内存副本
+        }
+      }
+    }
+    _harness.setMessages(messages);
+    await _sessionLog.replaceCurrentSessionMessages(messages);
+    _composerRestore = null;
+    _recomputeSessionUsage();
+    _statusMessage = vmL10n.vmBranchRestored(branch.label);
+    notifyListeners();
+    unawaited(refreshSessions());
+  }
+
   @override
   Future<void> rewindToMessage(String messageId) async {
     if (_isChatStreaming) {
@@ -132,6 +162,49 @@ mixin _StudioSessionsMixin on _StudioCore {
       }
     }
     if (target == null) return;
+
+    final snapshot = List<AgentMessage>.from(_harness.messages);
+    final targetIndex = snapshot.indexWhere((msg) => msg.id == messageId);
+    if (targetIndex >= 0 && snapshot.length > targetIndex) {
+      var forkAnchor = messageId;
+      for (var i = targetIndex - 1; i >= 0; i -= 1) {
+        if (snapshot[i].role == AgentRole.user) {
+          forkAnchor = snapshot[i].id;
+          break;
+        }
+      }
+      final branchId = 'b-${DateTime.now().microsecondsSinceEpoch}';
+      String? branchPath;
+      try {
+        final snapshotPath = await _sessionLog.snapshotCurrentSession(branchId);
+        branchPath = snapshotPath == null
+            ? null
+            : _sessionLog.branchFileName(snapshotPath);
+      } on Object {
+        branchPath = null;
+      }
+      _chatBranches.insert(
+        0,
+        ChatBranch(
+          id: branchId,
+          sessionId: currentSessionId ?? '',
+          forkMessageId: forkAnchor,
+          label: target.content.trim().isEmpty
+              ? target.role.name
+              : target.content.trim(),
+          createdAt: DateTime.now(),
+          messages: snapshot,
+          filePath: branchPath,
+        ),
+      );
+      if (_chatBranches.length > 20) {
+        final removed = _chatBranches.removeLast();
+        await _sessionLog.deleteBranchFile(removed.filePath);
+      }
+      await _configService.saveChatBranches(
+        _chatBranches.map(chatBranchToJson).toList(growable: false),
+      );
+    }
 
     final targetTime = target.createdAt;
     final restoreToInput = target.role == AgentRole.user;

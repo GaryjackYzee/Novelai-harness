@@ -5295,4 +5295,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String librarySentEntryToAgent(Object title) {
     return '已发送词库条目给 Agent：$title';
   }
+
+  @override
+  String vmBranchRestored(Object label) {
+    return '已恢复分支：$label';
+  }
+
+  @override
+  String get rewindBranchLabel => '分支';
 }

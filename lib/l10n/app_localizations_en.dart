@@ -5644,4 +5644,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String librarySentEntryToAgent(Object title) {
     return 'Sent library entry to agent: $title';
   }
+
+  @override
+  String vmBranchRestored(Object label) {
+    return 'Restored branch: $label';
+  }
+
+  @override
+  String get rewindBranchLabel => 'Branch';
 }

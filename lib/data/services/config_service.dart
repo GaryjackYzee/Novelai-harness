@@ -1652,6 +1652,29 @@ class ConfigService {
     );
   }
 
+  Future<List<Map<String, dynamic>>> loadChatBranches() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('novelai_chat_branches');
+    if (raw == null || raw.trim().isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false);
+      }
+    } on Object {
+      // 损坏时忽略
+    }
+    return const [];
+  }
+
+  Future<void> saveChatBranches(List<Map<String, dynamic>> branches) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('novelai_chat_branches', jsonEncode(branches));
+  }
+
   /// 加载资料库目录。
   Future<String> loadLibraryDir() async {
     final prefs = await SharedPreferences.getInstance();

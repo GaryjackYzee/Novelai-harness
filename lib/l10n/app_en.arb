@@ -2960,5 +2960,7 @@
   "libraryAnyTagAdded": "Added to positive prompt: {tag}",
   "libraryAnyTagSent": "Sent to agent: {tag}",
   "chatInsertTagTooltip": "Insert tag from dictionary",
-  "librarySentEntryToAgent": "Sent library entry to agent: {title}"
+  "librarySentEntryToAgent": "Sent library entry to agent: {title}",
+  "vmBranchRestored": "Restored branch: {label}",
+  "rewindBranchLabel": "Branch"
 }
