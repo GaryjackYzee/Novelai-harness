@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show ValueListenable;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart'
     show RenderProxyBox, Selectable, SelectionRegistrar;
@@ -14,7 +15,6 @@ import 'package:markdown/markdown.dart' as md;
 import '../../../../core/harness/reply_marker.dart';
 import '../../../../core/harness/types.dart';
 import '../../../../data/services/image_edit_service.dart';
-import '../../../../data/services/prompt_library_mention.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -613,7 +613,9 @@ class UserMessageRow extends StatelessWidget {
   }
 
   Widget _buildUserContent(String content, TextStyle baseStyle) {
-    final matches = bracketMentionRegex.allMatches(content).toList();
+    final matches = RegExp(
+      r'@\[([^\[\]]+)\]|#lib:([A-Za-z0-9_-]+)(?::([A-Za-z0-9_-]+))?',
+    ).allMatches(content).toList();
     if (matches.isEmpty) {
       return SelectableText(content, style: baseStyle);
     }
@@ -623,7 +625,23 @@ class UserMessageRow extends StatelessWidget {
       if (match.start > cursor) {
         spans.add(TextSpan(text: content.substring(cursor, match.start)));
       }
-      final title = match.group(1)?.trim() ?? '';
+      var title = match.group(1)?.trim() ?? '';
+      if (title.isEmpty && match.group(2) != null) {
+        try {
+          final encoded = match.group(2)!;
+          final decodedId = utf8.decode(
+            base64Url.decode(base64Url.normalize(encoded)),
+          );
+          final titleEncoded = match.group(3);
+          title = titleEncoded == null || titleEncoded.isEmpty
+              ? decodedId
+              : utf8.decode(
+                  base64Url.decode(base64Url.normalize(titleEncoded)),
+                );
+        } on Object {
+          title = match.group(0) ?? '';
+        }
+      }
       if (title.isNotEmpty) {
         spans.add(
           WidgetSpan(

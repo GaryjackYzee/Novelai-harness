@@ -20,23 +20,27 @@ class TagBrowserDialog extends StatefulWidget {
 
   /// 是否显示中文释义 (设置项控制)
   final bool showTranslation;
+  final bool closeOnSelect;
 
   const TagBrowserDialog({
     super.key,
     required this.onTagSelected,
     this.showTranslation = true,
+    this.closeOnSelect = false,
   });
 
   static Future<void> show(
     BuildContext context, {
     required ValueChanged<String> onTagSelected,
     bool showTranslation = true,
+    bool closeOnSelect = false,
   }) {
     return AppDialogScaffold.show(
       context: context,
       builder: (ctx) => TagBrowserDialog(
         onTagSelected: onTagSelected,
         showTranslation: showTranslation,
+        closeOnSelect: closeOnSelect,
       ),
     );
   }
@@ -92,6 +96,9 @@ class _TagBrowserDialogState extends State<TagBrowserDialog> {
       tone: AppToastTone.success,
       duration: const Duration(milliseconds: 1200),
     );
+    if (widget.closeOnSelect && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override

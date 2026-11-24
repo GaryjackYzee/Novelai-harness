@@ -18,11 +18,17 @@ class ComposerInsertion {
   final int epoch;
   final String text;
   final bool focus;
+  final bool asTagChip;
+  final String? displayTitle;
+  final String? entryId;
 
   const ComposerInsertion({
     required this.epoch,
     required this.text,
     this.focus = true,
+    this.asTagChip = false,
+    this.displayTitle,
+    this.entryId,
   });
 }
 
@@ -75,7 +81,40 @@ mixin _StudioChatMixin on _StudioCore {
     }
   }
 
-  /// 将词库角色引用 `@[标题] ` 插入到 Agent 输入框草稿并请求聚焦。
+  /// 把词库条目发送到对话输入框：统一插入完整 tag 串。
+  void insertComboToChatInput(PromptComboEntry combo) {
+    insertTagToChatInput(
+      promptComboTagText(combo),
+      title: combo.title,
+      entryId: combo.id,
+    );
+  }
+
+  /// 把任意词库 tag 插入对话输入框，供 Agent 直接使用。
+  void insertTagToChatInput(
+    String tag, {
+    String? title,
+    String? entryId,
+  }) {
+    final value = tag.trim();
+    if (value.isEmpty) return;
+    final current = _chatDraft;
+    final needsSpace =
+        current.isNotEmpty && !RegExp(r'\s$').hasMatch(current);
+    final inserted = needsSpace ? ' $value' : value;
+    updateChatDraft('$current$inserted');
+    _composerInsertionEpoch++;
+    _composerInsertion = ComposerInsertion(
+      epoch: _composerInsertionEpoch,
+      text: inserted,
+      focus: true,
+      asTagChip: true,
+      displayTitle: title,
+      entryId: entryId,
+    );
+    notifyListeners();
+  }
+
   void insertCharacterToChatInput(PromptComboEntry combo) {
     final mention = '${formatCharacterMention(combo.title)} ';
     final current = _chatDraft;
@@ -154,16 +193,25 @@ mixin _StudioChatMixin on _StudioCore {
     _chatCompletion = completer;
 
     try {
-      final llmContext = resolveLibraryCharactersForMessage(
+      final characterContext = resolveLibraryCharactersForMessage(
         trimmed,
         _promptLibraryEntries,
         sanitizeText: _params.textForAgent,
       );
+      final entryContext = resolveLibraryEntriesForMessage(
+        trimmed,
+        _promptLibraryEntries,
+        sanitizeText: _params.textForAgent,
+      );
+      final llmContext = [
+        ?characterContext,
+        ?entryContext,
+      ].join('\n\n');
       final stream = _harness.send(
         trimmed,
         temperature: _config.llmTemperature,
         images: images,
-        llmContext: llmContext,
+        llmContext: llmContext.trim().isEmpty ? null : llmContext,
       );
 
       _chatSubscription = stream.listen(

@@ -5619,4 +5619,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionDiscardMemoryDoneContextFailed(Object count) {
     return 'Discarded $count memories, but context notes could not be removed (file may be locked).';
   }
+
+  @override
+  String get libraryAnyTag => 'Any tag';
+
+  @override
+  String get libraryAnyTagTooltip =>
+      'Pick any tag from the dictionary and send it to the agent';
+
+  @override
+  String libraryAnyTagAdded(Object tag) {
+    return 'Added to positive prompt: $tag';
+  }
+
+  @override
+  String libraryAnyTagSent(Object tag) {
+    return 'Sent to agent: $tag';
+  }
+
+  @override
+  String get chatInsertTagTooltip => 'Insert tag from dictionary';
+
+  @override
+  String librarySentEntryToAgent(Object title) {
+    return 'Sent library entry to agent: $title';
+  }
 }

@@ -2954,5 +2954,11 @@
   "memoryClearConfirm": "Clear all long-term memories? This cannot be undone.",
   "memorySearchHint": "Search memory",
   "memorySearchEmpty": "No matching memory",
-  "sessionDiscardMemoryDoneContextFailed": "Discarded {count} memories, but context notes could not be removed (file may be locked)."
+  "sessionDiscardMemoryDoneContextFailed": "Discarded {count} memories, but context notes could not be removed (file may be locked).",
+  "libraryAnyTag": "Any tag",
+  "libraryAnyTagTooltip": "Pick any tag from the dictionary and send it to the agent",
+  "libraryAnyTagAdded": "Added to positive prompt: {tag}",
+  "libraryAnyTagSent": "Sent to agent: {tag}",
+  "chatInsertTagTooltip": "Insert tag from dictionary",
+  "librarySentEntryToAgent": "Sent library entry to agent: {title}"
 }

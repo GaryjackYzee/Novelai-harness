@@ -9716,6 +9716,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已丢弃 {count} 条记忆，但上下文笔记删除失败（文件可能被占用）'**
   String sessionDiscardMemoryDoneContextFailed(Object count);
+
+  /// No description provided for @libraryAnyTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'任意 Tag'**
+  String get libraryAnyTag;
+
+  /// No description provided for @libraryAnyTagTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'从词库选择任意 tag 发送给 Agent'**
+  String get libraryAnyTagTooltip;
+
+  /// No description provided for @libraryAnyTagAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入正面提示词：{tag}'**
+  String libraryAnyTagAdded(Object tag);
+
+  /// No description provided for @libraryAnyTagSent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已发送给 Agent：{tag}'**
+  String libraryAnyTagSent(Object tag);
+
+  /// No description provided for @chatInsertTagTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'从词库插入 tag'**
+  String get chatInsertTagTooltip;
+
+  /// No description provided for @librarySentEntryToAgent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已发送词库条目给 Agent：{title}'**
+  String librarySentEntryToAgent(Object title);
 }
 
 class _AppLocalizationsDelegate

@@ -21,6 +21,7 @@ import '../../settings/widgets/settings_shared.dart';
 import '../view_models/studio_view_model.dart';
 import 'prompt_combo_card.dart';
 import 'prompt_combo_edit_dialog.dart';
+import 'tag_browser_dialog.dart';
 import 'prompt_library_sync_dialog.dart';
 import 'studio_shared.dart';
 
@@ -54,6 +55,8 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
   final TextEditingController _searchController = TextEditingController();
   late final SmoothWheelScrollController _gridScrollController;
   final ValueNotifier<int> _scrollBucket = ValueNotifier<int>(0);
+
+  static const String _anyTagCategory = '__any_tag__';
 
   String _selectedCategory = '全部';
   String _searchQuery = '';
@@ -318,14 +321,13 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
     );
   }
 
-  void _sendCharacterToAgent(PromptComboEntry combo) {
-    final l10n = context.l10n;
-    widget.viewModel.insertCharacterToChatInput(combo);
+  void _sendComboToAgent(PromptComboEntry combo) {
+    widget.viewModel.insertComboToChatInput(combo);
     showAppToast(
       context,
-      message: l10n.librarySentCharacterToAgent(combo.title),
+      message: context.l10n.librarySentEntryToAgent(combo.title),
       tone: AppToastTone.success,
-      duration: const Duration(milliseconds: 1400),
+      enableBlur: false,
     );
     (widget.onSentToChat ?? widget.onClose)?.call();
   }
@@ -589,6 +591,27 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
     );
   }
 
+  Future<void> _openAnyTagPicker(BuildContext context) async {
+    var added = false;
+    await TagBrowserDialog.show(
+      context,
+      closeOnSelect: true,
+      onTagSelected: (tag) {
+        added = true;
+        widget.viewModel.insertTagToChatInput(tag);
+        showAppToast(
+          context,
+          message: context.l10n.libraryAnyTagSent(tag),
+          tone: AppToastTone.success,
+          enableBlur: false,
+        );
+      },
+    );
+    if (mounted && added) {
+      (widget.onSentToChat ?? widget.onClose)?.call();
+    }
+  }
+
   Widget _buildCategoryBar(
     BuildContext context,
     List<String> categories,
@@ -613,6 +636,10 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
                 : const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             selectedValue: _selectedCategory,
             onValueChanged: (cat) {
+              if (cat == _anyTagCategory) {
+                _openAnyTagPicker(context);
+                return;
+              }
               setState(() => _selectedCategory = cat);
               if (_gridScrollController.hasClients) {
                 _gridScrollController.jumpTo(0);
@@ -630,6 +657,12 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
                       : null,
                   badgeLabel: '${counts[cat] ?? 0}',
                 ),
+              AppSegmentedItem<String>(
+                value: _anyTagCategory,
+                label: l10n.libraryAnyTag,
+                tooltip: l10n.libraryAnyTagTooltip,
+                icon: Icons.travel_explore_rounded,
+              ),
             ],
           ),
         );
@@ -923,11 +956,9 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
                                         replace: replace,
                                       )
                                     : null,
-                                onSendToAgent: columns[c][i].entry.isCharacter
-                                    ? () => _sendCharacterToAgent(
-                                        columns[c][i].entry,
-                                      )
-                                    : null,
+                                onSendToAgent: () => _sendComboToAgent(
+                                  columns[c][i].entry,
+                                ),
                                 onEdit: () {
                                   PromptComboEditDialog.show(
                                     context,

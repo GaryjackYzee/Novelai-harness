@@ -33,6 +33,7 @@ class CharacterMentionPanel extends StatelessWidget {
       items: entries,
       selectedIndex: selectedIndex,
       maxHeight: rowHeight * maxVisibleRows + 8,
+      isKeyboardNavigated: true,
       padding: const EdgeInsets.all(4),
       onSelect: (item) => onSelected(entries.indexOf(item)),
       onHover: onHovered,

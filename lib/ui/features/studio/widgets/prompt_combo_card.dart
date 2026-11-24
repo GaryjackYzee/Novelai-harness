@@ -117,7 +117,7 @@ class PromptComboCard extends StatelessWidget {
               label: l10n.libraryMenuAddAsCharacter,
               onTap: () => onApply(false, true),
             ),
-          if (combo.isCharacter && onSendToAgent != null)
+          if (onSendToAgent != null)
             ContextMenuItem(
               icon: Icons.chat_bubble_outline_rounded,
               label: l10n.libraryMenuSendToAgent,

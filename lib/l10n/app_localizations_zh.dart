@@ -5271,4 +5271,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String sessionDiscardMemoryDoneContextFailed(Object count) {
     return '已丢弃 $count 条记忆，但上下文笔记删除失败（文件可能被占用）';
   }
+
+  @override
+  String get libraryAnyTag => '任意 Tag';
+
+  @override
+  String get libraryAnyTagTooltip => '从词库选择任意 tag 发送给 Agent';
+
+  @override
+  String libraryAnyTagAdded(Object tag) {
+    return '已加入正面提示词：$tag';
+  }
+
+  @override
+  String libraryAnyTagSent(Object tag) {
+    return '已发送给 Agent：$tag';
+  }
+
+  @override
+  String get chatInsertTagTooltip => '从词库插入 tag';
+
+  @override
+  String librarySentEntryToAgent(Object title) {
+    return '已发送词库条目给 Agent：$title';
+  }
 }

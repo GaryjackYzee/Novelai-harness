@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../models/prompt_library_models.dart';
 
 /// 正在输入中的 `@` 角色提及片段
@@ -66,7 +68,7 @@ ActiveCharacterMention? extractActiveCharacterMention(
 List<PromptComboEntry> matchCharacterMentionSuggestions(
   String query,
   List<PromptComboEntry> entries, {
-  int limit = 12,
+  int limit = 0,
 }) {
   final chars = entries.where((e) => e.isCharacter).toList(growable: false);
   if (chars.isEmpty) return const [];
@@ -80,7 +82,10 @@ List<PromptComboEntry> matchCharacterMentionSuggestions(
         }
         return 0;
       });
-    return sorted.length > limit ? sorted.sublist(0, limit) : sorted;
+    if (limit > 0 && sorted.length > limit) {
+    return sorted.sublist(0, limit);
+  }
+  return sorted;
   }
 
   final scored = <(PromptComboEntry entry, int score, int order)>[];
@@ -321,5 +326,129 @@ String? resolveLibraryCharactersForMessage(
   }
 
   buffer.write('</library_characters>');
+  return buffer.toString();
+}
+
+
+/// 提取光标前正在输入的 `#词库查询`，用于 tag 补全。
+ActiveCharacterMention? extractActiveHashMention(String text, int cursor) {
+  if (cursor < 1 || cursor > text.length) return null;
+  var hashIndex = -1;
+  for (var i = cursor - 1; i >= 0; i--) {
+    final ch = text[i];
+    if (ch == '#') {
+      hashIndex = i;
+      break;
+    }
+    if (ch == ' ' ||
+        ch == '\n' ||
+        ch == '\t' ||
+        ch == '\r' ||
+        ch == '[' ||
+        ch == ']' ||
+        (ch.codeUnitAt(0) >= 0xE000 && ch.codeUnitAt(0) <= 0xF8FF)) {
+      return null;
+    }
+  }
+  if (hashIndex == -1) return null;
+  if (hashIndex > 0) {
+    final prev = text[hashIndex - 1];
+    if (RegExp(r'[A-Za-z0-9_.]').hasMatch(prev)) return null;
+  }
+  return ActiveCharacterMention(
+    atIndex: hashIndex,
+    cursorOffset: cursor,
+    query: text.substring(hashIndex + 1, cursor),
+  );
+}
+
+/// 按标题包含关系过滤全部词库条目（`#` 补全）。
+List<PromptComboEntry> matchTagMentionSuggestions(
+  String query,
+  List<PromptComboEntry> entries, {
+  int limit = 12,
+}) {
+  final q = query.trim().toLowerCase();
+  bool matches(PromptComboEntry entry) {
+    if (q.isEmpty) return true;
+    return entry.title.toLowerCase().contains(q) ||
+        entry.prompt.toLowerCase().contains(q) ||
+        entry.prefixPrompt.toLowerCase().contains(q) ||
+        entry.suffixPrompt.toLowerCase().contains(q) ||
+        entry.negativePrompt.toLowerCase().contains(q) ||
+        entry.category.toLowerCase().contains(q) ||
+        entry.tags.any((tag) => tag.toLowerCase().contains(q));
+  }
+
+  final matched = entries.where(matches).toList(growable: false);
+  final sorted = List<PromptComboEntry>.from(matched)
+    ..sort((a, b) {
+      final aTitle = a.title.toLowerCase().contains(q);
+      final bTitle = b.title.toLowerCase().contains(q);
+      if (aTitle != bTitle) return aTitle ? -1 : 1;
+      if (a.isFavorite != b.isFavorite) return a.isFavorite ? -1 : 1;
+      return 0;
+    });
+  return sorted.length > limit ? sorted.sublist(0, limit) : sorted;
+}
+
+
+/// 词库条目的完整 tag 串（前缀 + 正向 + 后缀）。
+String promptComboTagText(PromptComboEntry entry) {
+  final parts = <String>[
+    entry.prefixPrompt.trim(),
+    entry.prompt.trim(),
+    entry.suffixPrompt.trim(),
+  ].where((part) => part.isNotEmpty).toList(growable: false);
+  return parts.isEmpty ? entry.title.trim() : parts.join(', ');
+}
+
+/// 把词库条目标题格式化为 `#[标题]` 引用。
+String formatTagMention(String title) {
+  final safe = title.trim().replaceAll('[', '(').replaceAll(']', ')');
+  return '#[$safe]';
+}
+
+/// 解析用户消息中的 `#[标题]`，生成注入 LLM 的 `<library_entries>` 块。
+String? resolveLibraryEntriesForMessage(
+  String text,
+  List<PromptComboEntry> entries, {
+  String Function(String)? sanitizeText,
+}) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty || entries.isEmpty) return null;
+  final matched = <PromptComboEntry>[];
+  final seen = <String>{};
+  for (final match in RegExp(
+    r'#lib:([A-Za-z0-9_-]+)(?::([A-Za-z0-9_-]+))?',
+  ).allMatches(trimmed)) {
+    final encoded = match.group(1);
+    if (encoded == null) continue;
+    try {
+      final id = utf8.decode(
+        base64Url.decode(base64Url.normalize(encoded)),
+      );
+      final entry = entries.where((item) => item.id == id).firstOrNull;
+      if (entry != null && seen.add(entry.id)) matched.add(entry);
+    } on Object {
+      continue;
+    }
+  }
+  if (matched.isEmpty) return null;
+  final sanitize = sanitizeText ?? (value) => value;
+  final buffer = StringBuffer()
+    ..writeln('<library_entries>')
+    ..writeln(
+      '用户引用了本地词库中的以下条目，请直接采用其提示词与标签，无需再查词库：',
+    );
+  for (final entry in matched) {
+    buffer.writeln('- 标题: ${entry.title} [id: ${entry.id}]');
+    final positive = sanitize(promptComboTagText(entry)).trim();
+    if (positive.isNotEmpty) buffer.writeln('  正向提示词: $positive');
+    final negative = sanitize(entry.negativePrompt).trim();
+    if (negative.isNotEmpty) buffer.writeln('  负面提示词: $negative');
+    if (entry.tags.isNotEmpty) buffer.writeln('  标签: ${entry.tags.join(', ')}');
+  }
+  buffer.write('</library_entries>');
   return buffer.toString();
 }

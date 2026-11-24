@@ -22,6 +22,7 @@ import '../../../core/widgets/app_transitions.dart';
 import '../../../core/widgets/overlay_anchor.dart';
 import '../../../core/widgets/stable_edge_selection.dart';
 import 'character_mention_overlay.dart';
+import 'tag_browser_dialog.dart';
 import 'chat_context_status.dart';
 import 'chat_image_attachment.dart';
 import 'chat_mention_text_controller.dart';
@@ -86,6 +87,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
   List<PromptComboEntry> _mentionSuggestions = const [];
   ActiveCharacterMention? _activeMention;
   bool _suggestionsVisible = false;
+  bool _tagMentionMode = false;
   int _selectedIndex = 0;
 
   /// 模型与思考档位浮层是否打开（用于驱动触发器箭头翻转）
@@ -161,14 +163,18 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       _scheduleComposerFocus();
     } else {
       final draft = widget.viewModel.chatDraft;
-      _inputController.setSerializedText(draft);
       final insertion = widget.viewModel.composerInsertion;
-      if (insertion != null) {
-        _appliedInsertionEpoch = insertion.epoch;
-        widget.viewModel.acknowledgeComposerInsertion(insertion.epoch);
-        if (insertion.focus) {
-          _scheduleComposerFocus();
-          _scheduleRevealCaret();
+      if (insertion != null && insertion.asTagChip) {
+        _applyTagChipInsertion(insertion);
+      } else {
+        _inputController.setSerializedText(draft);
+        if (insertion != null) {
+          _appliedInsertionEpoch = insertion.epoch;
+          widget.viewModel.acknowledgeComposerInsertion(insertion.epoch);
+          if (insertion.focus) {
+            _scheduleComposerFocus();
+            _scheduleRevealCaret();
+          }
         }
       }
     }
@@ -221,13 +227,44 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     }
 
     if (widget.viewModel.chatDraft != oldWidget.viewModel.chatDraft &&
-        widget.viewModel.chatDraft != _inputController.toSerializedText()) {
+        widget.viewModel.chatDraft != _inputController.toDraftText()) {
       _inputController.setSerializedText(widget.viewModel.chatDraft);
     }
   }
 
+  void _applyTagChipInsertion(ComposerInsertion insertion) {
+    final draft = widget.viewModel.chatDraft;
+    final inserted = insertion.text;
+    var base = draft.endsWith(inserted)
+        ? draft.substring(0, draft.length - inserted.length)
+        : _inputController.toDraftText();
+    if (base.isNotEmpty && !base.endsWith(' ') && !base.endsWith('\n')) {
+      base = '$base ';
+    }
+    _inputController.setSerializedText(base);
+    final selection = _inputController.selection;
+    _inputController.insertTagChip(
+      inserted.trim(),
+      title: insertion.displayTitle,
+      entryId: insertion.entryId,
+      replaceStart: selection.isValid ? selection.start : base.length,
+      replaceEnd: selection.isValid ? selection.end : base.length,
+    );
+    _appliedInsertionEpoch = insertion.epoch;
+    widget.viewModel.acknowledgeComposerInsertion(insertion.epoch);
+    widget.viewModel.updateChatDraft(_inputController.toDraftText());
+    if (insertion.focus) {
+      _scheduleComposerFocus();
+    }
+    _scheduleRevealCaret();
+  }
+
   void _applyComposerInsertion(ComposerInsertion insertion) {
-    final currentText = _inputController.toSerializedText();
+    if (insertion.asTagChip) {
+      _applyTagChipInsertion(insertion);
+      return;
+    }
+    final currentText = _inputController.toDraftText();
     final draft = widget.viewModel.chatDraft;
     final nextText = currentText == draft
         ? currentText
@@ -330,6 +367,27 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     // 停止用原发送键位置上的停止按钮，或 Esc。
     _handleSend();
     return KeyEventResult.handled;
+  }
+
+  Future<void> _pickTagForChat() async {
+    await TagBrowserDialog.show(
+      context,
+      onTagSelected: (tag) {
+        final selection = _inputController.selection;
+        final start = selection.isValid
+            ? selection.start
+            : _inputController.text.length;
+        final end = selection.isValid
+            ? selection.end
+            : _inputController.text.length;
+        _inputController.insertTagChip(
+          tag,
+          replaceStart: start,
+          replaceEnd: end,
+        );
+        _inputFocusNode.requestFocus();
+      },
+    );
   }
 
   void _handleSend() {
@@ -634,6 +692,35 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
             _suggestions = const [];
             _mentionSuggestions = matched;
             _activeMention = mention;
+            _tagMentionMode = false;
+            _suggestionsVisible = true;
+            if (width != null && width > 0) {
+              _fieldWidth = width;
+            }
+            if (_selectedIndex >= matched.length) _selectedIndex = 0;
+          });
+          _measureFieldWidth();
+          if (!_overlayController.isShowing) _overlayController.show();
+          return;
+        }
+      }
+    }
+
+    // 3. `#` 词库 tag 补全：按条目标题是否包含输入文字过滤
+    if (cursor >= 1) {
+      final tagMention = extractActiveHashMention(text, cursor);
+      if (tagMention != null) {
+        final matched = matchTagMentionSuggestions(
+          tagMention.query,
+          widget.viewModel.promptLibraryEntries,
+        );
+        if (matched.isNotEmpty) {
+          final width = _inputFieldKey.currentContext?.size?.width;
+          setState(() {
+            _suggestions = const [];
+            _mentionSuggestions = matched;
+            _activeMention = tagMention;
+            _tagMentionMode = true;
             _suggestionsVisible = true;
             if (width != null && width > 0) {
               _fieldWidth = width;
@@ -727,8 +814,17 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       if (_suggestions.isNotEmpty) {
         _applySuggestion(_suggestions[_selectedIndex]);
       } else if (_mentionSuggestions.isNotEmpty) {
-        _applyCharacterMention(_mentionSuggestions[_selectedIndex]);
+        if (_tagMentionMode) {
+          _applyTagMention(_mentionSuggestions[_selectedIndex]);
+        } else {
+          _applyCharacterMention(_mentionSuggestions[_selectedIndex]);
+        }
       }
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      _dismissedToken = _inputController.text;
+      _hideSuggestions();
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.escape) {
@@ -756,7 +852,29 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     _scheduleRevealCaret();
   }
 
-  /// 应用 `@` 词库角色补全: 将 `@查询` 替换为行内角色卡片并附带空格
+  /// 应用 `#` 词库 tag 补全：把 `#查询` 替换为 tag 内联卡片。
+  void _applyTagMention(PromptComboEntry entry) {
+    final text = _inputController.text;
+    final cursor = _inputController.selection.isValid
+        ? _inputController.selection.baseOffset
+        : text.length;
+    final mention = _activeMention ?? extractActiveHashMention(text, cursor);
+    if (mention == null) return;
+    final tagText = promptComboTagText(entry);
+    _inputController.insertTagChip(
+      tagText,
+      title: entry.title,
+      entryId: entry.id,
+      replaceStart: mention.atIndex,
+      replaceEnd: mention.cursorOffset,
+    );
+    _dismissedToken = '';
+    _tagMentionMode = false;
+    _hideSuggestions();
+    _inputFocusNode.requestFocus();
+    _scheduleRevealCaret();
+  }
+
   void _applyCharacterMention(PromptComboEntry entry) {
     final text = _inputController.text;
     final cursor = _inputController.selection.isValid
@@ -796,8 +914,9 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
         : CharacterMentionPanel(
             entries: _mentionSuggestions,
             selectedIndex: _selectedIndex,
-            onSelected: (index) =>
-                _applyCharacterMention(_mentionSuggestions[index]),
+            onSelected: (index) => _tagMentionMode
+                ? _applyTagMention(_mentionSuggestions[index])
+                : _applyCharacterMention(_mentionSuggestions[index]),
             onHovered: (index) {
               if (index != _selectedIndex) {
                 setState(() => _selectedIndex = index);
@@ -886,6 +1005,16 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     final colors = context.colors;
     final l10n = context.l10n;
     final field = _buildMessageField();
+    final tagPicker = AppIconButton(
+      key: const ValueKey('chat_tag_picker_button'),
+      icon: Icons.tag_rounded,
+      size: 28,
+      iconSize: 16,
+      tooltip: l10n.chatInsertTagTooltip,
+      variant: AppIconButtonVariant.ghost,
+      onPressed: _pickTagForChat,
+    );
+
     final attachment = AppAsyncIconButton(
       isLoading: _processingImage,
       icon: Icons.attach_file_rounded,
@@ -945,6 +1074,8 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
             padding: const EdgeInsets.fromLTRB(6, 2, 6, 6),
             child: Row(
               children: [
+                tagPicker,
+                const SizedBox(width: 2),
                 attachment,
                 const SizedBox(width: 4),
                 Expanded(

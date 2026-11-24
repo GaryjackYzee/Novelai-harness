@@ -2954,5 +2954,11 @@
   "memoryClearConfirm": "确定清空全部长期记忆？此操作不可撤销。",
   "memorySearchHint": "搜索记忆",
   "memorySearchEmpty": "没有匹配的记忆",
-  "sessionDiscardMemoryDoneContextFailed": "已丢弃 {count} 条记忆，但上下文笔记删除失败（文件可能被占用）"
+  "sessionDiscardMemoryDoneContextFailed": "已丢弃 {count} 条记忆，但上下文笔记删除失败（文件可能被占用）",
+  "libraryAnyTag": "任意 Tag",
+  "libraryAnyTagTooltip": "从词库选择任意 tag 发送给 Agent",
+  "libraryAnyTagAdded": "已加入正面提示词：{tag}",
+  "libraryAnyTagSent": "已发送给 Agent：{tag}",
+  "chatInsertTagTooltip": "从词库插入 tag",
+  "librarySentEntryToAgent": "已发送词库条目给 Agent：{title}"
 }
