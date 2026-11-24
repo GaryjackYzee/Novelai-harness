@@ -90,6 +90,18 @@ mixin _StudioSessionsMixin on _StudioCore {
     for (final id in ids) {
       await _sessionLog.deleteSession(id);
     }
+    final removedBranches = _chatBranches
+        .where((branch) => ids.contains(branch.sessionId))
+        .toList(growable: false);
+    if (removedBranches.isNotEmpty) {
+      _chatBranches.removeWhere((branch) => ids.contains(branch.sessionId));
+      for (final branch in removedBranches) {
+        await _sessionLog.deleteBranchFile(branch.filePath);
+      }
+      await _configService.saveChatBranches(
+        _chatBranches.map(chatBranchToJson).toList(growable: false),
+      );
+    }
     if (isCurrent) {
       final remaining = await _sessionLog.listSessions();
       if (remaining.isNotEmpty) {
@@ -183,9 +195,17 @@ mixin _StudioSessionsMixin on _StudioCore {
       } on Object {
         branchPath = null;
       }
-      _chatBranches.insert(
-        0,
-        ChatBranch(
+      final duplicate = _chatBranches.any(
+        (branch) =>
+            branch.sessionId == (currentSessionId ?? '') &&
+            branch.forkMessageId == forkAnchor &&
+            branch.messages.length == snapshot.length &&
+            branch.messages.last.id == snapshot.last.id,
+      );
+      if (!duplicate) {
+        _chatBranches.insert(
+          0,
+          ChatBranch(
           id: branchId,
           sessionId: currentSessionId ?? '',
           forkMessageId: forkAnchor,
@@ -197,13 +217,14 @@ mixin _StudioSessionsMixin on _StudioCore {
           filePath: branchPath,
         ),
       );
-      if (_chatBranches.length > 20) {
-        final removed = _chatBranches.removeLast();
-        await _sessionLog.deleteBranchFile(removed.filePath);
+        if (_chatBranches.length > 20) {
+          final removed = _chatBranches.removeLast();
+          await _sessionLog.deleteBranchFile(removed.filePath);
+        }
+        await _configService.saveChatBranches(
+          _chatBranches.map(chatBranchToJson).toList(growable: false),
+        );
       }
-      await _configService.saveChatBranches(
-        _chatBranches.map(chatBranchToJson).toList(growable: false),
-      );
     }
 
     final targetTime = target.createdAt;

@@ -2962,5 +2962,7 @@
   "chatInsertTagTooltip": "从词库插入 tag",
   "librarySentEntryToAgent": "已发送词库条目给 Agent：{title}",
   "vmBranchRestored": "已恢复分支：{label}",
-  "rewindBranchLabel": "分支"
+  "rewindBranchLabel": "分支",
+  "rewindRootLabel": "开始",
+  "rewindBackToRoot": "回到根节点"
 }

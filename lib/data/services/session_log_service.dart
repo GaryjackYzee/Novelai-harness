@@ -141,7 +141,9 @@ class SessionLogService implements SessionRecorder {
     final dir = Directory(p.join(base.path, 'branches'));
     await dir.create(recursive: true);
     final target = File(p.join(dir.path, '$branchId.jsonl'));
-    await file.copy(target.path);
+    final temp = File('${target.path}.tmp');
+    await file.copy(temp.path);
+    await temp.rename(target.path);
     return target.path;
   }
 
@@ -153,19 +155,51 @@ class SessionLogService implements SessionRecorder {
     if (file == null) return;
     await flush();
     Map<String, dynamic>? header;
-    try {
-      final firstLine = (await file.readAsLines()).firstOrNull;
-      if (firstLine != null && firstLine.trim().isNotEmpty) {
-        final decoded = jsonDecode(firstLine);
-        if (decoded is Map) header = Map<String, dynamic>.from(decoded);
+    final metaLines = <String>[];
+    if (await file.exists()) {
+      try {
+        final lines = await file.readAsLines();
+        if (lines.isNotEmpty) {
+          final decoded = jsonDecode(lines.first);
+          if (decoded is Map) header = Map<String, dynamic>.from(decoded);
+          for (final line in lines.skip(1)) {
+            final entry = jsonDecode(line);
+            if (entry is Map && entry['type'] != 'message') {
+              metaLines.add(line);
+            }
+          }
+        }
+      } on Object {
+        header = null;
       }
-    } on Object {
-      header = null;
     }
-    if (header == null) return;
-    await file.writeAsString('${jsonEncode(header)}\n', flush: true);
+    header ??= _pendingHeader;
+    header ??= <String, dynamic>{
+      'type': 'session',
+      'version': _sessionVersion,
+      'id': _uuidV4(),
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
+      'cwd': Directory.current.path,
+    };
+    final temp = File('${file.path}.tmp');
+    final buffer = StringBuffer('${jsonEncode(header)}\n');
+    for (final line in metaLines) {
+      buffer.write('$line\n');
+    }
+    await temp.writeAsString(buffer.toString(), flush: true);
+    await temp.rename(file.path);
     _sessionFileCreated = true;
     _lastEntryId = null;
+    if (metaLines.isNotEmpty) {
+      try {
+        final last = jsonDecode(metaLines.last);
+        if (last is Map && last['id'] is String) {
+          _lastEntryId = last['id'] as String;
+        }
+      } on Object {
+        _lastEntryId = null;
+      }
+    }
     for (final message in messages) {
       recordMessage(message);
     }

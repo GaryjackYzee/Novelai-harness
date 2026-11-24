@@ -9764,6 +9764,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'分支'**
   String get rewindBranchLabel;
+
+  /// No description provided for @rewindRootLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始'**
+  String get rewindRootLabel;
+
+  /// No description provided for @rewindBackToRoot.
+  ///
+  /// In zh, this message translates to:
+  /// **'回到根节点'**
+  String get rewindBackToRoot;
 }
 
 class _AppLocalizationsDelegate

@@ -5303,4 +5303,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get rewindBranchLabel => '分支';
+
+  @override
+  String get rewindRootLabel => '开始';
+
+  @override
+  String get rewindBackToRoot => '回到根节点';
 }

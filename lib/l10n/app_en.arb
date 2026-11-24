@@ -2962,5 +2962,7 @@
   "chatInsertTagTooltip": "Insert tag from dictionary",
   "librarySentEntryToAgent": "Sent library entry to agent: {title}",
   "vmBranchRestored": "Restored branch: {label}",
-  "rewindBranchLabel": "Branch"
+  "rewindBranchLabel": "Branch",
+  "rewindRootLabel": "Start",
+  "rewindBackToRoot": "Back to root"
 }

@@ -12,9 +12,9 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_icon_button.dart';
 import '../../../core/widgets/app_transitions.dart';
 import '../../../core/widgets/smooth_scroll_controller.dart';
-import '../../../core/widgets/stable_scrollbar.dart';
 import '../view_models/chat_checkpoints.dart';
 import '../view_models/studio_view_model.dart';
+import 'agent_rewind_tree.dart';
 
 /// 全屏覆盖 Agent Card 的历史时刻回溯视图 (按两次 ESC 调出，参考 Pi 的对话时刻回溯)
 ///
@@ -44,8 +44,6 @@ class _AgentRewindViewState extends State<AgentRewindView> {
   final SmoothWheelScrollController _scrollController =
       SmoothWheelScrollController();
   final Map<int, GlobalKey> _itemKeys = {};
-  bool _initialRevealDone = false;
-  Timer? _revealTimer;
   bool _confirming = false;
 
   @override
@@ -59,14 +57,10 @@ class _AgentRewindViewState extends State<AgentRewindView> {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
-    _revealTimer = Timer(const Duration(milliseconds: 450), () {
-      if (mounted) setState(() => _initialRevealDone = true);
-    });
   }
 
   @override
   void dispose() {
-    _revealTimer?.cancel();
     _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -74,12 +68,6 @@ class _AgentRewindViewState extends State<AgentRewindView> {
 
   List<ChatCheckpoint> _extractCheckpoints() =>
       extractChatCheckpoints(widget.viewModel.messages);
-
-  String _formatTime(DateTime? dt) {
-    if (dt == null) return '';
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(dt.hour)}:${two(dt.minute)}:${two(dt.second)}';
-  }
 
   void _scrollToCheckpoint(int index) {
     final key = _itemKeys[index];
@@ -371,386 +359,29 @@ class _AgentRewindViewState extends State<AgentRewindView> {
     if (mounted) widget.onBack();
   }
 
-  Widget _buildBranchNodes(
-    BuildContext context,
-    List<ChatBranch> branches,
-  ) {
-    final colors = context.colors;
-    final l10n = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.only(left: 18, top: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < branches.length; i += 1)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 10,
-                    height: 28,
-                    child: CustomPaint(
-                      painter: _BranchConnectorPainter(
-                        color: colors.borderHover,
-                        isLast: i == branches.length - 1,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.call_split_rounded,
-                    size: 13,
-                    color: colors.textMuted,
-                  ),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                      onTap: () => _restoreBranch(branches[i]),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 5,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${l10n.rewindBranchLabel} · ${branches[i].label}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              _formatTime(branches[i].createdAt),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontFamily: 'monospace',
-                                color: colors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildCheckpointList(
     BuildContext context,
     List<ChatCheckpoint> checkpoints,
   ) {
-    final colors = context.colors;
-    final l10n = context.l10n;
-    final theme = ScrollbarTheme.of(context);
-    final sessionId = widget.viewModel.currentSessionId ?? '';
-    final visibleForkIds = checkpoints
-        .map((checkpoint) => checkpoint.userMessage.id)
-        .toSet();
-    final rootBranches = widget.viewModel.chatBranches
-        .where(
-          (branch) =>
-              branch.sessionId == sessionId &&
-              !visibleForkIds.contains(branch.forkMessageId),
-        )
-        .toList(growable: false);
-
-    final list = ListView.separated(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      itemCount: checkpoints.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 6),
-      itemBuilder: (context, index) {
-        final cp = checkpoints[index];
-        final isSelected = _selectedCheckpointIndex == index;
-        final isLastTurn = index == checkpoints.length - 1;
-        final itemKey = _itemKeys.putIfAbsent(index, GlobalKey.new);
-
-        final branches = widget.viewModel.chatBranches
-            .where(
-              (branch) =>
-                  branch.sessionId == (widget.viewModel.currentSessionId ?? '') &&
-                  branch.forkMessageId == cp.userMessage.id,
-            )
-            .toList(growable: false);
-        final card = _CheckpointCard(
-          key: itemKey,
-          isSelected: isSelected,
-          onTap: () {
-            _focusNode.requestFocus();
-            setState(() => _selectedCheckpointIndex = index);
-          },
-          onDoubleTap: () {
-            setState(() => _selectedCheckpointIndex = index);
-            _confirmRewind(checkpoints);
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  AppBadge.pill(
-                    label: '#${cp.index}',
-                    variant: isSelected
-                        ? AppBadgeVariant.primary
-                        : AppBadgeVariant.neutral,
-                    customBackgroundColor: isSelected
-                        ? colors.primary
-                        : colors.cardBackground,
-                    customForegroundColor: isSelected ? colors.onPrimary : null,
-                    fontSize: 10.5,
-                  ),
-                  if (isLastTurn) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.rewindLatestBadge,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: colors.success,
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
-                  Text(
-                    _formatTime(cp.userMessage.createdAt),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      color: colors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 7),
-
-              // 用户 Prompt 预览
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 1.5),
-                    child: Icon(
-                      Icons.keyboard_arrow_right_rounded,
-                      size: 14,
-                      color: colors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  Expanded(
-                    child: Text(
-                      cp.userMessage.content,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              // 助手回复摘要 (Notion 引用左竖线)
-              if (cp.assistantMessage != null &&
-                  cp.assistantMessage!.content.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: isSelected
-                            ? colors.primary.withValues(alpha: 0.4)
-                            : colors.borderHover,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    cp.assistantMessage!.content,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: colors.textSecondary,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
-
-              // 工具调用胶囊
-              if (cp.toolMessages.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: cp.toolMessages.map((t) {
-                    return AppBadge(
-                      label: t.toolName ?? l10n.toolFallbackName,
-                      variant: AppBadgeVariant.neutral,
-                      customBackgroundColor: colors.cardBackground,
-                      shape: AppBadgeShape.rounded,
-                      fontSize: 10,
-                    );
-                  }).toList(),
-                ),
-              ],
-            ],
-          ),
-        );
-
-        final item = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (index == 0 && rootBranches.isNotEmpty)
-              _buildBranchNodes(context, rootBranches),
-            card,
-            if (branches.isNotEmpty) _buildBranchNodes(context, branches),
-          ],
-        );
-        if (index < 8) {
-          return AppStaggerReveal(
-            key: ValueKey('rewind_stagger_${cp.index}'),
-            index: index,
-            duration: _initialRevealDone
-                ? Duration.zero
-                : AppMotionDurations.fast,
-            staggerDelay: _initialRevealDone
-                ? Duration.zero
-                : AppMotionDurations.stagger,
-            distance: AppMotionDistances.base,
-            maxStaggerIndex: 8,
-            child: item,
-          );
-        }
-        return item;
+    return AgentRewindTree(
+      checkpoints: checkpoints,
+      branches: widget.viewModel.chatBranches,
+      sessionId: widget.viewModel.currentSessionId ?? '',
+      selectedIndex: _selectedCheckpointIndex,
+      itemKeys: _itemKeys,
+      onSelectCheckpoint: (index) {
+        _focusNode.requestFocus();
+        setState(() => _selectedCheckpointIndex = index);
       },
-    );
-
-    return StableScrollbar(
-      controller: _scrollController,
-      thumbColor: theme.thumbColor?.resolve({}),
-      thickness: theme.thickness?.resolve({}),
-      radius: theme.radius,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: list,
-      ),
+      onConfirmCheckpoint: (index) {
+        setState(() => _selectedCheckpointIndex = index);
+        _confirmRewind(checkpoints);
+      },
+      onRestoreBranch: _restoreBranch,
+      scrollController: _scrollController,
     );
   }
+
 }
 
 /// 回溯时刻卡片：柔底无框低噪质感，悬停平滑高光与微抬升，选中态主色描边。
-class _CheckpointCard extends StatefulWidget {
-  final bool isSelected;
-  final VoidCallback onTap;
-  final VoidCallback onDoubleTap;
-  final Widget child;
-
-  const _CheckpointCard({
-    super.key,
-    required this.isSelected,
-    required this.onTap,
-    required this.onDoubleTap,
-    required this.child,
-  });
-
-  @override
-  State<_CheckpointCard> createState() => _CheckpointCardState();
-}
-
-class _CheckpointCardState extends State<_CheckpointCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final reduce = AppMotion.shouldReduceMotion(context);
-    final duration = AppMotion.resolveDuration(
-      context,
-      AppMotionDurations.quick,
-    );
-    final bgColor = widget.isSelected
-        ? colors.primaryTint.withValues(alpha: 0.55)
-        : (_hovered
-              ? colors.mutedBackground.withValues(alpha: 0.75)
-              : colors.elevatedBackground);
-    final borderColor = widget.isSelected
-        ? colors.primary.withValues(alpha: 0.65)
-        : (_hovered
-              ? colors.borderHover
-              : colors.borderHover.withValues(alpha: 0.0));
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: _hovered && !reduce ? -1.5 : 0.0),
-        duration: duration,
-        curve: AppMotionCurves.smoothOut,
-        builder: (context, dy, child) =>
-            Transform.translate(offset: Offset(0, dy), child: child),
-        child: InkWell(
-          onTap: widget.onTap,
-          onDoubleTap: widget.onDoubleTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: AnimatedContainer(
-            duration: duration,
-            curve: AppMotionCurves.smoothOut,
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: borderColor,
-                width: widget.isSelected ? 1.5 : 1,
-              ),
-            ),
-            child: widget.child,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
-class _BranchConnectorPainter extends CustomPainter {
-  final Color color;
-  final bool isLast;
-
-  const _BranchConnectorPainter({required this.color, required this.isLast});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.2;
-    final x = size.width / 2;
-    canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    if (isLast) {
-      canvas.drawLine(Offset(x, size.height), Offset(size.width, size.height), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BranchConnectorPainter oldDelegate) =>
-      oldDelegate.isLast != isLast || oldDelegate.color != color;
-}

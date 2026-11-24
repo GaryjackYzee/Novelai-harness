@@ -5652,4 +5652,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rewindBranchLabel => 'Branch';
+
+  @override
+  String get rewindRootLabel => 'Start';
+
+  @override
+  String get rewindBackToRoot => 'Back to root';
 }
