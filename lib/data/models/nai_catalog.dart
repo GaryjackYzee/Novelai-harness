@@ -61,9 +61,9 @@ enum NaiModel {
 
   bool get isV5 => id.startsWith('nai-diffusion-5');
 
-  /// Precise Reference (角色/画风参考) 仅 V4.5 正式支持；V5 与 V4 不支持。
+  /// Precise Reference (角色/画风参考) 支持 V5 与 V4.5。
   bool get supportsPreciseReference =>
-      this == NaiModel.v45Full || this == NaiModel.v45Curated;
+      isV5 || this == NaiModel.v45Full || this == NaiModel.v45Curated;
 
   /// 模型出厂默认 CFG Scale (官网对齐，切模型时若未手动调整则跟随)
   double get defaultScale => switch (this) {

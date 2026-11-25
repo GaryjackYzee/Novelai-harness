@@ -5309,4 +5309,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get rewindBackToRoot => '回到根节点';
+
+  @override
+  String get preciseRefOutfit => '服装';
+
+  @override
+  String get preciseRefPreferOutfit => '优先参考同一套服装';
+
+  @override
+  String get preciseRefFidelityFixed => 'V5 的 Fidelity 固定为 1.0，只调节 Strength';
 }

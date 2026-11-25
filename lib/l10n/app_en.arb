@@ -2964,5 +2964,8 @@
   "vmBranchRestored": "Restored branch: {label}",
   "rewindBranchLabel": "Branch",
   "rewindRootLabel": "Start",
-  "rewindBackToRoot": "Back to root"
+  "rewindBackToRoot": "Back to root",
+  "preciseRefOutfit": "Outfit",
+  "preciseRefPreferOutfit": "Prefer same outfit",
+  "preciseRefFidelityFixed": "V5 fidelity is fixed at 1.0; adjust Strength only"
 }

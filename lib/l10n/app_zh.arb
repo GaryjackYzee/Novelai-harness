@@ -2964,5 +2964,8 @@
   "vmBranchRestored": "已恢复分支：{label}",
   "rewindBranchLabel": "分支",
   "rewindRootLabel": "开始",
-  "rewindBackToRoot": "回到根节点"
+  "rewindBackToRoot": "回到根节点",
+  "preciseRefOutfit": "服装",
+  "preciseRefPreferOutfit": "优先参考同一套服装",
+  "preciseRefFidelityFixed": "V5 的 Fidelity 固定为 1.0，只调节 Strength"
 }

@@ -5658,4 +5658,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rewindBackToRoot => 'Back to root';
+
+  @override
+  String get preciseRefOutfit => 'Outfit';
+
+  @override
+  String get preciseRefPreferOutfit => 'Prefer same outfit';
+
+  @override
+  String get preciseRefFidelityFixed =>
+      'V5 fidelity is fixed at 1.0; adjust Strength only';
 }

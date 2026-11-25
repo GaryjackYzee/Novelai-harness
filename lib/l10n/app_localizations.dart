@@ -9776,6 +9776,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'回到根节点'**
   String get rewindBackToRoot;
+
+  /// No description provided for @preciseRefOutfit.
+  ///
+  /// In zh, this message translates to:
+  /// **'服装'**
+  String get preciseRefOutfit;
+
+  /// No description provided for @preciseRefPreferOutfit.
+  ///
+  /// In zh, this message translates to:
+  /// **'优先参考同一套服装'**
+  String get preciseRefPreferOutfit;
+
+  /// No description provided for @preciseRefFidelityFixed.
+  ///
+  /// In zh, this message translates to:
+  /// **'V5 的 Fidelity 固定为 1.0，只调节 Strength'**
+  String get preciseRefFidelityFixed;
 }
 
 class _AppLocalizationsDelegate

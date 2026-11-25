@@ -5,7 +5,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:msgpack_dart/msgpack_dart.dart' as msgpack;
 import '../models/novelai_models.dart';
 import 'isolated_compute.dart';
@@ -158,22 +160,29 @@ class NovelAiService {
 
     final payload = params.toApiPayload();
     final body = jsonEncode(payload);
+    final parameters = payload['parameters'];
+    final useV5Multipart =
+        '${payload['model']}'.startsWith('nai-diffusion-5') &&
+        parameters is Map &&
+        parameters['director_reference_images'] is List &&
+        (parameters['director_reference_images'] as List).isNotEmpty;
 
     return await _lock.runExclusive(() async {
-      http.Response response = await _postWithAuth(
-        _generateEndpoint,
-        apiKey,
-        body,
-      );
+      Future<http.Response> send() => useV5Multipart
+          ? _postV5ReferenceMultipart(apiKey, payload)
+          : _postWithAuth(_generateEndpoint, apiKey, body);
+      http.Response response = await send();
 
       // 429 智能重试
       if (response.statusCode == 429) {
         await Future.delayed(retryDelay);
-        response = await _postWithAuth(_generateEndpoint, apiKey, body);
+        response = await send();
       }
 
-      if (response.statusCode != 200) {
-        throw _parseHttpError(response, '生图请求失败');
+      // V5 参考图官方走 multipart；部分代理/服务端版本仍只接受 JSON。
+      if (useV5Multipart &&
+          (response.statusCode == 400 || response.statusCode == 415)) {
+        response = await _postWithAuth(_generateEndpoint, apiKey, body);
       }
 
       final zipBytes = response.bodyBytes;
@@ -585,6 +594,53 @@ class NovelAiService {
   }
 
   // --- 内部辅助方法 ---
+
+  Future<http.Response> _postV5ReferenceMultipart(
+    String apiKey,
+    Map<String, dynamic> payload,
+  ) async {
+    final parameters = Map<String, dynamic>.from(
+      payload['parameters'] as Map,
+    );
+    final rawImages = (parameters.remove('director_reference_images') as List)
+        .whereType<String>()
+        .toList(growable: false);
+    final cached = <Map<String, dynamic>>[];
+    final request = http.MultipartRequest('POST', Uri.parse(_generateEndpoint))
+      ..headers['Authorization'] = 'Bearer ${apiKey.trim()}'
+      ..headers['Accept'] = 'application/x-zip-compressed';
+    for (var index = 0; index < rawImages.length; index += 1) {
+      final bytes = base64Decode(rawImages[index]);
+      final name = 'director_ref_$index';
+      cached.add({
+        'cache_secret_key': crypto.sha256.convert(bytes).toString(),
+        'data': name,
+      });
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          name,
+          bytes,
+          filename: 'blob',
+          contentType: MediaType('image', 'png'),
+        ),
+      );
+    }
+    parameters['director_reference_images_cached'] = cached;
+    final requestPayload = <String, dynamic>{
+      ...payload,
+      'parameters': parameters,
+    };
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'request',
+        utf8.encode(jsonEncode(requestPayload)),
+        filename: 'blob',
+        contentType: MediaType('application', 'json'),
+      ),
+    );
+    final streamed = await _httpClient.send(request).timeout(requestTimeout);
+    return http.Response.fromStream(streamed);
+  }
 
   Future<http.Response> _postWithAuth(
     String endpoint,

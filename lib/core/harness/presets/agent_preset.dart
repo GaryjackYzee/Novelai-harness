@@ -424,7 +424,7 @@ class BuiltinPresets {
 - 多角色上限 22 个；位置支持自由连续定位。
 - 图内文字能力增强；支持透明背景。
 - 支持单图多格漫画；V5 能直接生成完整多格页面。
-- 当前工作台按官方能力：V5 不支持 Vibe Transfer / Precise Reference；需要这些能力时如实说明，不要伪造参考图。
+- 当前工作台按官方能力：V5 支持 Precise Reference，但不支持 Vibe Transfer；需要 Vibe 时如实说明，不要伪造参考图。
 - V5 Full 更灵活，但 Guidance 偏高时容易出纹理噪点；先从常规值起调，再按结果微调。
 
 ## 三、工具与能力

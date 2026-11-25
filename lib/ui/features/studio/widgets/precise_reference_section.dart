@@ -9,10 +9,9 @@ import '../../../../data/services/precise_reference_image_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
-import '../../../core/widgets/app_segmented_controls.dart';
 import '../view_models/studio_view_model.dart';
 
-/// Precise Reference：角色参考 / 画风参考（仅 NAI V4.5）。
+/// Precise Reference：角色 / 画风 / 服装参考（NAI V4.5 / V5）。
 class PreciseReferenceSection extends StatelessWidget {
   const PreciseReferenceSection({super.key, required this.viewModel});
 
@@ -121,6 +120,10 @@ class _PreciseReferenceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = context.colors;
+    final isV5 = viewModel.params.model.isV5;
+    final dropdownValue = !isV5 && reference.type == NaiPreciseRefType.outfit
+        ? NaiPreciseRefType.characterAndStyle
+        : reference.type;
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(10),
@@ -139,32 +142,58 @@ class _PreciseReferenceCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.sm),
                 child: Image.memory(
                   reference.bytes,
-                  width: 54,
-                  height: 54,
+                  width: 88,
+                  height: 112,
                   fit: BoxFit.cover,
                   cacheWidth: 160,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: AppSegmentedPillBar<NaiPreciseRefType>(
-                  items: [
-                    AppSegmentedItem(
-                      value: NaiPreciseRefType.character,
-                      label: l10n.preciseRefCharacter,
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: colors.elevatedBackground,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: colors.borderDefault),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<NaiPreciseRefType>(
+                      value: dropdownValue,
+                      isExpanded: true,
+                      dropdownColor: colors.elevatedBackground,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: NaiPreciseRefType.characterAndStyle,
+                          child: Text(l10n.preciseRefBoth),
+                        ),
+                        DropdownMenuItem(
+                          value: NaiPreciseRefType.character,
+                          child: Text(l10n.preciseRefCharacter),
+                        ),
+                        DropdownMenuItem(
+                          value: NaiPreciseRefType.style,
+                          child: Text(l10n.preciseRefStyle),
+                        ),
+                        if (isV5)
+                          DropdownMenuItem(
+                            value: NaiPreciseRefType.outfit,
+                            child: Text(l10n.preciseRefOutfit),
+                          ),
+                      ],
+                      onChanged: (type) {
+                        if (type == null) return;
+                        viewModel.updatePreciseReference(index, type: type);
+                      },
                     ),
-                    AppSegmentedItem(
-                      value: NaiPreciseRefType.style,
-                      label: l10n.preciseRefStyle,
-                    ),
-                    AppSegmentedItem(
-                      value: NaiPreciseRefType.characterAndStyle,
-                      label: l10n.preciseRefBoth,
-                    ),
-                  ],
-                  selectedValue: reference.type,
-                  onValueChanged: (type) =>
-                      viewModel.updatePreciseReference(index, type: type),
+                  ),
                 ),
               ),
               IconButton(
@@ -176,18 +205,52 @@ class _PreciseReferenceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
+          if (isV5 &&
+              (reference.type == NaiPreciseRefType.character ||
+                  reference.type == NaiPreciseRefType.characterAndStyle))
+            Row(
+              children: [
+                Checkbox(
+                  value: reference.preferSameOutfit,
+                  onChanged: (value) => viewModel.updatePreciseReference(
+                    index,
+                    preferSameOutfit: value ?? false,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    l10n.preciseRefPreferOutfit,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           _ReferenceSlider(
             label: l10n.preciseRefStrength,
             value: reference.strength,
+            max: isV5 ? 5 : 1,
+            divisions: isV5 ? 50 : 20,
             onChanged: (value) =>
                 viewModel.updatePreciseReference(index, strength: value),
           ),
-          _ReferenceSlider(
-            label: l10n.preciseRefFidelity,
-            value: reference.fidelity,
-            onChanged: (value) =>
-                viewModel.updatePreciseReference(index, fidelity: value),
-          ),
+          if (isV5)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                l10n.preciseRefFidelityFixed,
+                style: TextStyle(fontSize: 11, color: colors.textSecondary),
+              ),
+            )
+          else
+            _ReferenceSlider(
+              label: l10n.preciseRefFidelity,
+              value: reference.fidelity,
+              onChanged: (value) =>
+                  viewModel.updatePreciseReference(index, fidelity: value),
+            ),
         ],
       ),
     );
@@ -199,11 +262,15 @@ class _ReferenceSlider extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.max = 1,
+    this.divisions = 20,
   });
 
   final String label;
   final double value;
   final ValueChanged<double> onChanged;
+  final double max;
+  final int divisions;
 
   @override
   Widget build(BuildContext context) {
@@ -218,19 +285,32 @@ class _ReferenceSlider extends StatelessWidget {
         ),
         Expanded(
           child: Slider(
-            value: value.clamp(0.0, 1.0),
+            value: value.clamp(0.0, max),
             min: 0,
-            max: 1,
-            divisions: 20,
+            max: max,
+            divisions: divisions,
             label: value.toStringAsFixed(2),
             onChanged: onChanged,
           ),
         ),
         SizedBox(
-          width: 34,
-          child: Text(
-            value.toStringAsFixed(2),
-            style: TextStyle(fontSize: 10, color: context.colors.textSecondary),
+          width: 58,
+          child: TextFormField(
+            key: ValueKey('ref-slider-${label}_${value.toStringAsFixed(2)}'),
+            initialValue: value.toStringAsFixed(2),
+            textAlign: TextAlign.center,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 11),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              border: OutlineInputBorder(),
+            ),
+            onFieldSubmitted: (text) {
+              final parsed = double.tryParse(text.trim());
+              if (parsed == null) return;
+              onChanged(parsed.clamp(0.0, max));
+            },
           ),
         ),
       ],

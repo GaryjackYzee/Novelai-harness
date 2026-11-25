@@ -12,7 +12,8 @@ import 'nai_prompt_presets.dart';
 enum NaiPreciseRefType {
   character('character'),
   style('style'),
-  characterAndStyle('character&style');
+  characterAndStyle('character&style'),
+  outfit('outfit');
 
   const NaiPreciseRefType(this.apiValue);
 
@@ -26,6 +27,7 @@ class NaiPreciseReference {
     this.type = NaiPreciseRefType.characterAndStyle,
     this.strength = 1.0,
     this.fidelity = 1.0,
+    this.preferSameOutfit = false,
     this.enabled = true,
   });
 
@@ -37,18 +39,23 @@ class NaiPreciseReference {
 
   /// 0.0 ~ 1.0
   final double fidelity;
+
+  /// V5 Character / Character & Style 参考时优先保留参考图服装。
+  final bool preferSameOutfit;
   final bool enabled;
 
   NaiPreciseReference copyWith({
     NaiPreciseRefType? type,
     double? strength,
     double? fidelity,
+    bool? preferSameOutfit,
     bool? enabled,
   }) => NaiPreciseReference(
     bytes: bytes,
     type: type ?? this.type,
     strength: strength ?? this.strength,
     fidelity: fidelity ?? this.fidelity,
+    preferSameOutfit: preferSameOutfit ?? this.preferSameOutfit,
     enabled: enabled ?? this.enabled,
   );
 }
@@ -427,6 +434,24 @@ class NaiGenerationParams {
         referencePayload['normalize_reference_strength_multiple'] = false;
       }
     }
+    String preciseCaption(NaiPreciseReference reference) {
+      if (!model.isV5) {
+        return reference.type == NaiPreciseRefType.outfit
+            ? NaiPreciseRefType.characterAndStyle.apiValue
+            : reference.type.apiValue;
+      }
+      if (reference.type == NaiPreciseRefType.outfit) return 'costume';
+      if (reference.type == NaiPreciseRefType.character &&
+          reference.preferSameOutfit) {
+        return 'character_mainoutfit';
+      }
+      if (reference.type == NaiPreciseRefType.characterAndStyle &&
+          !reference.preferSameOutfit) {
+        return 'character&style_anyoutfit';
+      }
+      return reference.type.apiValue;
+    }
+
     final precisePayload = usePrecise
         ? <String, dynamic>{
             'normalize_reference_strength_multiple': true,
@@ -438,7 +463,7 @@ class NaiGenerationParams {
               for (final reference in enabledPrecise)
                 {
                   'caption': {
-                    'base_caption': reference.type.apiValue,
+                    'base_caption': preciseCaption(reference),
                     'char_captions': <dynamic>[],
                   },
                   'legacy_uc': false,
@@ -448,10 +473,15 @@ class NaiGenerationParams {
               for (final _ in enabledPrecise) 1,
             ],
             'director_reference_strength_values': [
-              for (final reference in enabledPrecise) reference.strength,
+              for (final reference in enabledPrecise)
+                model.isV5
+                    ? reference.strength.clamp(0.0, 5.0)
+                    : reference.strength.clamp(0.0, 1.0),
             ],
             'director_reference_secondary_strength_values': [
-              for (final reference in enabledPrecise) 1.0 - reference.fidelity,
+              // V5 只接受 fidelity=1（secondary=0），与官方校验一致。
+              for (final reference in enabledPrecise)
+                model.isV5 ? 0.0 : 1.0 - reference.fidelity,
             ],
           }
         : const <String, dynamic>{};

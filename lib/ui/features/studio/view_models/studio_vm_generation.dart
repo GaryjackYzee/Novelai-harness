@@ -727,6 +727,7 @@ mixin _StudioGenerationMixin on _StudioCore {
     NaiPreciseRefType? type,
     double? strength,
     double? fidelity,
+    bool? preferSameOutfit,
     bool? enabled,
   }) {
     final list = List<NaiPreciseReference>.from(_params.preciseReferences);
@@ -735,6 +736,7 @@ mixin _StudioGenerationMixin on _StudioCore {
       type: type,
       strength: strength,
       fidelity: fidelity,
+      preferSameOutfit: preferSameOutfit,
       enabled: enabled,
     );
     updateParams(_params.copyWith(preciseReferences: list));

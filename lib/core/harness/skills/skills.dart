@@ -444,7 +444,7 @@ NovelAI 局部修复：
 | 透明背景 | 无 | ✅ 有开关，VAE 改善，可出半透明效果 |
 | 图像保真 | 好 | 更高；环境/建筑/植被细节显著提升 |
 | 模型分支 | V4.5 Full / Curated | V5 **Full**（更灵活，高 Guidance 易出噪点）/ **Curated**（更稳更精致） |
-| Vibe Transfer / Precise Reference | 有 | **首发未带**，官方称后续追加 |
+| Vibe Transfer / Precise Reference | 有 | V5 支持 Precise Reference；Vibe Transfer 暂不支持 |
 
 核心：复杂动作在角色的char caption里面描述，不写到主 正向提示词里面污染画面
 ### 3.2 V5 新增实用 tag

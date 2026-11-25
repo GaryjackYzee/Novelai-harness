@@ -543,11 +543,29 @@ mixin _StudioCore on ChangeNotifier {
     );
   }
 
+  NaiGenerationParams _normalizePreciseReferences(
+    NaiGenerationParams params,
+  ) {
+    final isV5 = params.model.isV5;
+    final normalized = params.preciseReferences
+        .map(
+          (reference) => reference.copyWith(
+            type: !isV5 && reference.type == NaiPreciseRefType.outfit
+                ? NaiPreciseRefType.characterAndStyle
+                : reference.type,
+            strength: reference.strength.clamp(0.0, isV5 ? 5.0 : 1.0),
+            fidelity: isV5 ? 1.0 : reference.fidelity.clamp(0.0, 1.0),
+          ),
+        )
+        .toList(growable: false);
+    return params.copyWith(preciseReferences: normalized);
+  }
+
   void updateParams(NaiGenerationParams newParams) {
     if (newParams.characterAiPosition && _isEditingCharacterPositions) {
       _isEditingCharacterPositions = false;
     }
-    _params = _withActiveStyle(newParams);
+    _params = _withActiveStyle(_normalizePreciseReferences(newParams));
     notifyListeners();
 
     _scheduleParameterSave();
