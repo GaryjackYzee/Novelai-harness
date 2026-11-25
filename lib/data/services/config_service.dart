@@ -286,6 +286,9 @@ class AppConfig {
   /// 历史图片每轮重发（关闭时折叠为占位符）。
   final bool agentPersistentImages;
 
+  /// 生图预计消耗低于该 Anlas 时，Agent 无需用户确认。0 = 总是确认。
+  final int agentAutoApproveAnlas;
+
   /// 会话轮转：最多保留的会话文件数。
   final int sessionMaxCount;
 
@@ -415,6 +418,7 @@ class AppConfig {
     this.agentCompactionEnabled = true,
     this.agentBackgroundCompaction = true,
     this.agentPersistentImages = false,
+    this.agentAutoApproveAnlas = 0,
     this.sessionMaxCount = 300,
     this.sessionRetentionDays = 90,
     this.compactionProviderId = '',
@@ -496,6 +500,7 @@ class AppConfig {
     bool? agentCompactionEnabled,
     bool? agentBackgroundCompaction,
     bool? agentPersistentImages,
+    int? agentAutoApproveAnlas,
     int? sessionMaxCount,
     int? sessionRetentionDays,
     String? compactionProviderId,
@@ -589,6 +594,8 @@ class AppConfig {
           agentBackgroundCompaction ?? this.agentBackgroundCompaction,
       agentPersistentImages:
           agentPersistentImages ?? this.agentPersistentImages,
+      agentAutoApproveAnlas:
+          agentAutoApproveAnlas ?? this.agentAutoApproveAnlas,
       sessionMaxCount: sessionMaxCount ?? this.sessionMaxCount,
       sessionRetentionDays:
           sessionRetentionDays ?? this.sessionRetentionDays,
@@ -776,6 +783,8 @@ class ConfigService {
       'novelai_session_retention_days';
   static const String _keyAgentPersistentImages =
       'novelai_agent_persistent_images';
+  static const String _keyAgentAutoApproveAnlas =
+      'novelai_agent_auto_approve_anlas';
   static const String _keyAgentBackgroundCompaction =
       'novelai_agent_background_compaction';
   static const String _keyCompactionProviderId =
@@ -1190,6 +1199,7 @@ class ConfigService {
       agentBackgroundCompaction:
           prefs.getBool(_keyAgentBackgroundCompaction) ?? true,
       agentPersistentImages: prefs.getBool(_keyAgentPersistentImages) ?? false,
+      agentAutoApproveAnlas: prefs.getInt(_keyAgentAutoApproveAnlas) ?? 0,
       sessionMaxCount: prefs.getInt(_keySessionMaxCount) ?? 300,
       sessionRetentionDays: prefs.getInt(_keySessionRetentionDays) ?? 90,
       compactionProviderId: compactionProviderId,
@@ -1312,6 +1322,7 @@ class ConfigService {
       _keyAgentCompactionEnabled: config.agentCompactionEnabled,
       _keyAgentBackgroundCompaction: config.agentBackgroundCompaction,
       _keyAgentPersistentImages: config.agentPersistentImages,
+      _keyAgentAutoApproveAnlas: config.agentAutoApproveAnlas,
       _keySessionMaxCount: config.sessionMaxCount,
       _keySessionRetentionDays: config.sessionRetentionDays,
       _keyCompactionProviderId: config.compactionProviderId,

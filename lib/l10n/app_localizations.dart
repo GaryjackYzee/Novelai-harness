@@ -9830,6 +9830,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'剪贴板里没有图片'**
   String get paramsVibeClipboardEmpty;
+
+  /// No description provided for @settingsAgentAutoApproveTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'生图免确认阈值'**
+  String get settingsAgentAutoApproveTitle;
+
+  /// No description provided for @settingsAgentAutoApproveSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'预计消耗低于该点数时 Agent 直接生图；0 = 总是确认'**
+  String get settingsAgentAutoApproveSubtitle;
+
+  /// No description provided for @libraryNoPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置展示图'**
+  String get libraryNoPreview;
+
+  /// No description provided for @librarySetPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置展示图'**
+  String get librarySetPreview;
 }
 
 class _AppLocalizationsDelegate

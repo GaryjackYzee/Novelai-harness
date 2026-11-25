@@ -5692,4 +5692,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paramsVibeClipboardEmpty => 'No image in clipboard';
+
+  @override
+  String get settingsAgentAutoApproveTitle => 'Auto-approve generation under';
+
+  @override
+  String get settingsAgentAutoApproveSubtitle =>
+      'Agent generates without confirmation when estimated cost is below this Anlas value; 0 = always confirm';
+
+  @override
+  String get libraryNoPreview => 'No preview image';
+
+  @override
+  String get librarySetPreview => 'Set preview image';
 }

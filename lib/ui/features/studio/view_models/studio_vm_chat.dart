@@ -14,6 +14,10 @@ class ComposerRestore {
 }
 
 /// 词库角色发送到输入框的一次文本插入请求。
+/// 预计消耗 <= 阈值（且阈值 > 0）时跳过付费确认。
+bool shouldAutoApproveGeneration(int estimatedCost, int threshold) =>
+    estimatedCost > 0 && threshold > 0 && estimatedCost <= threshold;
+
 class ComposerInsertion {
   final int epoch;
   final String text;
@@ -433,6 +437,10 @@ mixin _StudioChatMixin on _StudioCore {
     required NaiGenerationParams params,
     required int estimatedCost,
   }) async {
+    final threshold = _config.agentAutoApproveAnlas;
+    if (shouldAutoApproveGeneration(estimatedCost, threshold)) {
+      return true;
+    }
     final reasons = buildPaidGenerationReasons(params);
     final reasonText = reasons.isEmpty
         ? vmL10n.vmCostNoOpusQuota

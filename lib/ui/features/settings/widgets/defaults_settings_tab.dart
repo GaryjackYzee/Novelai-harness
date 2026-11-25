@@ -22,6 +22,7 @@ class DefaultsSettingsDraft {
       compactionEnabled = config.agentCompactionEnabled,
       backgroundCompaction = config.agentBackgroundCompaction,
       persistentImages = config.agentPersistentImages,
+      autoApproveAnlas = config.agentAutoApproveAnlas,
       // 本地 fork：会话管理上限与保留天数
       sessionMaxCount = config.sessionMaxCount,
       sessionRetentionDays = config.sessionRetentionDays,
@@ -39,6 +40,7 @@ class DefaultsSettingsDraft {
   bool compactionEnabled;
   bool backgroundCompaction;
   bool persistentImages;
+  int autoApproveAnlas;
   // 本地 fork：会话管理上限与保留天数
   int sessionMaxCount;
   int sessionRetentionDays;
@@ -239,6 +241,17 @@ class _DefaultsSettingsTabState extends State<DefaultsSettingsTab> {
               min: 1,
               max: 100,
               onChanged: (v) => setState(() => _draft.agentMaxTurns = v),
+            ),
+          ),
+          AppSettingTile(
+            title: l10n.settingsAgentAutoApproveTitle,
+            subtitle: l10n.settingsAgentAutoApproveSubtitle,
+            control: const SizedBox.shrink(),
+            bottomChild: AppNumberSlider.integer(
+              value: _draft.autoApproveAnlas,
+              min: 0,
+              max: 500,
+              onChanged: (v) => setState(() => _draft.autoApproveAnlas = v),
             ),
           ),
         ],

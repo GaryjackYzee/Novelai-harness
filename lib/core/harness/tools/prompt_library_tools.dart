@@ -174,11 +174,69 @@ class SearchPromptLibraryTool extends AgentTool {
 }
 
 /// 词库条目新增工具
+Set<String> promptPreviewTokens(PromptComboEntry entry) {
+  const ignored = {
+    'masterpiece',
+    'best quality',
+    'very aesthetic',
+    'absurdres',
+    'highres',
+    '1girl',
+    '1boy',
+    'solo',
+    'combo',
+  };
+  final text = '${entry.title}, ${entry.prompt}, ${entry.tags.join(", ")}';
+  final cleaned = text
+      .toLowerCase()
+      .replaceAll(RegExp(r'\{[^}]*\}'), ' ')
+      .replaceAll(RegExp(r'\[[^\]]*\]'), ' ')
+      .replaceAll(RegExp(r'\([^)]*\)'), ' ')
+      .replaceAll(RegExp(r':[0-9.]+'), ' ');
+  final tokens = <String>{};
+  for (final part in cleaned.split(RegExp(r'[,，、\n·+]+'))) {
+    final value = part.replaceAll(RegExp(r'[^\p{L}\p{N}_-]+', unicode: true), ' ').trim();
+    if (value.length >= 2) tokens.add(value);
+    for (final word in value.split(RegExp(r'\s+'))) {
+      if (word.length >= 2 && !ignored.contains(word)) tokens.add(word);
+    }
+  }
+  return tokens;
+}
+
+NaiGeneratedImage? latestRelatedPreviewImage(
+  List<NaiGeneratedImage> history,
+  PromptComboEntry entry, {
+  Set<String> excludedIds = const {},
+}) {
+  final tokens = promptPreviewTokens(entry);
+  if (tokens.isEmpty) return null;
+  final ordered = [...history]
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  for (final image in ordered) {
+    if (excludedIds.contains(image.id)) continue;
+    final source = image.params.prompt.toLowerCase();
+    if (tokens.any(source.contains)) return image;
+  }
+  return null;
+}
+
 class AddPromptLibraryEntryTool extends AgentTool {
   final PromptLibraryEntriesGetter getEntries;
   final PromptLibraryAddEntry addEntry;
+  final PromptLibraryUpdateEntry? updateEntry;
+  final PromptLibraryHistoryGetter? getHistory;
+  final PromptLibraryImageBytesLoader? loadImageBytes;
+  final PromptLibraryPreviewBytesSaver? savePreviewBytes;
 
-  AddPromptLibraryEntryTool({required this.getEntries, required this.addEntry})
+  AddPromptLibraryEntryTool({
+    required this.getEntries,
+    required this.addEntry,
+    this.updateEntry,
+    this.getHistory,
+    this.loadImageBytes,
+    this.savePreviewBytes,
+  })
     : super(
         name: 'add_prompt_library_entry',
         label: '新增词库条目',
@@ -348,6 +406,8 @@ class AddPromptLibraryEntryTool extends AgentTool {
       );
     }
 
+    await _attachLatestPreviews(created);
+
     final details = created
         .map(
           (e) =>
@@ -363,6 +423,55 @@ class AddPromptLibraryEntryTool extends AgentTool {
     buffer.write('\n如需为条目配置预览图，可调用 set_prompt_library_preview 工具。');
     return ToolResult(toolCallId: toolCallId, content: buffer.toString());
   }
+
+  Future<void> _attachLatestPreviews(List<PromptComboEntry> entries) async {
+    final history = getHistory?.call() ?? const <NaiGeneratedImage>[];
+    final saver = savePreviewBytes;
+    final updater = updateEntry;
+    if (history.isEmpty || saver == null || updater == null) return;
+    final used = <String>{};
+    for (var i = 0; i < entries.length; i += 1) {
+      final entry = entries[i];
+      if (entry.previewImagePath != null &&
+          entry.previewImagePath!.trim().isNotEmpty) {
+        continue;
+      }
+      final image = latestRelatedPreviewImage(
+        history,
+        entry,
+        excludedIds: used,
+      );
+      if (image == null) continue;
+      Uint8List? bytes;
+      try {
+        bytes = await loadImageBytes?.call(image);
+      } on Object catch (error) {
+        debugPrint('自动封面加载失败: $error');
+        bytes = null;
+      }
+      if (bytes == null || bytes.isEmpty) {
+        bytes = image.bytes.isNotEmpty ? image.bytes : null;
+      }
+      if (bytes == null || bytes.isEmpty) {
+        debugPrint('自动封面跳过 ${entry.title}: 图片字节为空');
+        continue;
+      }
+      final scaled = await downscalePreviewBytes(bytes);
+      final path = await saver(scaled);
+      if (path == null) {
+        debugPrint('自动封面保存失败: ${entry.title}');
+        continue;
+      }
+      final updated = entry.copyWith(
+        previewImagePath: path,
+        updatedAt: DateTime.now(),
+      );
+      await updater(updated);
+      entries[i] = updated;
+      used.add(image.id);
+    }
+  }
+
 }
 
 /// 词库条目预览图设置工具
@@ -671,10 +780,16 @@ Future<Uint8List> downscalePreviewBytes(
 class UpdatePromptLibraryEntryTool extends AgentTool {
   final PromptLibraryEntriesGetter getEntries;
   final PromptLibraryUpdateEntry updateEntry;
+  final PromptLibraryHistoryGetter? getHistory;
+  final PromptLibraryImageBytesLoader? loadImageBytes;
+  final PromptLibraryPreviewBytesSaver? savePreviewBytes;
 
   UpdatePromptLibraryEntryTool({
     required this.getEntries,
     required this.updateEntry,
+    this.getHistory,
+    this.loadImageBytes,
+    this.savePreviewBytes,
   }) : super(
          name: 'update_prompt_library_entry',
          label: '修改词库条目',
@@ -825,8 +940,33 @@ class UpdatePromptLibraryEntryTool extends AgentTool {
         updatedAt: DateTime.now(),
       );
 
-      await updateEntry(updated);
-      applied.add('已修改词库条目：\n${formatPromptComboEntry(updated)}');
+      var finalEntry = updated;
+      if ((finalEntry.previewImagePath == null ||
+              finalEntry.previewImagePath!.trim().isEmpty) &&
+          getHistory != null &&
+          savePreviewBytes != null) {
+        final image = latestRelatedPreviewImage(getHistory!(), finalEntry);
+        if (image != null) {
+          try {
+            final raw = await loadImageBytes?.call(image) ?? image.bytes;
+            if (raw.isNotEmpty) {
+              final path = await savePreviewBytes!(
+                await downscalePreviewBytes(raw),
+              );
+              if (path != null) {
+                finalEntry = finalEntry.copyWith(
+                  previewImagePath: path,
+                  updatedAt: DateTime.now(),
+                );
+              }
+            }
+          } on Object catch (error) {
+            debugPrint('更新词条自动封面失败: $error');
+          }
+        }
+      }
+      await updateEntry(finalEntry);
+      applied.add('已修改词库条目：\n${formatPromptComboEntry(finalEntry)}');
     }
 
     if (applied.isEmpty) {
@@ -971,10 +1111,17 @@ class PromptLibraryTool extends AgentTool {
        _addTool = AddPromptLibraryEntryTool(
          getEntries: getEntries,
          addEntry: addEntry,
+         updateEntry: updateEntry,
+         getHistory: getHistory,
+         loadImageBytes: loadImageBytes,
+         savePreviewBytes: savePreviewBytes,
        ),
        _updateTool = UpdatePromptLibraryEntryTool(
          getEntries: getEntries,
          updateEntry: updateEntry,
+         getHistory: getHistory,
+         loadImageBytes: loadImageBytes,
+         savePreviewBytes: savePreviewBytes,
        ),
        _deleteTool = DeletePromptLibraryEntryTool(
          getEntries: getEntries,

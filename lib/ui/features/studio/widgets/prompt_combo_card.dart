@@ -130,6 +130,13 @@ class PromptComboCard extends StatelessWidget {
           label: l10n.libraryMenuCopyPrompt,
           onTap: () => _copyToClipboard(context),
         ),
+        if (combo.previewImagePath == null ||
+            combo.previewImagePath!.trim().isEmpty)
+          ContextMenuItem(
+            icon: Icons.image_outlined,
+            label: l10n.librarySetPreview,
+            onTap: onEdit,
+          ),
         ContextMenuItem(
           icon: Icons.edit_outlined,
           label: l10n.libraryMenuEdit,
@@ -312,7 +319,9 @@ class PromptComboCard extends StatelessWidget {
               path: rawPath,
               decodeMaxSide: _previewDecodeMaxSide,
               loadImage: loadImage,
-            ),
+            )
+          else
+            _ComboPreviewPlaceholder(compact: compact),
 
           Padding(
             padding: compact
@@ -371,6 +380,40 @@ class PromptComboCard extends StatelessWidget {
 }
 
 /// 按真实宽高比展示完整图片：零留白边框、零裁切；文件不存在时静默收起。
+class _ComboPreviewPlaceholder extends StatelessWidget {
+  final bool compact;
+
+  const _ComboPreviewPlaceholder({required this.compact});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      height: compact ? 92 : 118,
+      color: colors.primaryTint.withValues(alpha: 0.45),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: compact ? 20 : 24,
+            color: colors.textMuted,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            context.l10n.libraryNoPreview,
+            style: TextStyle(
+              fontSize: compact ? 10 : 11,
+              color: colors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ComboNaturalImage extends StatefulWidget {
   final String path;
   final int decodeMaxSide;

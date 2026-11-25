@@ -12,6 +12,8 @@ typedef PreciseRefAddFromCanvas =
       required double strength,
       required double fidelity,
       required bool preferSameOutfit,
+      required bool fromChat,
+      required int imageIndex,
     });
 typedef PreciseRefUpdate =
     void Function(
@@ -23,7 +25,7 @@ typedef PreciseRefUpdate =
       bool? enabled,
     });
 
-/// Agent tool: inspect and manage precise reference images on the workbench.
+/// Agent 工具：查看和管理工作台的精准参考图。
 class PreciseReferenceTool extends AgentTool {
   final PreciseRefList list;
   final PreciseRefSupported supported;
@@ -41,11 +43,11 @@ class PreciseReferenceTool extends AgentTool {
     required this.clear,
   }) : super(
          name: 'precise_reference',
-         label: 'Precise Reference',
+         label: '精准参考',
          description:
-             'View, add, update or remove Precise Reference images. Each reference costs +5 Anlas per generated image. '
-             'add uses the current canvas image; view returns the reference image; '
-             'update changes type / strength / fidelity / prefer_same_outfit / enabled.',
+             '查看、添加、修改、删除精准参考图。每张参考图每张生成额外消耗 5 Anlas。'
+             'add 支持 source=canvas（画板当前图）或 source=chat（聊天附图）；view 返回参考图；'
+             'update 可修改类型、强度、Fidelity、优先同服装和启用状态。',
          parameters: const {
            'type': 'object',
            'properties': {
@@ -62,6 +64,15 @@ class PreciseReferenceTool extends AgentTool {
              'fidelity': {'type': 'number'},
              'prefer_same_outfit': {'type': 'boolean'},
              'enabled': {'type': 'boolean'},
+             'source': {
+               'type': 'string',
+               'enum': ['canvas', 'chat'],
+               'description': 'canvas = 画板当前图；chat = 最近一条带图聊天消息',
+             },
+             'image_index': {
+               'type': 'integer',
+               'description': 'source=chat 时的附件序号，0 开始；-1 表示最后一张',
+             },
            },
            'required': ['action'],
          },
@@ -89,9 +100,9 @@ class PreciseReferenceTool extends AgentTool {
     final entries = list();
     if (action == 'list') {
       if (entries.isEmpty) {
-        return ToolResult(toolCallId: toolCallId, content: 'No precise references.');
+        return ToolResult(toolCallId: toolCallId, content: '当前没有精准参考图。');
       }
-      final buffer = StringBuffer('Precise references (${entries.length}):\n');
+      final buffer = StringBuffer('精准参考（${entries.length} 张）：\n');
       for (var i = 0; i < entries.length; i += 1) {
         final entry = entries[i];
         buffer.writeln(
@@ -107,64 +118,69 @@ class PreciseReferenceTool extends AgentTool {
       if (index < 0 || index >= entries.length) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: 'Invalid reference index: $index',
+          content: '精准参考索引无效：$index',
           isError: true,
         );
       }
       return ToolResult(
         toolCallId: toolCallId,
-        content: 'Precise reference #$index',
+        content: '精准参考 #$index',
         imageBase64: base64Encode(entries[index].bytes),
       );
     }
     if (action == 'clear') {
       clear();
-      return ToolResult(toolCallId: toolCallId, content: 'Cleared precise references.');
+      return ToolResult(toolCallId: toolCallId, content: '已清空精准参考。');
     }
     if (action == 'remove') {
       final index = (args['index'] as num?)?.toInt() ?? -1;
       if (index < 0 || index >= entries.length) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: 'Invalid reference index: $index',
+          content: '精准参考索引无效：$index',
           isError: true,
         );
       }
       remove(index);
       return ToolResult(
         toolCallId: toolCallId,
-        content: 'Removed precise reference #$index.',
+        content: '已删除精准参考 #$index。',
       );
     }
     if (action == 'add') {
       if (entries.length >= 16) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: 'Precise reference limit reached (max 16).',
+          content: '精准参考最多 16 张，已达上限。',
           isError: true,
         );
       }
       if (!supported()) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: 'Current model does not support Precise Reference. Switch to V5 or V4.5.',
+          content: '当前模型不支持精准参考，请切换到 V5 或 V4.5。',
           isError: true,
         );
       }
       final type = _type(args['type']) ?? NaiPreciseRefType.characterAndStyle;
       final strength = _number(args['strength'], 1.0);
       final fidelity = _number(args['fidelity'], 1.0);
+      final fromChat = '${args['source'] ?? 'canvas'}' == 'chat';
       final ok = await addFromCanvas(
         type: type,
         strength: strength,
         fidelity: fidelity,
         preferSameOutfit: args['prefer_same_outfit'] == true,
+        fromChat: fromChat,
+        imageIndex: (args['image_index'] as num?)?.toInt() ?? -1,
       );
       return ToolResult(
         toolCallId: toolCallId,
         content: ok
-            ? 'Added current canvas image to precise references.'
-            : 'No canvas image available.',
+            ? (fromChat
+                ? '已将聊天最新附图加入精准参考。'
+                : '已将画板当前图加入精准参考。')
+            : (fromChat ? '聊天消息里没有图片。' : '画板没有可用图片。'),
         isError: !ok,
       );
     }
@@ -173,7 +189,7 @@ class PreciseReferenceTool extends AgentTool {
       if (index < 0 || index >= entries.length) {
         return ToolResult(
           toolCallId: toolCallId,
-          content: 'Invalid reference index: $index',
+          content: '精准参考索引无效：$index',
           isError: true,
         );
       }
@@ -187,12 +203,12 @@ class PreciseReferenceTool extends AgentTool {
       );
       return ToolResult(
         toolCallId: toolCallId,
-        content: 'Updated precise reference #$index.',
+        content: '已更新精准参考 #$index。',
       );
     }
     return ToolResult(
       toolCallId: toolCallId,
-      content: 'Unknown action: $action',
+      content: '未知操作：$action',
       isError: true,
     );
   }

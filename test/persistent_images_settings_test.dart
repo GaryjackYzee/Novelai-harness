@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:novelai_harness/data/services/config_service.dart';
 import 'package:novelai_harness/l10n/app_localizations.dart';
 import 'package:novelai_harness/ui/features/settings/widgets/defaults_settings_tab.dart';
+import 'package:novelai_harness/ui/features/studio/view_models/studio_view_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,5 +69,31 @@ void main() {
           .agentPersistentImages,
       isTrue,
     );
+  });
+
+  test('AppConfig.agentAutoApproveAnlas defaults to disabled and persists', () {
+    expect(const AppConfig().agentAutoApproveAnlas, 0);
+    expect(
+      const AppConfig().copyWith(agentAutoApproveAnlas: 10).agentAutoApproveAnlas,
+      10,
+    );
+    expect(
+      const AppConfig(agentAutoApproveAnlas: 10)
+          .copyWith()
+          .agentAutoApproveAnlas,
+      10,
+    );
+  });
+
+  test('agent auto approve threshold setter clamps to 0..500', () async {
+    SharedPreferences.setMockInitialValues({});
+    final vm = StudioViewModel();
+    await vm.setAgentAutoApproveAnlas(600);
+    expect(vm.config.agentAutoApproveAnlas, 500);
+    await vm.setAgentAutoApproveAnlas(-1);
+    expect(vm.config.agentAutoApproveAnlas, 0);
+    await vm.setAgentAutoApproveAnlas(10);
+    expect(vm.config.agentAutoApproveAnlas, 10);
+    vm.dispose();
   });
 }

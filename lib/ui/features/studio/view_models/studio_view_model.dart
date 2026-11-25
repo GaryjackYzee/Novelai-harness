@@ -58,6 +58,7 @@ import '../../../../data/repositories/novelai_repository.dart';
 import '../../../../data/services/anlas_calculator.dart';
 import '../../../../data/services/annotation_overlay_renderer.dart';
 import '../../../../data/services/config_service.dart';
+import '../../../../data/services/studio_reference_store.dart';
 import '../../../../data/services/network_proxy_service.dart';
 import '../../../../data/services/novelai_service.dart';
 import '../../../../data/services/image_edit_service.dart';
@@ -302,6 +303,7 @@ mixin _StudioCore on ChangeNotifier {
   ComposerInsertion? _composerInsertion;
 
   int _composerInsertionEpoch = 0;
+  Future<void> _lastReferenceSave = Future.value();
 
   /// 分割线宽度防抖落盘计时器 (拖动过程每帧回调，写盘必须节流)
   Timer? _splitWidthSaveTimer;
@@ -434,6 +436,43 @@ mixin _StudioCore on ChangeNotifier {
   /// 对话卡思考块全局展开开关 (Ctrl+O 切换)
   bool get isThinkingExpanded => _isThinkingExpanded;
   NaiGeneratedImage? get selectedImage => _selectedImage;
+
+  Future<bool> addChatImageAsPreciseReference({
+    NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
+    double strength = 1.0,
+    double fidelity = 1.0,
+    bool preferSameOutfit = false,
+    int imageIndex = -1,
+  }) async {
+    if (!_params.model.supportsPreciseReference ||
+        _params.preciseReferences.length >= 16) {
+      return false;
+    }
+    for (final message in _harness.messages.reversed) {
+      if (message.role != AgentRole.user || message.images.isEmpty) continue;
+      final index = imageIndex < 0
+          ? message.images.length - 1
+          : imageIndex.clamp(0, message.images.length - 1);
+      final bytes = message.images[index].bytes;
+      if (bytes.isEmpty) continue;
+      updateParams(
+        _params.copyWith(
+          preciseReferences: <NaiPreciseReference>[
+            ..._params.preciseReferences,
+            NaiPreciseReference(
+              bytes: bytes,
+              type: type,
+              strength: strength,
+              fidelity: fidelity,
+              preferSameOutfit: preferSameOutfit,
+            ),
+          ],
+        ),
+      );
+      return true;
+    }
+    return false;
+  }
 
   Future<bool> addCurrentImageAsPreciseReference({
     NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
@@ -617,6 +656,11 @@ mixin _StudioCore on ChangeNotifier {
     _paramSaveDebounceTimer = null;
     final generation = _params;
     final inpaint = _inpaintParams;
+    _lastReferenceSave = _lastReferenceSave
+        .then((_) => StudioReferenceStore.instance.save(generation))
+        .catchError((Object error) {
+          debugPrint('参考图缓存保存失败: $error');
+        });
     final save = _lastParameterSave.then(
       (_) => _configService.saveStudioParameters(generation, inpaint),
     );
@@ -628,7 +672,10 @@ mixin _StudioCore on ChangeNotifier {
   }
 
   /// 取消防抖并等待前序写入完成，关闭窗口及测试重启前使用。
-  Future<void> flushPendingParameterSave() => _saveParameterSnapshot();
+  Future<void> flushPendingParameterSave() async {
+    await _saveParameterSnapshot();
+    await _lastReferenceSave;
+  }
 
   /// 便捷更新主提示词
   void updatePrompt(String prompt) {
@@ -1061,6 +1108,14 @@ mixin _StudioCore on ChangeNotifier {
     } on Object catch (error) {
       debugPrint('账号切换后保存配置失败: $error');
     }
+  }
+
+  Future<void> setAgentAutoApproveAnlas(int value) async {
+    final next = value.clamp(0, 500);
+    if (_config.agentAutoApproveAnlas == next) return;
+    _config = _config.copyWith(agentAutoApproveAnlas: next);
+    await _configService.saveConfig(_config);
+    notifyListeners();
   }
 
   /// 把工作台账号信息同步回账号池当前条目。
@@ -2117,7 +2172,9 @@ class StudioViewModel extends ChangeNotifier
       seedTiming: await _configService.loadSeedTiming(),
     );
     final savedParams = await _configService.loadStudioParameters(legacyParams);
-    _params = _withActiveStyle(savedParams.generation);
+    _params = await StudioReferenceStore.instance.restore(
+      _withActiveStyle(savedParams.generation),
+    );
     _inpaintParams = savedParams.inpaint;
     _hasRestoredParameterState = true;
     // 恢复模型后再预载，避免启动时错误加载出厂模型的分词器。
@@ -2178,6 +2235,7 @@ class StudioViewModel extends ChangeNotifier
         unawaited(ensureImageLoaded(_selectedImage!));
         _scheduleAdaptiveAccent(_selectedImage!);
       }
+      unawaited(backfillPromptLibraryPreviews());
 
       // 恢复大画布布局 (节点位置尺寸/便利贴/连线/视口)
       final restoredBoard = await _repository.loadBoardLayout(

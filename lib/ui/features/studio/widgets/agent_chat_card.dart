@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart'
@@ -794,6 +796,53 @@ class AgentChatCardState extends State<AgentChatCard> {
     widget.viewModel.rewindToMessage(messageId);
   }
 
+  Future<void> _editAutoApproveThreshold() async {
+    var value = widget.viewModel.config.agentAutoApproveAnlas;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(context.l10n.settingsAgentAutoApproveTitle),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(context.l10n.settingsAgentAutoApproveSubtitle),
+                const SizedBox(height: 12),
+                Text('$value Anlas'),
+                Slider(
+                  value: value.toDouble(),
+                  min: 0,
+                  max: 500,
+                  divisions: 100,
+                  label: '$value',
+                  onChanged: (next) => setState(() => value = next.round()),
+                  onChangeEnd: (next) {
+                    unawaited(
+                      widget.viewModel
+                          .setAgentAutoApproveAnlas(next.round())
+                          .catchError((Object error) {
+                            debugPrint('保存免确认阈值失败: $error');
+                          }),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(context.l10n.close),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 顶部预设切换栏 + 显式回溯 + 会话管理入口 (桌面/移动端统一布局)
   Widget _buildPresetHeaderBar() {
     final colors = context.colors;
@@ -806,8 +855,11 @@ class AgentChatCardState extends State<AgentChatCard> {
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: colors.borderSubtle)),
       ),
-      child: Row(
-        children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showProxy = constraints.maxWidth >= 500;
+          return Row(
+            children: [
           Expanded(
             child: AppDropdown<String>(
               value: currentPreset.id,
@@ -832,12 +884,24 @@ class AgentChatCardState extends State<AgentChatCard> {
             ),
           ),
           const SizedBox(width: 6),
-          ProxyFeatureSwitch(
-            viewModel: widget.viewModel,
-            feature: NetworkFeature.agent,
-            label: context.l10n.proxyFeatureAgent,
-            compact: true,
-          ),
+          if (showProxy) ...[
+            ProxyFeatureSwitch(
+              viewModel: widget.viewModel,
+              feature: NetworkFeature.agent,
+              label: context.l10n.proxyFeatureAgent,
+              compact: true,
+            ),
+            const SizedBox(width: 6),
+          ],
+          AppIconButton(
+              key: const ValueKey('chat_auto_approve_button'),
+              icon: Icons.savings_outlined,
+              size: 28,
+              iconSize: 16,
+              tooltip: context.l10n.settingsAgentAutoApproveTitle,
+              variant: AppIconButtonVariant.ghost,
+              onPressed: _editAutoApproveThreshold,
+            ),
           const SizedBox(width: 6),
           AppIconButton(
             icon: Icons.add_comment_outlined,
@@ -871,7 +935,9 @@ class AgentChatCardState extends State<AgentChatCard> {
             variant: AppIconButtonVariant.ghost,
             onPressed: () => _switchView(_AgentCardView.sessions),
           ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

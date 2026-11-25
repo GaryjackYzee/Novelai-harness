@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novelai_harness/core/harness/tools/precise_reference_tool.dart';
 import 'package:novelai_harness/data/models/nai_generation_params.dart';
+import 'package:novelai_harness/ui/features/studio/view_models/studio_view_model.dart';
 
 void main() {
   test('precise reference tool lists, views, updates and removes', () async {
@@ -26,6 +27,8 @@ void main() {
         required strength,
         required fidelity,
         required preferSameOutfit,
+        required fromChat,
+        required imageIndex,
       }) async => true,
       update: (index, {type, strength, fidelity, preferSameOutfit, enabled}) {
         updatedIndex = index;
@@ -57,5 +60,13 @@ void main() {
     expect(removedIndex, 0);
     await tool.execute('5', {'action': 'clear'});
     expect(cleared, isTrue);
+  });
+
+  test('auto approve uses <= threshold and ignores zero/negative cost', () {
+    expect(shouldAutoApproveGeneration(10, 10), isTrue);
+    expect(shouldAutoApproveGeneration(11, 10), isFalse);
+    expect(shouldAutoApproveGeneration(0, 10), isFalse);
+    expect(shouldAutoApproveGeneration(-3, 10), isFalse);
+    expect(shouldAutoApproveGeneration(1, 0), isFalse);
   });
 }

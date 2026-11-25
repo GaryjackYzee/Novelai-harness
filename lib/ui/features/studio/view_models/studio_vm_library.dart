@@ -31,6 +31,45 @@ mixin _StudioLibraryMixin on _StudioCore {
     debugPrint('[ignored] $error');}
   }
 
+  /// 为已有无封面词条补一张最新相关历史图。
+  Future<void> backfillPromptLibraryPreviews() async {
+    final history = _repository.history;
+    if (history.isEmpty) return;
+    final entries = await _promptLibraryService.loadEntries();
+    var changed = false;
+    final used = <String>{};
+    for (final entry in entries) {
+      if (entry.previewImagePath != null &&
+          entry.previewImagePath!.trim().isNotEmpty) {
+        continue;
+      }
+      final image = latestRelatedPreviewImage(
+        history,
+        entry,
+        excludedIds: used,
+      );
+      if (image == null) continue;
+      try {
+        final raw = await ensureImageLoaded(image) ?? image.bytes;
+        if (raw.isEmpty) continue;
+        final scaled = await downscalePreviewBytes(raw);
+        final path = await savePromptPreviewFromBytes(scaled);
+        if (path == null) continue;
+        await _promptLibraryService.updateEntry(
+          entry.copyWith(
+            previewImagePath: path,
+            updatedAt: DateTime.now(),
+          ),
+        );
+        used.add(image.id);
+        changed = true;
+      } on Object catch (error) {
+        debugPrint('词库封面回填失败: $error');
+      }
+    }
+    if (changed) await _reloadPromptLibrary();
+  }
+
   /// 词库内容变更后同步刷新内存与自动补全缓存
   Future<List<PromptComboEntry>> _reloadPromptLibrary() async {
     final entries = await _promptLibraryService.loadEntries();

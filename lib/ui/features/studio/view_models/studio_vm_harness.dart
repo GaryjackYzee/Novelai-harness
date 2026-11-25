@@ -273,12 +273,22 @@ mixin _StudioHarnessMixin on _StudioCore {
           required strength,
           required fidelity,
           required preferSameOutfit,
-        }) => addCurrentImageAsPreciseReference(
-          type: type,
-          strength: strength,
-          fidelity: fidelity,
-          preferSameOutfit: preferSameOutfit,
-        ),
+          required fromChat,
+          required imageIndex,
+        }) => fromChat
+            ? addChatImageAsPreciseReference(
+                type: type,
+                strength: strength,
+                fidelity: fidelity,
+                preferSameOutfit: preferSameOutfit,
+                imageIndex: imageIndex,
+              )
+            : addCurrentImageAsPreciseReference(
+                type: type,
+                strength: strength,
+                fidelity: fidelity,
+                preferSameOutfit: preferSameOutfit,
+              ),
         update: (index, {
           type,
           strength,

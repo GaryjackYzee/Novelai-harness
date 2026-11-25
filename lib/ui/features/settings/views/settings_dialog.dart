@@ -242,6 +242,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       agentCompactionEnabled: _defaultsDraft.compactionEnabled,
       agentBackgroundCompaction: _defaultsDraft.backgroundCompaction,
       agentPersistentImages: _defaultsDraft.persistentImages,
+      agentAutoApproveAnlas: _defaultsDraft.autoApproveAnlas.clamp(0, 500),
       // 本地 fork：会话管理上限与保留天数
       sessionMaxCount: _defaultsDraft.sessionMaxCount,
       sessionRetentionDays: _defaultsDraft.sessionRetentionDays,

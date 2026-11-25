@@ -5338,4 +5338,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paramsVibeClipboardEmpty => '剪贴板里没有图片';
+
+  @override
+  String get settingsAgentAutoApproveTitle => '生图免确认阈值';
+
+  @override
+  String get settingsAgentAutoApproveSubtitle =>
+      '预计消耗低于该点数时 Agent 直接生图；0 = 总是确认';
+
+  @override
+  String get libraryNoPreview => '未设置展示图';
+
+  @override
+  String get librarySetPreview => '设置展示图';
 }

@@ -2973,5 +2973,9 @@
   "preciseRefLimitReached": "精准参考最多 16 张，已达上限",
   "preciseRefCostSummary": "当前 {count} 张参考图，每张生成额外 {cost} Anlas",
   "paramsVibeLimitReached": "Vibe 参考图最多 16 张",
-  "paramsVibeClipboardEmpty": "剪贴板里没有图片"
+  "paramsVibeClipboardEmpty": "剪贴板里没有图片",
+  "settingsAgentAutoApproveTitle": "生图免确认阈值",
+  "settingsAgentAutoApproveSubtitle": "预计消耗低于该点数时 Agent 直接生图；0 = 总是确认",
+  "libraryNoPreview": "未设置展示图",
+  "librarySetPreview": "设置展示图"
 }
