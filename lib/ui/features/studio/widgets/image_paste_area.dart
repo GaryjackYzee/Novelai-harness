@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+typedef ImagePasteCallback = Future<void> Function();
 
 /// Lets the pointer area accept Ctrl/Cmd+V without stealing keyboard focus.
 class ImagePasteArea extends StatefulWidget {
   final Widget child;
-  final VoidCallback onPaste;
+  final ImagePasteCallback onPaste;
 
   const ImagePasteArea({
     super.key,
@@ -17,37 +20,46 @@ class ImagePasteArea extends StatefulWidget {
 }
 
 class _ImagePasteAreaState extends State<ImagePasteArea> {
-  bool _hovering = false;
+  static final List<ImagePasteCallback> _activePastes = <ImagePasteCallback>[];
 
-  bool _onKey(KeyEvent event) {
-    if (!_hovering || event is! KeyDownEvent) return false;
-    final keyboard = HardwareKeyboard.instance;
-    if (event.logicalKey == LogicalKeyboardKey.keyV &&
-        (keyboard.isControlPressed || keyboard.isMetaPressed)) {
-      widget.onPaste();
-      return true;
-    }
-    return false;
+  void _activate() {
+    _activePastes.remove(widget.onPaste);
+    _activePastes.add(widget.onPaste);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    HardwareKeyboard.instance.addHandler(_onKey);
+  void _deactivate() {
+    _activePastes.remove(widget.onPaste);
   }
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_onKey);
+    _deactivate();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => _hovering = true,
-      onExit: (_) => _hovering = false,
+      onEnter: (_) => _activate(),
+      onExit: (_) => _deactivate(),
       child: widget.child,
     );
+  }
+}
+
+/// Called by the studio-level Ctrl/Cmd+V shortcut so the canvas does not steal
+/// the paste while the pointer is over a reference area.
+class ImagePasteAreaRouter {
+  const ImagePasteAreaRouter._();
+
+  static bool tryHandle() {
+    if (_ImagePasteAreaState._activePastes.isEmpty) return false;
+    final callback = _ImagePasteAreaState._activePastes.last;
+    unawaited(
+      Future<void>.sync(callback).catchError((Object error) {
+        debugPrint('[clipboard] paste failed: $error');
+      }),
+    );
+    return true;
   }
 }

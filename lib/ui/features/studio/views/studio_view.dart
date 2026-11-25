@@ -24,6 +24,7 @@ import '../../../core/widgets/window_controls.dart';
 import '../../settings/views/settings_dialog.dart';
 import '../view_models/studio_view_model.dart';
 import '../widgets/agent_chat_card.dart';
+import '../widgets/image_paste_area.dart';
 import '../widgets/annotation_history_strip.dart';
 import '../widgets/image_canvas_actions.dart';
 import '../widgets/image_canvas_card.dart';
@@ -224,6 +225,10 @@ class _StudioViewState extends State<StudioView> {
         HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     if (isControlOrCmd && event.logicalKey == LogicalKeyboardKey.keyV) {
+      // 鼠标停在参考图区域时优先粘贴参考图，即使输入框仍有焦点。
+      if (event is KeyDownEvent && ImagePasteAreaRouter.tryHandle()) {
+        return true;
+      }
       if (!_isTypingText() &&
           !_viewModel.isEditingCharacterPositions &&
           !_viewModel.isEditingWatermarkPosition &&

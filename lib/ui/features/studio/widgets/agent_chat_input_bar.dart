@@ -1,10 +1,10 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pasteboard/pasteboard.dart';
 import '../../../../core/harness/types.dart';
 import '../../../../data/models/novelai_models.dart';
 import '../../../../data/models/prompt_library_models.dart';
+import '../../../../data/services/clipboard_image_service.dart';
 import '../../../../data/services/prompt_library_mention.dart';
 import '../../../../data/services/usage_ledger_service.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -533,7 +533,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
       return;
     }
 
-    final imageBytes = await Pasteboard.image;
+    final imageBytes = await ClipboardImageService.read();
     if (imageBytes == null || imageBytes.isEmpty) return;
     await _addImageAttachment(imageBytes);
   }

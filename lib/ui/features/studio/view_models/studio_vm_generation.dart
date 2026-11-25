@@ -659,7 +659,7 @@ mixin _StudioGenerationMixin on _StudioCore {
   @override
   Future<bool> useSelectedImageAsReference() async {
     final image = _selectedImage;
-    if (image == null) return false;
+    if (image == null || _params.referenceImages.length >= 16) return false;
     final bytes = await ensureImageLoaded(image);
     if (bytes == null || bytes.isEmpty) return false;
     addReferenceImage(bytes);
@@ -667,6 +667,7 @@ mixin _StudioGenerationMixin on _StudioCore {
   }
 
   void addReferenceImage(Uint8List bytes) {
+    if (_params.referenceImages.length >= 16) return;
     updateParams(
       _params.copyWith(
         referenceImages: <NaiReferenceImage>[

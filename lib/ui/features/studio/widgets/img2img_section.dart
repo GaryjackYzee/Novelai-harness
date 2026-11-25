@@ -2,10 +2,10 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:pasteboard/pasteboard.dart';
 
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../../data/services/clipboard_image_service.dart';
 import '../view_models/studio_view_model.dart';
 import 'image_paste_area.dart';
 
@@ -19,6 +19,14 @@ class Img2imgSection extends StatelessWidget {
     BuildContext context, {
     required bool reference,
   }) async {
+    if (reference && viewModel.params.referenceImages.length >= 16) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.paramsVibeLimitReached)),
+        );
+      }
+      return;
+    }
     final ok = reference
         ? await viewModel.useSelectedImageAsReference()
         : await viewModel.useSelectedImageAsImg2imgSource();
@@ -40,6 +48,14 @@ class Img2imgSection extends StatelessWidget {
     final bytes = result?.files.firstOrNull?.bytes;
     if (bytes == null || bytes.isEmpty) return;
     if (reference) {
+      if (viewModel.params.referenceImages.length >= 16) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(context.l10n.paramsVibeLimitReached)),
+          );
+        }
+        return;
+      }
       viewModel.addReferenceImage(bytes);
     } else {
       viewModel.setImg2imgSource(bytes);
@@ -53,7 +69,7 @@ class Img2imgSection extends StatelessWidget {
       );
       return;
     }
-    final bytes = await Pasteboard.image;
+    final bytes = await ClipboardImageService.read();
     if (bytes == null || bytes.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

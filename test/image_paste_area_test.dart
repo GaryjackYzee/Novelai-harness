@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novelai_harness/ui/features/studio/widgets/image_paste_area.dart';
 
@@ -15,7 +14,7 @@ void main() {
               width: 300,
               height: 200,
               child: ImagePasteArea(
-                onPaste: () => pasted += 1,
+                onPaste: () async => pasted += 1,
                 child: const ColoredBox(color: Colors.grey),
               ),
             ),
@@ -28,9 +27,7 @@ void main() {
     addTearDown(gesture.removePointer);
     await gesture.moveTo(tester.getCenter(find.byType(ImagePasteArea)));
     await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(ImagePasteAreaRouter.tryHandle(), isTrue);
     expect(pasted, 1);
   });
 }

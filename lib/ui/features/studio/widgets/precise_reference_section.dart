@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pasteboard/pasteboard.dart';
 
 import '../../../../data/models/nai_generation_params.dart';
 import '../../../../data/services/precise_reference_image_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
+import '../../../../data/services/clipboard_image_service.dart';
 import '../view_models/studio_view_model.dart';
 import 'image_paste_area.dart';
 
@@ -60,7 +60,7 @@ class PreciseReferenceSection extends StatelessWidget {
       );
       return;
     }
-    final bytes = await Pasteboard.image;
+    final bytes = await ClipboardImageService.read();
     if (bytes == null || bytes.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
