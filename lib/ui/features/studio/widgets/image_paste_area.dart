@@ -39,10 +39,13 @@ class _ImagePasteAreaState extends State<ImagePasteArea> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => _activate(),
-      onExit: (_) => _deactivate(),
-      child: widget.child,
+    return Listener(
+      onPointerDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+      child: MouseRegion(
+        onEnter: (_) => _activate(),
+        onExit: (_) => _deactivate(),
+        child: widget.child,
+      ),
     );
   }
 }

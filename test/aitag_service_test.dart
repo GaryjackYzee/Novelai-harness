@@ -181,4 +181,16 @@ void main() {
       );
     });
   });
+
+  test('parses original_urls when the API returns a JSON string', () {
+    final work = AitagWork.fromJson({
+      'id': 1,
+      'title': 't',
+      'original_urls': '["https://i.pximg.net/a.png", "https://i.pximg.net/b.png"]',
+      'tags': '["a", "b"]',
+    });
+    expect(work.thumbUrl, 'https://i.pximg.net/a.png');
+    expect(work.imageUrls, hasLength(2));
+    expect(work.tags, ['a', 'b']);
+  });
 }

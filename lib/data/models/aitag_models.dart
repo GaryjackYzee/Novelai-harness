@@ -4,6 +4,8 @@
 /// generation parameters live in the work detail (`images[0].ai_json`).
 library;
 
+import 'dart:convert';
+
 /// One character caption recovered from a work's NovelAI `v4_prompt`.
 class AitagCharacter {
   const AitagCharacter({required this.prompt, this.x = 0.5, this.y = 0.5});
@@ -97,6 +99,17 @@ List<String> _stringList(Object? value) {
         .map((item) => '$item'.trim())
         .where((item) => item.isNotEmpty)
         .toList(growable: false);
+  }
+  if (value is String) {
+    final text = value.trim();
+    if (text.startsWith('[') && text.endsWith(']')) {
+      try {
+        final decoded = jsonDecode(text);
+        if (decoded is List) return _stringList(decoded);
+      } on Object {
+        // ignore malformed JSON strings
+      }
+    }
   }
   return const <String>[];
 }

@@ -225,12 +225,11 @@ class _StudioViewState extends State<StudioView> {
         HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     if (isControlOrCmd && event.logicalKey == LogicalKeyboardKey.keyV) {
-      // 鼠标停在参考图区域时优先粘贴参考图，即使输入框仍有焦点。
+      if (_isTypingText()) return false;
       if (event is KeyDownEvent && ImagePasteAreaRouter.tryHandle()) {
         return true;
       }
-      if (!_isTypingText() &&
-          !_viewModel.isEditingCharacterPositions &&
+      if (!_viewModel.isEditingCharacterPositions &&
           !_viewModel.isEditingWatermarkPosition &&
           !_viewModel.board.isAnnotatingImage) {
         if (event is KeyDownEvent) {

@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:image/image.dart' as img;
 import 'package:pasteboard/pasteboard.dart';
 import 'package:win32/win32.dart';
 
@@ -14,14 +15,34 @@ class ClipboardImageService {
   const ClipboardImageService._();
 
   static Future<Uint8List?> read() async {
+    // Keep the original plugin path; only fall back when it yields a black DIB.
+    final raw = await Pasteboard.image;
+    if (raw != null && raw.isNotEmpty && !_mostlyBlack(raw)) return raw;
     if (Platform.isWindows) {
       final native = _readWindowsDib();
       if (native != null && native.isNotEmpty) return native;
+      final system = await _readWithWindowsClipboard();
+      if (system != null && system.isNotEmpty) return system;
     }
-    final raw = await Pasteboard.image;
-    if (raw != null && raw.isNotEmpty) return raw;
-    if (Platform.isWindows) return _readWithWindowsClipboard();
-    return null;
+    return raw;
+  }
+
+  static bool _mostlyBlack(Uint8List bytes) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return false;
+    var dark = 0;
+    var sampled = 0;
+    final stepX = (decoded.width ~/ 16).clamp(1, 64);
+    final stepY = (decoded.height ~/ 16).clamp(1, 64);
+    for (var y = 0; y < decoded.height; y += stepY) {
+      for (var x = 0; x < decoded.width; x += stepX) {
+        final pixel = decoded.getPixel(x, y);
+        final value = (pixel.r + pixel.g + pixel.b) / 3;
+        if (value < 8) dark += 1;
+        sampled += 1;
+      }
+    }
+    return sampled > 0 && dark / sampled > 0.98;
   }
 
   static Uint8List? _readWindowsDib() {
