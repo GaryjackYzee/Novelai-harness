@@ -8766,19 +8766,19 @@ abstract class AppLocalizations {
   /// No description provided for @promptsPreciseReference.
   ///
   /// In zh, this message translates to:
-  /// **'角色 / 画风参考'**
+  /// **'精准参考（角色 / 画风 / 服装）'**
   String get promptsPreciseReference;
 
   /// No description provided for @preciseRefHint.
   ///
   /// In zh, this message translates to:
-  /// **'NovelAI Precise Reference：可只参考角色、只参考画风或两者兼顾；与 Vibe 参考互斥，且仅 V4.5 模型支持。'**
+  /// **'NovelAI Precise Reference：支持角色、画风、角色 & 画风、服装四类参考；V5 可调 Strength 0–5，V4.5 可调 Strength / Fidelity，且与 Vibe 参考互斥。 每张参考图每张生成额外消耗 5 Anlas（Opus 免费也不抵扣）。'**
   String get preciseRefHint;
 
   /// No description provided for @preciseRefUnsupported.
   ///
   /// In zh, this message translates to:
-  /// **'当前模型不支持角色/画风参考。请切换到 NAI Diffusion V4.5 Full 或 Curated。'**
+  /// **'当前模型不支持精准参考。请切换到 NAI Diffusion V5 或 V4.5。'**
   String get preciseRefUnsupported;
 
   /// No description provided for @preciseRefAdd.
@@ -9794,6 +9794,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'V5 的 Fidelity 固定为 1.0，只调节 Strength'**
   String get preciseRefFidelityFixed;
+
+  /// No description provided for @preciseRefClipboardEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'剪贴板里没有图片'**
+  String get preciseRefClipboardEmpty;
+
+  /// No description provided for @preciseRefPasteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'光标移到该区域后按 Ctrl+V 可直接粘贴图片作为参考图'**
+  String get preciseRefPasteHint;
+
+  /// No description provided for @preciseRefLimitReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'精准参考最多 16 张，已达上限'**
+  String get preciseRefLimitReached;
+
+  /// No description provided for @preciseRefCostSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {count} 张参考图，每张生成额外 {cost} Anlas'**
+  String preciseRefCostSummary(Object cost, Object count);
+
+  /// No description provided for @paramsVibeLimitReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'Vibe 参考图最多 16 张'**
+  String get paramsVibeLimitReached;
+
+  /// No description provided for @paramsVibeClipboardEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'剪贴板里没有图片'**
+  String get paramsVibeClipboardEmpty;
 }
 
 class _AppLocalizationsDelegate

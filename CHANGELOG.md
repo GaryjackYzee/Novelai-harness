@@ -1,5 +1,27 @@
 # 更新说明
 
+## 0.7.2+36
+
+V5 支持精准参考（Precise Reference）。
+
+### 新增
+
+- V5 支持 Character / Style / Character & Style / Outfit 四类精准参考
+- Strength 支持 0–5；V5 Fidelity 固定为 1
+- Character / Character & Style 支持「优先参考同一套服装」
+- V5 参考图请求改用官方 multipart 上传，并保留 JSON 回退
+- Agent 新增 `precise_reference` 工具：查看、添加、修改、删除、清空、查看参考图
+- 精准参考与 Vibe 参考区域支持悬停后 Ctrl+V 直接粘贴图片
+- 参考图成本接入 Anlas 预估：每张参考图每张生成 +5 Anlas
+
+### 修复
+
+- V4.5 下 Outfit 类型被静默丢弃
+- 模型切换后精准参考参数越界
+- 参考图达到 16 张时无提示
+- 精准参考悬停抢输入框焦点
+- Opus 免费区间下参考图额外费用显示错误
+
 ## 0.7.1+35
 
 热补丁：把回溯历史改成自上而下的树状图，并补齐分支持久化。

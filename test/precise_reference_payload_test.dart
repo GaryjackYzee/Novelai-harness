@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novelai_harness/data/models/nai_catalog.dart';
 import 'package:novelai_harness/data/models/nai_generation_params.dart';
+import 'package:novelai_harness/data/services/anlas_calculator.dart';
 
 void main() {
   test('V4.5 Precise Reference 发送 director_reference 字段并跳过 Vibe', () {
@@ -111,5 +112,29 @@ void main() {
       parameters['director_reference_secondary_strength_values'],
       <double>[0.0, 0.0],
     );
+  });
+
+  test('Precise Reference adds 5 Anlas per reference per image', () {
+    final base = NaiGenerationParams(
+      prompt: '1girl',
+      model: NaiModel.v45Full,
+      width: 832,
+      height: 1216,
+      steps: 28,
+    );
+    final withRef = base.copyWith(
+      preciseReferences: [
+        NaiPreciseReference(bytes: Uint8List.fromList([1])),
+      ],
+    );
+    final baseCost = AnlasCalculator.estimateGenerationCost(
+      params: base,
+      isOpus: false,
+    );
+    final refCost = AnlasCalculator.estimateGenerationCost(
+      params: withRef,
+      isOpus: false,
+    );
+    expect(refCost - baseCost, 5);
   });
 }

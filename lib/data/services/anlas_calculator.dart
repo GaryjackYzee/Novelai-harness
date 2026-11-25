@@ -57,7 +57,7 @@ class AnlasCalculator {
     required bool isOpus,
     bool opusQuotaExhausted = false,
   }) {
-    return calculateFromValues(
+    final base = calculateFromValues(
       width: params.width,
       height: params.height,
       // 节约档实际只跑锁定的 14 步，仍走同一公式，不另设倍率。
@@ -67,6 +67,15 @@ class AnlasCalculator {
       isOpus: isOpus,
       opusQuotaExhausted: opusQuotaExhausted,
     );
+    if (base < 0) return base;
+    final preciseCount = params.preciseReferences
+        .where(
+          (reference) =>
+              reference.enabled && params.model.supportsPreciseReference,
+        )
+        .length;
+    // Precise Reference 每张参考图每张生成额外 5 Anlas，Opus 免费也不抵扣。
+    return base + preciseCount * 5 * params.nSamples.clamp(1, 8);
   }
 
   /// 根据具体参数值计算单次请求的 Anlas 消耗

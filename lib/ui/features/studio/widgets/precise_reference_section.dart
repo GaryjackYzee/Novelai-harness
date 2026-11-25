@@ -1,8 +1,9 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:pasteboard/pasteboard.dart';
 
 import '../../../../data/models/nai_generation_params.dart';
 import '../../../../data/services/precise_reference_image_service.dart';
@@ -10,6 +11,7 @@ import '../../../core/context_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../view_models/studio_view_model.dart';
+import 'image_paste_area.dart';
 
 /// Precise Reference：角色 / 画风 / 服装参考（NAI V4.5 / V5）。
 class PreciseReferenceSection extends StatelessWidget {
@@ -24,8 +26,16 @@ class PreciseReferenceSection extends StatelessWidget {
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
+    if (!context.mounted) return;
+    if (viewModel.params.preciseReferences.length >= 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.preciseRefLimitReached)),
+      );
+      return;
+    }
     var added = 0;
     for (final file in result.files) {
+      if (viewModel.params.preciseReferences.length >= 16) break;
       Uint8List? raw = file.bytes;
       if (raw == null && file.path != null) {
         raw = await File(file.path!).readAsBytes();
@@ -41,6 +51,27 @@ class PreciseReferenceSection extends StatelessWidget {
         context,
       ).showSnackBar(SnackBar(content: Text(context.l10n.preciseRefAddFailed)));
     }
+  }
+
+  Future<void> _pasteImage(BuildContext context) async {
+    if (viewModel.params.preciseReferences.length >= 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.preciseRefLimitReached)),
+      );
+      return;
+    }
+    final bytes = await Pasteboard.image;
+    if (bytes == null || bytes.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.preciseRefClipboardEmpty)),
+        );
+      }
+      return;
+    }
+    final png = PreciseReferenceImageService.normalize(bytes);
+    if (png == null) return;
+    viewModel.addPreciseReference(png);
   }
 
   @override
@@ -61,7 +92,9 @@ class PreciseReferenceSection extends StatelessWidget {
           );
         }
         final references = params.preciseReferences;
-        return Column(
+        return ImagePasteArea(
+          onPaste: () => _pasteImage(context),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
@@ -72,6 +105,19 @@ class PreciseReferenceSection extends StatelessWidget {
                 color: colors.textSecondary,
               ),
             ),
+            if (references.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                l10n.preciseRefCostSummary(
+                  references.length,
+                  references.length * 5,
+                ),
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: colors.textMuted,
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
@@ -80,6 +126,11 @@ class PreciseReferenceSection extends StatelessWidget {
                 icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
                 label: Text(l10n.preciseRefAdd),
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.preciseRefPasteHint,
+              style: TextStyle(fontSize: 10.5, color: colors.textMuted),
             ),
             if (references.isEmpty)
               Padding(
@@ -98,6 +149,7 @@ class PreciseReferenceSection extends StatelessWidget {
                   reference: references[index],
                 ),
           ],
+        ),
         );
       },
     );

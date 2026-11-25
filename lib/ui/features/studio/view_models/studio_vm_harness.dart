@@ -265,6 +265,48 @@ mixin _StudioHarnessMixin on _StudioCore {
       ),
     );
     _toolRegistry.register(
+      PreciseReferenceTool(
+        list: () => _params.preciseReferences,
+        supported: () => _params.model.supportsPreciseReference,
+        addFromCanvas: ({
+          required type,
+          required strength,
+          required fidelity,
+          required preferSameOutfit,
+        }) => addCurrentImageAsPreciseReference(
+          type: type,
+          strength: strength,
+          fidelity: fidelity,
+          preferSameOutfit: preferSameOutfit,
+        ),
+        update: (index, {
+          type,
+          strength,
+          fidelity,
+          preferSameOutfit,
+          enabled,
+        }) {
+          final list = List<NaiPreciseReference>.from(_params.preciseReferences);
+          if (index < 0 || index >= list.length) return;
+          list[index] = list[index].copyWith(
+            type: type,
+            strength: strength,
+            fidelity: fidelity,
+            preferSameOutfit: preferSameOutfit,
+            enabled: enabled,
+          );
+          updateParams(_params.copyWith(preciseReferences: list));
+        },
+        remove: (index) {
+          final list = List<NaiPreciseReference>.from(_params.preciseReferences);
+          if (index < 0 || index >= list.length) return;
+          list.removeAt(index);
+          updateParams(_params.copyWith(preciseReferences: list));
+        },
+        clear: () => updateParams(_params.copyWith(clearPreciseReferences: true)),
+      ),
+    );
+    _toolRegistry.register(
       CharacterPromptsTool(
         getCharacterPrompts: () => _params.characterPrompts,
         updateCharacterPrompts: _setCharacterPrompts,

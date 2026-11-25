@@ -710,16 +710,49 @@ mixin _StudioGenerationMixin on _StudioCore {
   void addPreciseReference(
     Uint8List bytes, {
     NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
+    double strength = 1.0,
+    double fidelity = 1.0,
+    bool preferSameOutfit = false,
   }) {
-    if (!_params.model.supportsPreciseReference || bytes.isEmpty) return;
+    if (!_params.model.supportsPreciseReference ||
+        bytes.isEmpty ||
+        _params.preciseReferences.length >= 16) {
+      return;
+    }
     updateParams(
       _params.copyWith(
         preciseReferences: <NaiPreciseReference>[
           ..._params.preciseReferences,
-          NaiPreciseReference(bytes: bytes, type: type),
+          NaiPreciseReference(
+            bytes: bytes,
+            type: type,
+            strength: strength,
+            fidelity: fidelity,
+            preferSameOutfit: preferSameOutfit,
+          ),
         ],
       ),
     );
+  }
+
+  Future<bool> addSelectedImageAsPreciseReference({
+    NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
+    double strength = 1.0,
+    double fidelity = 1.0,
+    bool preferSameOutfit = false,
+  }) async {
+    final image = _selectedImage;
+    if (image == null) return false;
+    final bytes = await ensureImageLoaded(image);
+    if (bytes == null || bytes.isEmpty) return false;
+    addPreciseReference(
+      bytes,
+      type: type,
+      strength: strength,
+      fidelity: fidelity,
+      preferSameOutfit: preferSameOutfit,
+    );
+    return true;
   }
 
   void updatePreciseReference(

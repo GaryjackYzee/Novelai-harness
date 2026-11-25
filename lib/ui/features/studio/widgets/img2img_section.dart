@@ -2,10 +2,12 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:pasteboard/pasteboard.dart';
 
 import '../../../core/context_l10n.dart';
 import '../../../core/theme/theme_context_extensions.dart';
 import '../view_models/studio_view_model.dart';
+import 'image_paste_area.dart';
 
 /// 图生图源图与 Vibe Transfer 参考图设置 (仅 NovelAI 后端)。
 class Img2imgSection extends StatelessWidget {
@@ -42,6 +44,25 @@ class Img2imgSection extends StatelessWidget {
     } else {
       viewModel.setImg2imgSource(bytes);
     }
+  }
+
+  Future<void> _pasteReference(BuildContext context) async {
+    if (viewModel.params.referenceImages.length >= 16) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.paramsVibeLimitReached)),
+      );
+      return;
+    }
+    final bytes = await Pasteboard.image;
+    if (bytes == null || bytes.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.paramsVibeClipboardEmpty)),
+        );
+      }
+      return;
+    }
+    viewModel.addReferenceImage(bytes);
   }
 
   Widget _thumb(Uint8List bytes) {
@@ -131,86 +152,94 @@ class Img2imgSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        if (params.referenceImages.isEmpty)
-          Text(l10n.paramsVibeEmpty, style: small)
-        else
-          for (var index = 0; index < params.referenceImages.length; index += 1)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  _thumb(params.referenceImages[index].bytes),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          '${l10n.paramsVibeStrength} ${params.referenceImages[index].strength.toStringAsFixed(2)}',
-                          style: small,
+        ImagePasteArea(
+          onPaste: () => _pasteReference(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+            if (params.referenceImages.isEmpty)
+              Text(l10n.paramsVibeEmpty, style: small)
+            else
+              for (var index = 0; index < params.referenceImages.length; index += 1)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      _thumb(params.referenceImages[index].bytes),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              '${l10n.paramsVibeStrength} ${params.referenceImages[index].strength.toStringAsFixed(2)}',
+                              style: small,
+                            ),
+                            Slider(
+                              value: params.referenceImages[index].strength,
+                              min: 0,
+                              max: 1,
+                              onChanged: (value) => viewModel.updateReferenceImage(
+                                index,
+                                strength: value,
+                              ),
+                            ),
+                            Text(
+                              '${l10n.paramsVibeInfo} ${params.referenceImages[index].informationExtracted.toStringAsFixed(2)}',
+                              style: small,
+                            ),
+                            Slider(
+                              value: params
+                                  .referenceImages[index]
+                                  .informationExtracted,
+                              min: 0,
+                              max: 1,
+                              onChanged: (value) => viewModel.updateReferenceImage(
+                                index,
+                                informationExtracted: value,
+                              ),
+                            ),
+                          ],
                         ),
-                        Slider(
-                          value: params.referenceImages[index].strength,
-                          min: 0,
-                          max: 1,
-                          onChanged: (value) => viewModel.updateReferenceImage(
-                            index,
-                            strength: value,
-                          ),
-                        ),
-                        Text(
-                          '${l10n.paramsVibeInfo} ${params.referenceImages[index].informationExtracted.toStringAsFixed(2)}',
-                          style: small,
-                        ),
-                        Slider(
-                          value: params
-                              .referenceImages[index]
-                              .informationExtracted,
-                          min: 0,
-                          max: 1,
-                          onChanged: (value) => viewModel.updateReferenceImage(
-                            index,
-                            informationExtracted: value,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        tooltip: l10n.close,
+                        onPressed: () => viewModel.removeReferenceImage(index),
+                        icon: const Icon(Icons.delete_outline, size: 16),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: l10n.close,
-                    onPressed: () => viewModel.removeReferenceImage(index),
-                    icon: const Icon(Icons.delete_outline, size: 16),
+                ),
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
-                ],
-              ),
-            ),
-        Wrap(
-          spacing: 8,
-          children: [
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-              onPressed: () => _useCanvas(context, reference: true),
-              icon: const Icon(Icons.add_photo_alternate_outlined, size: 14),
-              label: Text(l10n.paramsVibeAdd),
-            ),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-              onPressed: () => _pickFile(context, reference: true),
-              icon: const Icon(Icons.folder_open, size: 14),
-              label: Text(l10n.paramsSelectFile),
-            ),
-            if (params.referenceImages.isNotEmpty)
-              TextButton(
-                onPressed: viewModel.clearReferenceImages,
-                child: Text(l10n.paramsVibeClear),
-              ),
-          ],
+                  onPressed: () => _useCanvas(context, reference: true),
+                  icon: const Icon(Icons.add_photo_alternate_outlined, size: 14),
+                  label: Text(l10n.paramsVibeAdd),
+                ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                  onPressed: () => _pickFile(context, reference: true),
+                  icon: const Icon(Icons.folder_open, size: 14),
+                  label: Text(l10n.paramsSelectFile),
+                ),
+                if (params.referenceImages.isNotEmpty)
+                  TextButton(
+                    onPressed: viewModel.clearReferenceImages,
+                    child: Text(l10n.paramsVibeClear),
+                  ),
+            ],
+          ),
+            ],
+          ),
         ),
       ],
     );

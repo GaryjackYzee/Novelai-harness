@@ -4771,15 +4771,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptsImg2imgSection => '图生图 / 氛围转移';
 
   @override
-  String get promptsPreciseReference => '角色 / 画风参考';
+  String get promptsPreciseReference => '精准参考（角色 / 画风 / 服装）';
 
   @override
   String get preciseRefHint =>
-      'NovelAI Precise Reference：可只参考角色、只参考画风或两者兼顾；与 Vibe 参考互斥，且仅 V4.5 模型支持。';
+      'NovelAI Precise Reference：支持角色、画风、角色 & 画风、服装四类参考；V5 可调 Strength 0–5，V4.5 可调 Strength / Fidelity，且与 Vibe 参考互斥。 每张参考图每张生成额外消耗 5 Anlas（Opus 免费也不抵扣）。';
 
   @override
   String get preciseRefUnsupported =>
-      '当前模型不支持角色/画风参考。请切换到 NAI Diffusion V4.5 Full 或 Curated。';
+      '当前模型不支持精准参考。请切换到 NAI Diffusion V5 或 V4.5。';
 
   @override
   String get preciseRefAdd => '选择参考图';
@@ -5318,4 +5318,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get preciseRefFidelityFixed => 'V5 的 Fidelity 固定为 1.0，只调节 Strength';
+
+  @override
+  String get preciseRefClipboardEmpty => '剪贴板里没有图片';
+
+  @override
+  String get preciseRefPasteHint => '光标移到该区域后按 Ctrl+V 可直接粘贴图片作为参考图';
+
+  @override
+  String get preciseRefLimitReached => '精准参考最多 16 张，已达上限';
+
+  @override
+  String preciseRefCostSummary(Object cost, Object count) {
+    return '当前 $count 张参考图，每张生成额外 $cost Anlas';
+  }
+
+  @override
+  String get paramsVibeLimitReached => 'Vibe 参考图最多 16 张';
+
+  @override
+  String get paramsVibeClipboardEmpty => '剪贴板里没有图片';
 }

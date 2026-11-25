@@ -2755,9 +2755,9 @@
   "accountPoolAdd": "Add",
   "accountPoolRefreshAll": "Refresh all",
   "promptsImg2imgSection": "Img2Img / Vibe Transfer",
-  "promptsPreciseReference": "Character / Style Reference",
-  "preciseRefHint": "NovelAI Precise Reference: use character only, style only, or both. It is mutually exclusive with Vibe Transfer and only supported by V4.5 models.",
-  "preciseRefUnsupported": "The current model does not support character/style reference. Switch to NAI Diffusion V4.5 Full or Curated.",
+  "promptsPreciseReference": "Precise Reference (Character / Style / Outfit)",
+  "preciseRefHint": "NovelAI Precise Reference supports Character, Style, Character + Style and Outfit. V5 uses Strength 0–5; V4.5 uses Strength / Fidelity. It cannot be combined with Vibe Transfer. Each reference costs an extra 5 Anlas per generated image, even with Opus free generation.",
+  "preciseRefUnsupported": "The current model does not support Precise Reference. Switch to NAI Diffusion V5 or V4.5.",
   "preciseRefAdd": "Choose reference images",
   "preciseRefEmpty": "No character/style references yet.",
   "preciseRefAddFailed": "Could not read the selected image.",
@@ -2967,5 +2967,11 @@
   "rewindBackToRoot": "Back to root",
   "preciseRefOutfit": "Outfit",
   "preciseRefPreferOutfit": "Prefer same outfit",
-  "preciseRefFidelityFixed": "V5 fidelity is fixed at 1.0; adjust Strength only"
+  "preciseRefFidelityFixed": "V5 fidelity is fixed at 1.0; adjust Strength only",
+  "preciseRefClipboardEmpty": "No image in clipboard",
+  "preciseRefPasteHint": "Hover this area and press Ctrl+V to paste an image as a reference",
+  "preciseRefLimitReached": "Precise Reference supports at most 16 images",
+  "preciseRefCostSummary": "{count} references · +{cost} Anlas per generated image",
+  "paramsVibeLimitReached": "Vibe Transfer supports at most 16 images",
+  "paramsVibeClipboardEmpty": "No image in clipboard"
 }

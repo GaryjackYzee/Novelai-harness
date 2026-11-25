@@ -5092,15 +5092,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptsImg2imgSection => 'Img2Img / Vibe Transfer';
 
   @override
-  String get promptsPreciseReference => 'Character / Style Reference';
+  String get promptsPreciseReference =>
+      'Precise Reference (Character / Style / Outfit)';
 
   @override
   String get preciseRefHint =>
-      'NovelAI Precise Reference: use character only, style only, or both. It is mutually exclusive with Vibe Transfer and only supported by V4.5 models.';
+      'NovelAI Precise Reference supports Character, Style, Character + Style and Outfit. V5 uses Strength 0–5; V4.5 uses Strength / Fidelity. It cannot be combined with Vibe Transfer. Each reference costs an extra 5 Anlas per generated image, even with Opus free generation.';
 
   @override
   String get preciseRefUnsupported =>
-      'The current model does not support character/style reference. Switch to NAI Diffusion V4.5 Full or Curated.';
+      'The current model does not support Precise Reference. Switch to NAI Diffusion V5 or V4.5.';
 
   @override
   String get preciseRefAdd => 'Choose reference images';
@@ -5668,4 +5669,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get preciseRefFidelityFixed =>
       'V5 fidelity is fixed at 1.0; adjust Strength only';
+
+  @override
+  String get preciseRefClipboardEmpty => 'No image in clipboard';
+
+  @override
+  String get preciseRefPasteHint =>
+      'Hover this area and press Ctrl+V to paste an image as a reference';
+
+  @override
+  String get preciseRefLimitReached =>
+      'Precise Reference supports at most 16 images';
+
+  @override
+  String preciseRefCostSummary(Object cost, Object count) {
+    return '$count references · +$cost Anlas per generated image';
+  }
+
+  @override
+  String get paramsVibeLimitReached =>
+      'Vibe Transfer supports at most 16 images';
+
+  @override
+  String get paramsVibeClipboardEmpty => 'No image in clipboard';
 }

@@ -63,6 +63,16 @@ StudioEffectivePrompts resolveStudioEffectivePrompts(
 /// 构建点数预估状态文本 (Opus 免费/精确预估，供报表与单键查询共用)
 String buildCostEstimateStatus(NaiGenerationParams params) {
   if (params.isOpusFree) {
+    final referenceCount = params.preciseReferences
+        .where(
+          (reference) =>
+              reference.enabled && params.model.supportsPreciseReference,
+        )
+        .length;
+    if (referenceCount > 0) {
+      final extra = referenceCount * 5 * params.nSamples.clamp(1, 8);
+      return '符合 Opus 免费区间，但精准参考额外 $extra Anlas';
+    }
     final plainCost = AnlasCalculator.estimateGenerationCost(
       params: params,
       isOpus: false,

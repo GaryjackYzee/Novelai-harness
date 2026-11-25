@@ -26,6 +26,7 @@ import '../../../../core/harness/tools/agent_tool.dart';
 import '../../../../core/harness/tools/ai_edit_image_tool.dart';
 import 'chat_checkpoints.dart';
 import '../../../core/locale/app_locale_controller.dart';
+import '../../../../core/harness/tools/precise_reference_tool.dart';
 import '../../../core/theme/app_accent_controller.dart';
 import '../../../core/theme/frame_rate_controller.dart';
 import '../../../core/theme/theme_mode_controller.dart';
@@ -433,6 +434,37 @@ mixin _StudioCore on ChangeNotifier {
   /// 对话卡思考块全局展开开关 (Ctrl+O 切换)
   bool get isThinkingExpanded => _isThinkingExpanded;
   NaiGeneratedImage? get selectedImage => _selectedImage;
+
+  Future<bool> addCurrentImageAsPreciseReference({
+    NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
+    double strength = 1.0,
+    double fidelity = 1.0,
+    bool preferSameOutfit = false,
+  }) async {
+    final image = _selectedImage;
+    if (image == null ||
+        !_params.model.supportsPreciseReference ||
+        _params.preciseReferences.length >= 16) {
+      return false;
+    }
+    final bytes = await ensureImageLoaded(image);
+    if (bytes == null || bytes.isEmpty) return false;
+    updateParams(
+      _params.copyWith(
+        preciseReferences: <NaiPreciseReference>[
+          ..._params.preciseReferences,
+          NaiPreciseReference(
+            bytes: bytes,
+            type: type,
+            strength: strength,
+            fidelity: fidelity,
+            preferSameOutfit: preferSameOutfit,
+          ),
+        ],
+      ),
+    );
+    return true;
+  }
   bool get hasUnseenLatest => _hasUnseenLatest;
   bool get isViewingLatest =>
       gallery.isEmpty ||
