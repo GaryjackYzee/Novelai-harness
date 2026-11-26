@@ -672,7 +672,10 @@ mixin _StudioGenerationMixin on _StudioCore {
       _params.copyWith(
         referenceImages: <NaiReferenceImage>[
           ..._params.referenceImages,
-          NaiReferenceImage(bytes: bytes),
+          NaiReferenceImage(
+            id: _nextReferenceId('vibe'),
+            bytes: bytes,
+          ),
         ],
       ),
     );
@@ -687,6 +690,8 @@ mixin _StudioGenerationMixin on _StudioCore {
     if (index < 0 || index >= list.length) return;
     final current = list[index];
     list[index] = NaiReferenceImage(
+      id: current.id,
+      fileName: current.fileName,
       bytes: current.bytes,
       strength: strength ?? current.strength,
       informationExtracted:
@@ -725,6 +730,7 @@ mixin _StudioGenerationMixin on _StudioCore {
         preciseReferences: <NaiPreciseReference>[
           ..._params.preciseReferences,
           NaiPreciseReference(
+            id: _nextReferenceId('precise'),
             bytes: bytes,
             type: type,
             strength: strength,

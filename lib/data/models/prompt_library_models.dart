@@ -34,6 +34,8 @@ class PromptComboEntry {
   final bool isFavorite;
   final bool isBuiltin;
   final List<String> tags;
+  final List<String> preciseReferencePaths;
+  final List<String> vibeReferencePaths;
 
   const PromptComboEntry({
     required this.id,
@@ -49,6 +51,8 @@ class PromptComboEntry {
     this.isFavorite = false,
     this.isBuiltin = false,
     this.tags = const [],
+    this.preciseReferencePaths = const [],
+    this.vibeReferencePaths = const [],
   });
 
   /// 判断某分类名称是否属于“角色”分类 (中文或英文拼写)
@@ -135,6 +139,8 @@ class PromptComboEntry {
     bool? isFavorite,
     bool? isBuiltin,
     List<String>? tags,
+    List<String>? preciseReferencePaths,
+    List<String>? vibeReferencePaths,
   }) {
     final nextCategory = category ?? this.category;
     final allowNeg = supportsNegativePrompt(nextCategory);
@@ -157,6 +163,9 @@ class PromptComboEntry {
       isFavorite: isFavorite ?? this.isFavorite,
       isBuiltin: isBuiltin ?? this.isBuiltin,
       tags: tags ?? this.tags,
+    preciseReferencePaths:
+        preciseReferencePaths ?? this.preciseReferencePaths,
+    vibeReferencePaths: vibeReferencePaths ?? this.vibeReferencePaths,
     );
   }
 
@@ -175,6 +184,10 @@ class PromptComboEntry {
       'isFavorite': isFavorite,
       'isBuiltin': isBuiltin,
       'tags': tags,
+    if (preciseReferencePaths.isNotEmpty)
+      'preciseReferencePaths': preciseReferencePaths,
+    if (vibeReferencePaths.isNotEmpty)
+      'vibeReferencePaths': vibeReferencePaths,
     };
   }
 

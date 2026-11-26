@@ -110,6 +110,17 @@ class StudioSidebar extends StatelessWidget {
               isTab: true,
               onTap: () => onTabChanged(StudioSidebarTab.library),
             ),
+            const SizedBox(height: 4),
+
+            // 参考图库：精准参考 / Vibe 统一管理
+            _buildNavItem(
+              icon: Icons.photo_library_outlined,
+              label: context.l10n.referenceLibraryTitle,
+              tooltip: context.l10n.referenceLibraryTitle,
+              isSelected: activeTab == StudioSidebarTab.references,
+              isTab: true,
+              onTap: () => onTabChanged(StudioSidebarTab.references),
+            ),
             const SizedBox(height: 6),
 
             // 导航分类项：图源 (AITag / 法典瀑布流)

@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -11,6 +9,7 @@ import '../types.dart';
 import 'llm_provider.dart';
 import 'prompt_cache_policy.dart';
 import 'prompt_tool_codec.dart';
+import 'provider_http_transport.dart';
 import 'tool_call_ids.dart';
 
 /// Google Gemini Interactions API 提供商 (`/v1beta/interactions` / `/v1/interactions`)。
@@ -48,9 +47,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
   final LlmCacheConfig cacheConfig;
   final http.Client _client;
   final bool _ownsClient;
-
-  static const Duration _requestStartupTimeout = Duration(seconds: 45);
-  static const Duration _streamIdleTimeout = Duration(seconds: 90);
+  final Duration requestStartupTimeout;
+  final Duration streamIdleTimeout;
 
   GoogleInteractionsProvider({
     required this.apiKey,
@@ -62,6 +60,8 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     this.promptToolUse = false,
     this.streaming = true,
     this.cacheConfig = const LlmCacheConfig(),
+    this.requestStartupTimeout = ProviderHttpTransport.requestStartupTimeout,
+    this.streamIdleTimeout = ProviderHttpTransport.streamIdleTimeout,
     http.Client? client,
   }) : _client = client ?? http.Client(),
        _ownsClient = client == null;
@@ -167,7 +167,12 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
       model: modelId,
     );
 
-    final request = http.Request('POST', uri);
+    final abortTrigger = Completer<void>();
+    final request = http.AbortableRequest(
+      'POST',
+      uri,
+      abortTrigger: abortTrigger.future,
+    );
     request.headers['Content-Type'] = 'application/json';
     request.headers['Accept'] = streaming
         ? 'text/event-stream'
@@ -181,13 +186,19 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     request.body = jsonEncode(requestBody);
 
     try {
-      final response = await _client
-          .send(request)
-          .timeout(_requestStartupTimeout);
+      final response = await ProviderHttpTransport.sendAbortable(
+        client: _client,
+        request: request,
+        abortTrigger: abortTrigger,
+        timeout: requestStartupTimeout,
+      );
 
       if (response.statusCode != 200) {
-        final errorBody = await response.stream.bytesToString().timeout(
-          _requestStartupTimeout,
+        final errorBody = await ProviderHttpTransport.readResponseText(
+          response,
+          timeout: requestStartupTimeout,
+          abortTrigger: abortTrigger,
+          timeoutMessage: '读取错误响应超时',
         );
         final status = response.statusCode;
         final isTransient =
@@ -203,9 +214,10 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
         response,
         normalizedMessages: normalizedMessages,
         tools: tools,
+        abortTrigger: abortTrigger,
       );
-    } on TimeoutException {
-      yield const ErrorEvent('LLM 流式响应超时，网络可能已断开', transient: true);
+    } on TimeoutException catch (e) {
+      yield ErrorEvent('网络请求异常: $e', transient: true);
     } catch (e) {
       yield ErrorEvent('网络请求异常: $e', transient: true);
     }
@@ -276,7 +288,25 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
         }
       }
     } else {
+      final pendingCallIds = <String>[];
+      final pendingToolImageParts = <Map<String, dynamic>>[];
+
+      void flushToolImages() {
+        if (pendingToolImageParts.isEmpty) return;
+        inputSteps.add({
+          'type': 'user_input',
+          'content': [
+            {'type': 'text', 'text': '以下是前面工具结果附带的图片，请直接查看。'},
+            ...pendingToolImageParts,
+          ],
+        });
+        pendingToolImageParts.clear();
+      }
+
       for (final msg in normalizedMessages) {
+        if (msg.role != AgentRole.tool) {
+          flushToolImages();
+        }
         switch (msg.role) {
           case AgentRole.system:
             if (msg.content.trim().isNotEmpty) {
@@ -295,6 +325,9 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                     'mime_type': img.mimeType,
                   },
             ];
+            if (contentParts.isEmpty) {
+              contentParts.add({'type': 'text', 'text': ''});
+            }
             inputSteps.add({'type': 'user_input', 'content': contentParts});
 
           case AgentRole.assistant:
@@ -334,6 +367,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
               final calls = msg.toolCalls!;
               for (final tc in calls) {
                 toolNameByCallId[tc.id] = tc.name;
+                pendingCallIds.add(tc.id);
                 inputSteps.add({
                   'type': 'function_call',
                   'id': tc.id,
@@ -344,29 +378,70 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
             }
 
           case AgentRole.tool:
-            final callId = msg.toolCallId ?? '';
+            var callId = msg.toolCallId?.trim() ?? '';
+            if (callId.isEmpty && pendingCallIds.isNotEmpty) {
+              callId = pendingCallIds.removeAt(0);
+            } else if (callId.isNotEmpty) {
+              pendingCallIds.remove(callId);
+            }
             final resolvedName =
                 (msg.toolName != null && msg.toolName!.isNotEmpty)
                 ? msg.toolName!
                 : (toolNameByCallId[callId] ?? 'tool');
-            final resultParts = <Map<String, dynamic>>[
-              {'type': 'text', 'text': msg.content},
-              if (msg.imageBase64 != null && msg.imageBase64!.isNotEmpty)
+            final hasImage =
+                msg.imageBase64 != null && msg.imageBase64!.isNotEmpty;
+            if (callId.isEmpty) {
+              // 孤立工具结果无法配对 call_id，降级为 user_input 避免空 call_id 触发 400
+              final fallbackText = '[工具 $resolvedName 结果] ${msg.content}'.trim();
+              inputSteps.add({
+                'type': 'user_input',
+                'content': [
+                  {'type': 'text', 'text': fallbackText},
+                  if (hasImage)
+                    {
+                      'type': 'image',
+                      'data': msg.imageBase64,
+                      'mime_type': msg.imageMimeType,
+                    },
+                ],
+              });
+              break;
+            }
+            // Interactions API 规范允许 FunctionResultStep.result 为 object / string / array；
+            // 统一使用 JSON 对象 ({result: ...} / {error: ...}) 映射底层 Gemini
+            // FunctionResponse.response (google.protobuf.Struct)，避免传数组在非多模态
+            // 后端或兼容网关上触发「Proto field is not repeating, cannot start list」400。
+            final resultText = msg.content.isEmpty && hasImage
+                ? '图片见随后的附件。'
+                : msg.content;
+            inputSteps.add({
+              'type': 'function_result',
+              'call_id': callId,
+              'name': resolvedName,
+              'result': msg.isError
+                  ? <String, dynamic>{'error': resultText}
+                  : <String, dynamic>{'result': resultText},
+              if (msg.isError) 'is_error': true,
+            });
+            if (hasImage) {
+              pendingToolImageParts.addAll([
+                {
+                  'type': 'text',
+                  'text': jsonEncode({
+                    'tool_name': resolvedName,
+                    'tool_call_id': callId,
+                  }),
+                },
                 {
                   'type': 'image',
                   'data': msg.imageBase64,
                   'mime_type': msg.imageMimeType,
                 },
-            ];
-            inputSteps.add({
-              'type': 'function_result',
-              'call_id': callId,
-              'name': resolvedName,
-              'result': resultParts,
-              if (msg.isError) 'is_error': true,
-            });
+              ]);
+            }
         }
       }
+      flushToolImages();
     }
 
     final generationConfig = <String, dynamic>{
@@ -430,6 +505,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     http.StreamedResponse response, {
     required List<AgentMessage> normalizedMessages,
     required List<AgentTool> tools,
+    required Completer<void> abortTrigger,
   }) async* {
     final stepStates = <int, _InteractionStepState>{};
     final stepIndexById = <String, int>{};
@@ -479,7 +555,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
 
     try {
       final lines = response.stream
-          .timeout(_streamIdleTimeout)
+          .timeout(streamIdleTimeout)
           .transform(const Utf8Decoder(allowMalformed: true))
           .transform(const LineSplitter());
 
@@ -510,8 +586,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
           final decoded = jsonDecode(dataStr);
           if (decoded is! Map<String, dynamic>) continue;
           json = decoded;
-        } catch (error) {
-    debugPrint('[ignored] $error');
+        } catch (_) {
           continue;
         }
 
@@ -642,7 +717,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                 }
               }
 
-            case 'function_call' || 'arguments_delta':
+            case 'function_call' || 'arguments_delta' || 'arguments':
               state.type = 'function_call';
               state.absorbFunctionCallDelta(delta);
 
@@ -656,6 +731,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
               if (delta.containsKey('name') ||
                   delta.containsKey('arguments') ||
                   delta.containsKey('arguments_delta') ||
+                  delta.containsKey('partial_arguments') ||
                   state.type == 'function_call') {
                 state.type = 'function_call';
                 state.absorbFunctionCallDelta(delta);
@@ -800,8 +876,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
                 }
               }
             }
-          } catch (error) {
-    debugPrint('[ignored] $error');}
+          } catch (_) {}
         }
       }
 
@@ -848,6 +923,9 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     } on FormatException catch (e) {
       yield ErrorEvent('工具调用格式错误: ${e.message}');
     } catch (e) {
+      if (e is TimeoutException && !abortTrigger.isCompleted) {
+        abortTrigger.complete();
+      }
       yield ErrorEvent('解析流式数据异常: $e', transient: true);
     }
 
@@ -866,7 +944,10 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
     required void Function(String) onSignature,
     required Iterable<ContentDeltaEvent> Function(String) emitContentText,
   }) async* {
-    final outputs = interactionMap['output'] ?? interactionMap['outputs'];
+    final outputs =
+        interactionMap['steps'] ??
+        interactionMap['output'] ??
+        interactionMap['outputs'];
     if (outputs is! List) return;
 
     final allowThoughtEmit = !emittedThoughts();
@@ -997,8 +1078,7 @@ class GoogleInteractionsProvider implements LlmProvider, LlmRequestOverhead {
             _formatErrorObject(decoded['error']) ?? _formatErrorObject(decoded);
         if (msg != null && msg.isNotEmpty) return msg;
       }
-    } catch (error) {
-    debugPrint('[ignored] $error');}
+    } catch (_) {}
     return trimmed;
   }
 
@@ -1049,7 +1129,9 @@ class _InteractionStepState {
 
   void absorbFunctionCallDelta(Map<String, dynamic> delta) {
     absorbFunctionCallMap(delta);
-    final argsDelta = delta['arguments_delta'] as String?;
+    final argsDelta =
+        (delta['arguments_delta'] as String?) ??
+        (delta['partial_arguments'] as String?);
     if (argsDelta != null && argsDelta.isNotEmpty) {
       argumentsBuffer.write(argsDelta);
     }

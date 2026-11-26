@@ -33,7 +33,7 @@ class StudioReferenceStore {
       for (final item in params.referenceImages)
         '${hash(item.bytes)}:${item.strength}:${item.informationExtracted}',
       for (final item in params.preciseReferences)
-        '${hash(item.bytes)}:${item.type.name}:${item.strength}:${item.fidelity}:${item.preferSameOutfit}:${item.enabled}',
+        '${item.id ?? ''}:${hash(item.bytes)}:${item.type.name}:${item.strength}:${item.fidelity}:${item.preferSameOutfit}:${item.enabled}',
     ];
     return parts.join('|');
   }
@@ -77,6 +77,8 @@ class StudioReferenceStore {
       final item = params.referenceImages[i];
       vibe.add({
         'file': await write('vibe_$i.bin', item.bytes),
+        'id': item.id,
+        'fileName': item.fileName,
         'sha256': _hash(item.bytes),
         'strength': item.strength,
         'informationExtracted': item.informationExtracted,
@@ -88,6 +90,8 @@ class StudioReferenceStore {
       final item = params.preciseReferences[i];
       precise.add({
         'file': await write('precise_$i.bin', item.bytes),
+        'id': item.id,
+        'fileName': item.fileName,
         'sha256': _hash(item.bytes),
         'type': item.type.name,
         'strength': item.strength,
@@ -161,6 +165,8 @@ class StudioReferenceStore {
           if (bytes == null || item is! Map) continue;
           vibe.add(
             NaiReferenceImage(
+              id: item['id']?.toString(),
+              fileName: item['fileName']?.toString(),
               bytes: bytes,
               strength: (item['strength'] as num?)?.toDouble() ?? 0.6,
               informationExtracted:
@@ -182,6 +188,8 @@ class StudioReferenceStore {
           );
           precise.add(
             NaiPreciseReference(
+              id: item['id']?.toString(),
+              fileName: item['fileName']?.toString(),
               bytes: bytes,
               type: type,
               strength: (item['strength'] as num?)?.toDouble() ?? 1.0,

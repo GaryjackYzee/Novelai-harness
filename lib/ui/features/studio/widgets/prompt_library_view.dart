@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import '../../../../data/models/prompt_library_models.dart';
 import '../../../../data/models/prompt_library_sync_models.dart';
 import '../../../../data/services/prompt_image_probe.dart';
+import '../../../../data/services/prompt_library_service.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/l10n/model_label_l10n.dart';
 import '../../../core/theme/app_tokens.dart';
@@ -959,6 +963,16 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
                                 onSendToAgent: () => _sendComboToAgent(
                                   columns[c][i].entry,
                                 ),
+                                onUsePreviewAsReference: () =>
+                                    _usePreviewAsPrecise(columns[c][i].entry),
+                                onAttachCurrentReferences: () =>
+                                    _attachCurrentReferences(
+                                      columns[c][i].entry,
+                                    ),
+                                onApplySavedReferences: () =>
+                                    _applySavedReferences(
+                                      columns[c][i].entry,
+                                    ),
                                 onEdit: () {
                                   PromptComboEditDialog.show(
                                     context,
@@ -982,6 +996,85 @@ class _PromptLibraryViewState extends State<PromptLibraryView> {
         );
       },
     );
+  }
+
+  Future<void> _attachCurrentReferences(PromptComboEntry entry) async {
+    final precisePaths = <String>[];
+    final vibePaths = <String>[];
+    for (final ref in widget.viewModel.params.preciseReferences) {
+      final path = await widget.viewModel.savePromptPreviewFromBytes(ref.bytes);
+      if (path != null) precisePaths.add(path);
+    }
+    for (final ref in widget.viewModel.params.referenceImages) {
+      final path = await widget.viewModel.savePromptPreviewFromBytes(ref.bytes);
+      if (path != null) vibePaths.add(path);
+    }
+    final latest = widget.viewModel.promptLibraryEntries
+        .where((item) => item.id == entry.id)
+        .firstOrNull;
+    if (latest == null) return;
+    await widget.viewModel.updatePromptCombo(
+      latest.copyWith(
+        preciseReferencePaths: precisePaths,
+        vibeReferencePaths: vibePaths,
+        updatedAt: DateTime.now(),
+      ),
+    );
+    if (!mounted) return;
+    showAppToast(
+      context,
+      message: context.l10n.libraryReferencesAttached,
+      tone: AppToastTone.success,
+    );
+  }
+
+  Future<void> _applySavedReferences(PromptComboEntry entry) async {
+    for (final path in entry.preciseReferencePaths) {
+      try {
+        final bytes = await _readManagedReference(path);
+        if (bytes != null) widget.viewModel.addPreciseReference(bytes);
+      } on Object catch (error) {
+        debugPrint('应用词库精准参考失败: $error');
+      }
+    }
+    for (final path in entry.vibeReferencePaths) {
+      try {
+        final bytes = await _readManagedReference(path);
+        if (bytes != null) widget.viewModel.addReferenceImage(bytes);
+      } on Object catch (error) {
+        debugPrint('应用词库 Vibe 参考失败: $error');
+      }
+    }
+  }
+
+  Future<Uint8List?> _readManagedReference(String path) async {
+    try {
+      final dir = await PromptLibraryService.instance.getPreviewDirectory();
+      final target = File(path).absolute.path;
+      if (!p.isWithin(dir.path, target)) return null;
+      final bytes = await File(target).readAsBytes();
+      return bytes.isEmpty ? null : bytes;
+    } on Object catch (error) {
+      debugPrint('读取词条参考图失败: $error');
+      return null;
+    }
+  }
+
+  Future<void> _usePreviewAsPrecise(PromptComboEntry entry) async {
+    final path = entry.previewImagePath?.trim();
+    if (path == null || path.isEmpty) return;
+    try {
+      final bytes = await _readManagedReference(path);
+      if (bytes == null || !mounted) return;
+      widget.viewModel.addPreciseReference(bytes);
+      showAppToast(
+        context,
+        message: context.l10n.libraryPreviewAddedToReference,
+        tone: AppToastTone.success,
+      );
+    } on Object catch (error) {
+      debugPrint('词库展示图加入精准参考失败: $error');
+    }
   }
 
   double _estimateCardHeight(

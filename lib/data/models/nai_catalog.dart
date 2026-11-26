@@ -62,6 +62,8 @@ enum NaiModel {
   bool get isV5 => id.startsWith('nai-diffusion-5');
 
   /// Precise Reference (角色/画风参考) 支持 V5 与 V4.5。
+  bool get supportsVibeTransfer => !isV5;
+
   bool get supportsPreciseReference =>
       isV5 || this == NaiModel.v45Full || this == NaiModel.v45Curated;
 

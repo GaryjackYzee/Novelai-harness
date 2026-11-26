@@ -29,6 +29,7 @@ void main() {
         required preferSameOutfit,
         required fromChat,
         required imageIndex,
+        required libraryEntryId,
       }) async => true,
       update: (index, {type, strength, fidelity, preferSameOutfit, enabled}) {
         updatedIndex = index;

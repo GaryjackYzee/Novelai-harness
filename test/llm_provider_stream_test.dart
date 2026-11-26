@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -5,7 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:novelai_harness/core/harness/agent_harness.dart';
 import 'package:novelai_harness/core/harness/presets/agent_preset.dart';
+import 'package:novelai_harness/core/harness/providers/google_interactions_provider.dart';
 import 'package:novelai_harness/core/harness/providers/openai_provider.dart';
+import 'package:novelai_harness/core/harness/providers/provider_http_transport.dart';
 import 'package:novelai_harness/core/harness/tools/agent_tool.dart';
 import 'package:novelai_harness/core/harness/types.dart';
 import 'package:novelai_harness/data/models/novelai_models.dart';
@@ -845,100 +848,106 @@ void main() {
   });
 
   group('Google Interactions API & Gemini 4 Argon 兼容', () {
-    test(
-      'OpenAI 兼容端口调用 gemini-4-argon 时收敛 thinking 档位并回传 thought_signature',
-      () async {
-        late Map<String, dynamic> capturedBody;
+    test('OpenAI 兼容端口调用 gemini-4-argon 时收敛 thinking 档位并回传 thought_signature', () async {
+      late Map<String, dynamic> capturedBody;
 
-        final client = MockClient.streaming((request, bodyStream) async {
-          final raw = await bodyStream.bytesToString();
-          capturedBody = jsonDecode(raw) as Map<String, dynamic>;
-          return _sse([
-            {
-              'choices': [
-                {
-                  'delta': {
-                    'tool_calls': [
-                      {
-                        'index': 0,
-                        'id': 'call_1',
-                        'function': {
-                          'name': 'generate_image',
-                          'arguments': '{"prompt":"1girl"}',
-                        },
-                        'extra_content': {
-                          'google': {'thought_signature': 'sig_abc_123'},
+      final client = MockClient.streaming((request, bodyStream) async {
+        final raw = await bodyStream.bytesToString();
+        capturedBody = jsonDecode(raw) as Map<String, dynamic>;
+        return _sse([
+          {
+            'choices': [
+              {
+                'delta': {
+                  'tool_calls': [
+                    {
+                      'index': 0,
+                      'id': 'call_1',
+                      'function': {
+                        'name': 'generate_image',
+                        'arguments': '{"prompt":"1girl"}',
+                      },
+                      'extra_content': {
+                        'google': {
+                          'thought_signature': 'sig_abc_123',
                         },
                       },
-                    ],
-                  },
+                    },
+                  ],
                 },
-              ],
-            },
-          ]);
-        });
+              },
+            ],
+          },
+        ]);
+      });
 
-        final provider = OpenAiCompatibleProvider(
-          baseUrl:
-              'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-          apiKey: 'test-key',
-          model: 'gemini-4-argon',
-          reasoning: true,
-          thinkingEffort: 'xhigh',
-          client: client,
-        );
+      final provider = OpenAiCompatibleProvider(
+        baseUrl:
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        apiKey: 'test-key',
+        model: 'gemini-4-argon',
+        reasoning: true,
+        thinkingEffort: 'xhigh',
+        client: client,
+      );
 
-        final firstTurnEvents = await provider
-            .streamChat(
-              messages: [
-                AgentMessage(id: 'u1', role: AgentRole.user, content: 'draw'),
-              ],
-              tools: const [],
-            )
-            .toList();
+      final firstTurnEvents = await provider
+          .streamChat(
+            messages: [
+              AgentMessage(
+                id: 'u1',
+                role: AgentRole.user,
+                content: 'draw',
+              ),
+            ],
+            tools: const [],
+          )
+          .toList();
 
-        expect(capturedBody['reasoning_effort'], 'high');
-        final tcEvent = firstTurnEvents.whereType<ToolCallEvent>().single;
-        expect(tcEvent.toolCall.thoughtSignature, 'sig_abc_123');
-        final sigEvent = firstTurnEvents
-            .whereType<ThoughtSignatureEvent>()
-            .single;
-        expect(sigEvent.signature, 'sig_abc_123');
+      expect(capturedBody['reasoning_effort'], 'high');
+      final tcEvent = firstTurnEvents.whereType<ToolCallEvent>().single;
+      expect(tcEvent.toolCall.thoughtSignature, 'sig_abc_123');
+      final sigEvent =
+          firstTurnEvents.whereType<ThoughtSignatureEvent>().single;
+      expect(sigEvent.signature, 'sig_abc_123');
 
-        await provider
-            .streamChat(
-              messages: [
-                AgentMessage(id: 'u1', role: AgentRole.user, content: 'draw'),
-                AgentMessage(
-                  id: 'a1',
-                  role: AgentRole.assistant,
-                  content: '',
-                  thoughtSignature: sigEvent.signature,
-                  toolCalls: [tcEvent.toolCall],
-                ),
-                AgentMessage(
-                  id: 't1',
-                  role: AgentRole.tool,
-                  content: '{"ok":true}',
-                  toolCallId: 'call_1',
-                ),
-              ],
-              tools: const [],
-            )
-            .toList();
+      await provider
+          .streamChat(
+            messages: [
+              AgentMessage(
+                id: 'u1',
+                role: AgentRole.user,
+                content: 'draw',
+              ),
+              AgentMessage(
+                id: 'a1',
+                role: AgentRole.assistant,
+                content: '',
+                thoughtSignature: sigEvent.signature,
+                toolCalls: [tcEvent.toolCall],
+              ),
+              AgentMessage(
+                id: 't1',
+                role: AgentRole.tool,
+                content: '{"ok":true}',
+                toolCallId: 'call_1',
+              ),
+            ],
+            tools: const [],
+          )
+          .toList();
 
-        final sentMessages = capturedBody['messages'] as List<dynamic>;
-        final assistantMsg = sentMessages[1] as Map<String, dynamic>;
-        final firstToolCall =
-            (assistantMsg['tool_calls'] as List<dynamic>).first
-                as Map<String, dynamic>;
-        expect(
-          ((firstToolCall['extra_content'] as Map<String, dynamic>)['google']
-              as Map<String, dynamic>)['thought_signature'],
-          'sig_abc_123',
-        );
-      },
-    );
+      final sentMessages = capturedBody['messages'] as List<dynamic>;
+      final assistantMsg = sentMessages[1] as Map<String, dynamic>;
+      final firstToolCall =
+          (assistantMsg['tool_calls'] as List<dynamic>).first
+              as Map<String, dynamic>;
+      expect(
+        ((firstToolCall['extra_content'] as Map<String, dynamic>)['google']
+            as Map<String, dynamic>)['thought_signature'],
+        'sig_abc_123',
+      );
+    });
 
     test('Google Interactions 端口支持 SSE 事件流、thought 签名回传与工具调用', () async {
       late Map<String, dynamic> capturedBody;
@@ -976,7 +985,9 @@ void main() {
           {
             'event': 'step.delta',
             'step_id': 's_call',
-            'delta': {'arguments': '{"prompt":"1girl"}'},
+            'delta': {
+              'arguments': '{"prompt":"1girl"}',
+            },
           },
           {
             'event': 'step.start',
@@ -1024,7 +1035,11 @@ void main() {
                 role: AgentRole.system,
                 content: 'Sys prompt',
               ),
-              AgentMessage(id: 'u1', role: AgentRole.user, content: 'Hello'),
+              AgentMessage(
+                id: 'u1',
+                role: AgentRole.user,
+                content: 'Hello',
+              ),
               AgentMessage(
                 id: 'a1',
                 role: AgentRole.assistant,
@@ -1084,4 +1099,167 @@ void main() {
       expect(usage.output, 45);
     });
   });
+
+  group('假流式/慢首包超时与断连中止', () {
+    test('默认首包与流空闲超时覆盖 60s 以上假流式生成窗口', () {
+      expect(
+        ProviderHttpTransport.requestStartupTimeout,
+        greaterThanOrEqualTo(const Duration(minutes: 3)),
+      );
+      expect(
+        ProviderHttpTransport.streamIdleTimeout,
+        greaterThanOrEqualTo(const Duration(minutes: 3)),
+      );
+      final interactions = GoogleInteractionsProvider(apiKey: 'test-key');
+      expect(
+        interactions.requestStartupTimeout,
+        equals(ProviderHttpTransport.requestStartupTimeout),
+      );
+      expect(
+        interactions.streamIdleTimeout,
+        equals(ProviderHttpTransport.streamIdleTimeout),
+      );
+    });
+
+    test('sendJsonPost 发出可中止请求，避免超时后上游继续空跑扣费', () async {
+      http.BaseRequest? capturedRequest;
+      final client = MockClient.streaming((req, body) async {
+        capturedRequest = req;
+        return _sse([
+          _delta({'content': 'ok'}),
+        ]);
+      });
+
+      final response = await ProviderHttpTransport.sendJsonPost(
+        client: client,
+        endpoint: 'https://api.test/v1/chat/completions',
+        apiKey: 'test-key',
+        requestBody: const {'model': 'test-model', 'stream': true},
+        cacheHeaders: const {},
+      );
+      await response.stream.drain<void>();
+
+      expect(capturedRequest, isA<http.Abortable>());
+      expect((capturedRequest! as http.Abortable).abortTrigger, isNotNull);
+    });
+
+    test('假流式首包超限时立刻触发 abortTrigger 断开底层连接', () async {
+      final aborted = Completer<void>();
+      final neverResponds = Completer<http.StreamedResponse>();
+      final client = MockClient.streaming((req, body) {
+        final trigger = (req as http.Abortable).abortTrigger;
+        trigger?.then((_) {
+          if (!aborted.isCompleted) aborted.complete();
+        });
+        return neverResponds.future;
+      });
+
+      final provider = OpenAiCompatibleProvider(
+        baseUrl: 'https://api.test/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+        requestStartupTimeout: const Duration(milliseconds: 40),
+        client: client,
+      );
+
+      final events = await provider
+          .streamChat(messages: const [], tools: const [])
+          .toList();
+
+      await aborted.future.timeout(const Duration(seconds: 1));
+      final error = events.whereType<ErrorEvent>().single;
+      expect(error.transient, isTrue);
+      expect(error.error, contains('等待模型响应头超时'));
+    });
+
+    test('非流式整包读取超时时同样触发 abortTrigger 断开底层连接', () async {
+      final aborted = Completer<void>();
+      final bodyController = StreamController<List<int>>();
+      addTearDown(bodyController.close);
+
+      final client = MockClient.streaming((req, body) async {
+        final trigger = (req as http.Abortable).abortTrigger;
+        if (trigger != null) {
+          unawaited(
+            trigger.then((_) {
+              if (!aborted.isCompleted) aborted.complete();
+            }),
+          );
+        }
+        return http.StreamedResponse(bodyController.stream, 200);
+      });
+
+      final provider = OpenAiCompatibleProvider(
+        baseUrl: 'https://api.test/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+        streaming: false,
+        requestStartupTimeout: const Duration(milliseconds: 40),
+        client: client,
+      );
+
+      final events = await provider
+          .streamChat(messages: const [], tools: const [])
+          .toList();
+
+      await aborted.future.timeout(const Duration(seconds: 1));
+      final error = events.whereType<ErrorEvent>().single;
+      expect(error.transient, isTrue);
+      expect(error.error, contains('读取模型完整响应超时'));
+    });
+
+    test('Google Interactions 首包超限时也会触发 abortTrigger', () async {
+      final aborted = Completer<void>();
+      final neverResponds = Completer<http.StreamedResponse>();
+      final client = MockClient.streaming((req, body) {
+        final trigger = (req as http.Abortable).abortTrigger;
+        trigger?.then((_) {
+          if (!aborted.isCompleted) aborted.complete();
+        });
+        return neverResponds.future;
+      });
+
+      final provider = GoogleInteractionsProvider(
+        apiKey: 'test-key',
+        requestStartupTimeout: const Duration(milliseconds: 40),
+        client: client,
+      );
+
+      final events = await provider
+          .streamChat(messages: const [], tools: const [])
+          .toList();
+
+      await aborted.future.timeout(const Duration(seconds: 1));
+      final error = events.whereType<ErrorEvent>().single;
+      expect(error.transient, isTrue);
+      expect(error.error, contains('等待模型响应头超时'));
+    });
+
+    test('慢首包假流式在超时上限前返回 200 SSE 时正常完成', () async {
+      final client = MockClient.streaming((req, body) async {
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+        return _sse([
+          _delta({'content': '假流式完整回复'}),
+        ]);
+      });
+
+      final provider = OpenAiCompatibleProvider(
+        baseUrl: 'https://api.test/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+        requestStartupTimeout: const Duration(milliseconds: 250),
+        client: client,
+      );
+
+      final events = await provider
+          .streamChat(messages: const [], tools: const [])
+          .toList();
+
+      expect(events.whereType<ErrorEvent>(), isEmpty);
+      expect(_contents(events).join(), '假流式完整回复');
+    });
+  });
 }
+
+
+

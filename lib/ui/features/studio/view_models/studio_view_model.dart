@@ -107,7 +107,12 @@ part 'studio_vm_library.dart';
 part 'studio_vm_sessions.dart';
 part 'studio_vm_slash.dart';
 
-enum StudioSidebarTab { parameters, prompts, inpaint, library, sources }
+int _referenceIdSeq = 0;
+
+String _nextReferenceId(String prefix) =>
+    '${prefix}_${DateTime.now().microsecondsSinceEpoch}_${_referenceIdSeq++}';
+
+enum StudioSidebarTab { parameters, prompts, inpaint, library, sources, references }
 
 /// 核心状态 Mixin：集中声明全部状态字段、Getters 与跨分部共享的读写入口。
 ///
@@ -253,6 +258,8 @@ mixin _StudioCore on ChangeNotifier {
 
   // --- 局部修复状态 ---
   InpaintParams _inpaintParams = const InpaintParams();
+  final List<_InpaintMaskSnapshot> _inpaintMaskUndoStack = [];
+  final List<_InpaintMaskSnapshot> _inpaintMaskRedoStack = [];
   bool _isExecutingInpaint = false;
   bool _isExecutingAiEdit = false;
   NaiGeneratedImage? _inpaintSourceImage;
@@ -437,6 +444,86 @@ mixin _StudioCore on ChangeNotifier {
   bool get isThinkingExpanded => _isThinkingExpanded;
   NaiGeneratedImage? get selectedImage => _selectedImage;
 
+  Future<bool> addLibraryImageAsVibeReference(
+    String entryId, {
+    double? strength,
+  }) async {
+    if (!_params.model.supportsVibeTransfer ||
+        _params.referenceImages.length >= 16) {
+      return false;
+    }
+    if (promptLibraryEntries.isEmpty) await loadPromptLibrary();
+    final entry = promptLibraryEntries
+        .where((item) => item.id == entryId)
+        .firstOrNull;
+    final path = entry?.previewImagePath?.trim();
+    if (path == null || path.isEmpty) return false;
+    try {
+      final bytes = await File(path).readAsBytes();
+      if (bytes.isEmpty) return false;
+      updateParams(
+        _params.copyWith(
+          referenceImages: <NaiReferenceImage>[
+            ..._params.referenceImages,
+            NaiReferenceImage(
+              id: _nextReferenceId('vibe'),
+              bytes: bytes,
+              strength: strength ?? 0.6,
+            ),
+          ],
+        ),
+      );
+      return true;
+    } on Object catch (error) {
+      debugPrint('词库展示图加入 Vibe 失败: $error');
+      return false;
+    }
+  }
+
+  Future<bool> addLibraryImageAsPreciseReference({
+    required String entryId,
+    NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
+    double strength = 1.0,
+    double fidelity = 1.0,
+    bool preferSameOutfit = false,
+  }) async {
+    if (!_params.model.supportsPreciseReference ||
+        _params.preciseReferences.length >= 16) {
+      return false;
+    }
+    if (promptLibraryEntries.isEmpty) {
+      await loadPromptLibrary();
+    }
+    final entry = promptLibraryEntries
+        .where((item) => item.id == entryId)
+        .firstOrNull;
+    final path = entry?.previewImagePath?.trim();
+    if (path == null || path.isEmpty) return false;
+    try {
+      final bytes = await File(path).readAsBytes();
+      if (bytes.isEmpty) return false;
+      updateParams(
+        _params.copyWith(
+          preciseReferences: <NaiPreciseReference>[
+            ..._params.preciseReferences,
+            NaiPreciseReference(
+              id: _nextReferenceId('precise'),
+              bytes: bytes,
+              type: type,
+              strength: strength,
+              fidelity: fidelity,
+              preferSameOutfit: preferSameOutfit,
+            ),
+          ],
+        ),
+      );
+      return true;
+    } on Object catch (error) {
+      debugPrint('词库展示图加入精准参考失败: $error');
+      return false;
+    }
+  }
+
   Future<bool> addChatImageAsPreciseReference({
     NaiPreciseRefType type = NaiPreciseRefType.characterAndStyle,
     double strength = 1.0,
@@ -460,6 +547,7 @@ mixin _StudioCore on ChangeNotifier {
           preciseReferences: <NaiPreciseReference>[
             ..._params.preciseReferences,
             NaiPreciseReference(
+              id: _nextReferenceId('precise'),
               bytes: bytes,
               type: type,
               strength: strength,
@@ -1693,6 +1781,8 @@ mixin _StudioCore on ChangeNotifier {
 
   /// 当前词库条目列表 (词库 Agent 工具读取)
   List<PromptComboEntry> get promptLibraryEntries;
+
+  Future<void> loadPromptLibrary();
 
   /// 新增词库条目 (词库 Agent 工具写入)
   Future<PromptComboEntry> addPromptCombo(PromptComboEntry entry);

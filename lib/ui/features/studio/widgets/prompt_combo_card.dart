@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../data/models/prompt_library_models.dart';
+import 'prompt_combo_apply_dialog.dart';
 import '../../../../data/services/prompt_image_probe.dart';
 import '../../../core/context_l10n.dart';
 import '../../../core/l10n/model_label_l10n.dart';
@@ -26,6 +27,9 @@ class PromptComboCard extends StatelessWidget {
   final void Function(bool replace, bool asCharacter) onApply;
   final void Function(bool replace)? onApplyStyle;
   final VoidCallback? onSendToAgent;
+  final VoidCallback? onUsePreviewAsReference;
+  final VoidCallback? onAttachCurrentReferences;
+  final VoidCallback? onApplySavedReferences;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -41,6 +45,9 @@ class PromptComboCard extends StatelessWidget {
     required this.onApply,
     this.onApplyStyle,
     this.onSendToAgent,
+    this.onUsePreviewAsReference,
+    this.onAttachCurrentReferences,
+    this.onApplySavedReferences,
     required this.onEdit,
     required this.onDelete,
     this.loadImage = true,
@@ -98,13 +105,13 @@ class PromptComboCard extends StatelessWidget {
           ContextMenuItem(
             icon: Icons.playlist_add_outlined,
             label: l10n.libraryMenuAppendToPrompt,
-            onTap: () => onApply(false, false),
+            onTap: () => _showApplyChooser(context),
           ),
         ] else ...[
           ContextMenuItem(
             icon: Icons.add_outlined,
             label: l10n.libraryMenuAppendToPrompt,
-            onTap: () => onApply(false, false),
+            onTap: () => _showApplyChooser(context),
           ),
           ContextMenuItem(
             icon: Icons.swap_horiz_outlined,
@@ -189,6 +196,39 @@ class PromptComboCard extends StatelessWidget {
     );
   }
 
+  Future<void> _showApplyChooser(BuildContext context) async {
+    final action = await PromptComboApplyDialog.show(context, combo: combo);
+    if (action == null) return;
+    switch (action) {
+      case PromptApplyAction.appendPrompt:
+        onApply(false, false);
+      case PromptApplyAction.replacePrompt:
+        onApply(true, false);
+      case PromptApplyAction.addCharacter:
+        onApply(false, true);
+      case PromptApplyAction.applyStyleAppend:
+        if (onApplyStyle != null) {
+          onApplyStyle!(false);
+        } else {
+          onApply(false, false);
+        }
+      case PromptApplyAction.applyStyleReplace:
+        if (onApplyStyle != null) {
+          onApplyStyle!(true);
+        } else {
+          onApply(true, false);
+        }
+      case PromptApplyAction.sendToAgent:
+        onSendToAgent?.call();
+      case PromptApplyAction.usePreviewAsPrecise:
+        onUsePreviewAsReference?.call();
+      case PromptApplyAction.attachCurrentReferences:
+        onAttachCurrentReferences?.call();
+      case PromptApplyAction.applySavedReferences:
+        onApplySavedReferences?.call();
+    }
+  }
+
   Widget _buildApplyPills(BuildContext context, {required bool isChar}) {
     final colors = context.colors;
     final l10n = context.l10n;
@@ -202,9 +242,7 @@ class PromptComboCard extends StatelessWidget {
               backgroundColor: colors.primaryTint,
               foregroundColor: colors.primary,
               compact: compact,
-              onTap: () => onApplyStyle != null
-                  ? onApplyStyle!(true)
-                  : onApply(false, false),
+              onTap: () => _showApplyChooser(context),
             ),
           ),
         ],
@@ -221,7 +259,7 @@ class PromptComboCard extends StatelessWidget {
             backgroundColor: colors.primaryTint,
             foregroundColor: colors.primary,
             compact: compact,
-            onTap: () => onApply(false, false),
+            onTap: () => _showApplyChooser(context),
           ),
         ),
         if (isChar) ...[

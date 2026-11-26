@@ -23,7 +23,9 @@ enum NaiPreciseRefType {
 /// 一张 Precise Reference (角色参考 / 画风参考)。
 class NaiPreciseReference {
   const NaiPreciseReference({
+    this.id,
     required this.bytes,
+    this.fileName,
     this.type = NaiPreciseRefType.characterAndStyle,
     this.strength = 1.0,
     this.fidelity = 1.0,
@@ -31,7 +33,9 @@ class NaiPreciseReference {
     this.enabled = true,
   });
 
+  final String? id;
   final Uint8List bytes;
+  final String? fileName;
   final NaiPreciseRefType type;
 
   /// 0.0 ~ 1.0
@@ -45,13 +49,17 @@ class NaiPreciseReference {
   final bool enabled;
 
   NaiPreciseReference copyWith({
+    String? id,
+    String? fileName,
     NaiPreciseRefType? type,
     double? strength,
     double? fidelity,
     bool? preferSameOutfit,
     bool? enabled,
   }) => NaiPreciseReference(
+    id: id ?? this.id,
     bytes: bytes,
+    fileName: fileName ?? this.fileName,
     type: type ?? this.type,
     strength: strength ?? this.strength,
     fidelity: fidelity ?? this.fidelity,
@@ -63,11 +71,15 @@ class NaiPreciseReference {
 /// 一张 Vibe Transfer 参考图。
 class NaiReferenceImage {
   const NaiReferenceImage({
+    this.id,
+    this.fileName,
     required this.bytes,
     this.strength = 0.6,
     this.informationExtracted = 1.0,
   });
 
+  final String? id;
+  final String? fileName;
   final Uint8List bytes;
 
   /// 参考风格强度 0.0 ~ 1.0

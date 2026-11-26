@@ -12,15 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsStreaming => 'Streaming';
 
   @override
-  String get settingsStreamingSubtitle =>
-      'Show text as it is generated. Turn off to wait for the full response when the API does not support streaming.';
-
-  @override
   String get settingsPromptToolUse => 'Prompt-based tool calling';
-
-  @override
-  String get settingsPromptToolUseSubtitle =>
-      'Send tool definitions and results as chat text to bypass native tool protocol incompatibilities. Enable only when needed; reliability depends on the model following the format.';
 
   @override
   String get chatStopOutput => 'Stop output (Esc)';
@@ -37,11 +29,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String chatContextShort(int percent) {
-    return 'Context $percent%';
-  }
-
-  @override
   String chatContextNotes(int count) {
     return 'Notes $count';
   }
@@ -51,10 +38,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatContextFailed => 'Compaction failed';
-
-  @override
-  String get chatContextExplanation =>
-      'Estimated current request context, including system instructions, tools, summaries and notes; not cumulative session usage. Use /compact to compact manually.';
 
   @override
   String get sessionManage => 'Manage sessions';
@@ -79,9 +62,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get appTitle => 'NovelAI Harness';
-
-  @override
   String get generateImage => 'Generate Image';
 
   @override
@@ -97,13 +77,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get opusFree => 'Opus Free';
 
   @override
-  String get needAnlas => 'Costs Anlas';
-
-  @override
   String get v5Stamina => 'V5 Stamina';
-
-  @override
-  String get tabParameters => 'Parameters';
 
   @override
   String get tabPrompts => 'Prompts';
@@ -154,10 +128,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeMode => 'Theme Mode';
 
   @override
-  String get settingsThemeModeSubtitle =>
-      'Switch between light/dark workspace; dark uses a Notion-minimal palette';
-
-  @override
   String get themeModeSystem => 'Follow System';
 
   @override
@@ -170,10 +140,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAccentSource => 'Accent Color';
 
   @override
-  String get settingsAccentSourceSubtitle =>
-      'Default Notion blue, or MD3 dynamic color from the current image';
-
-  @override
   String get accentModeDefault => 'Default Blue';
 
   @override
@@ -184,10 +150,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAccentVariant => 'Color Scheme';
-
-  @override
-  String get settingsAccentVariantSubtitle =>
-      'MD3 DynamicScheme style, applies when accent follows image or manual seed';
 
   @override
   String get accentVariantTonalSpot => 'Tonal Spot (Default)';
@@ -215,10 +177,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAccentSeed => 'Seed Color';
-
-  @override
-  String get settingsAccentSeedSubtitle =>
-      'Applies in Manual mode: open the picker to choose any color';
 
   @override
   String get settingsBackgroundMode => 'Background';
@@ -264,17 +222,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get colorPickerPresets => 'Presets';
 
   @override
-  String get colorPickerHexLabel => 'Hex value';
-
-  @override
   String get colorPickerHexInvalid => 'Invalid color, expected #RRGGBB';
 
   @override
   String get settingsLanguage => 'Language';
-
-  @override
-  String get settingsLanguageSubtitle =>
-      'Change the interface language. Skills, prompts and your content keep their original text.';
 
   @override
   String get localeSystem => 'Follow System';
@@ -300,40 +251,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsApiKeyTitle => 'NovelAI API Key';
 
   @override
-  String get settingsApiKeySubtitle =>
-      'Official API token (pst-...) for image generation and stamina sync';
-
-  @override
   String get settingsSectionWebSearch => 'Web Search';
 
   @override
   String get settingsAnySearchKeyTitle => 'AnySearch API Key';
 
   @override
-  String get settingsAnySearchKeySubtitle =>
-      'Optional key for the agent web search tools; anonymous access works with lower rate limits';
-
-  @override
   String get settingsImageSaveTemplateTitle => 'Image Naming Template';
-
-  @override
-  String get settingsImageSaveTemplateSubtitle =>
-      'Relative to the storage directory; shared by automatic and manual saves. Adds .png automatically.';
 
   @override
   String get settingsImageSaveTemplatePreview =>
       'Example path (relative to storage directory)';
-
-  @override
-  String get settingsImageSaveTemplateHelp =>
-      'Wrap macros in braces; / or backslash separates folders. Dates use image creation time. Duplicates receive a number; originals share the folder with a _raw suffix. Invalid characters and long names are sanitized or truncated. Leave blank for the default.';
-
-  @override
-  String get settingsImageSaveMacroHelp =>
-      'prefix: source prefix; type: generate / inpaint / ai_edit / upscale / comfyui; date / time / year / month / day: creation time; seed: seed; model: model ID (comfyui for ComfyUI); width / height / resolution: output size; steps / cfg / sampler / scheduler: generation parameters; prompt: base prompt (may contain private information). ComfyUI sampling parameters reflect the workbench, not unspecified workflow values.';
-
-  @override
-  String get settingsImageSaveMacros => 'Macro Reference';
 
   @override
   String get settingsImageSaveInsertMacro => 'Insert Macro';
@@ -366,10 +294,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSaveDirTitle => 'Local Storage Directory';
 
   @override
-  String get settingsSaveDirSubtitle =>
-      'Generated images and metadata are saved to this path';
-
-  @override
   String get settingsAndroidSaveDirSubtitle =>
       'Images and history use app-writable storage and survive restarts. Long-press an image and choose Save to folder to write into the public Pictures directory; with gallery export enabled, auto-saved images go there too. Uninstalling the app deletes its private images.';
 
@@ -383,22 +307,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAutoSaveTitle => 'Auto-save Generated Images';
 
   @override
-  String get settingsAutoSaveSubtitleOn =>
-      'Images are written to the storage directory automatically (metadata & watermark follow export settings)';
-
-  @override
-  String get settingsAutoSaveSubtitleOff =>
-      'Images go to the cache directory (no watermark) first; save manually from the canvas, and cache beyond the history limit is pruned automatically';
-
-  @override
   String get settingsGalleryExportTitle => 'Also Export to System Gallery';
 
   @override
   String get settingsExportFolderTitle => 'Export Folder';
-
-  @override
-  String get settingsExportFolderSubtitle =>
-      'Auto-saved and manually exported images are written here, visible to other apps';
 
   @override
   String get settingsExportFolderNone =>
@@ -420,10 +332,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsStreamPreviewTitle => 'Live Generation Preview';
 
   @override
-  String get settingsStreamPreviewSubtitle =>
-      'Receive and render intermediate denoising previews during generation (Stream Preview)';
-
-  @override
   String get settingsImagePersistenceTitle => 'Image History Persistence';
 
   @override
@@ -432,10 +340,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsMaxImagesTitle => 'Max Persisted Images';
-
-  @override
-  String get settingsMaxImagesSubtitle =>
-      'Cap the number of images kept in local canvas history';
 
   @override
   String settingsImageCount(int count) {
@@ -455,10 +359,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTagAutocompleteTitle => 'Smart Tag Autocomplete';
 
   @override
-  String get settingsTagAutocompleteSubtitle =>
-      'Pop up suggestions from the 320k+ Danbooru dictionary while typing prompts';
-
-  @override
   String get settingsDictUpdateTitle => 'Online Dictionary Update';
 
   @override
@@ -468,22 +368,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDictAutoCheckTitle => 'Check for Updates at Startup';
 
   @override
-  String get settingsDictAutoCheckSubtitle =>
-      'Fetch the latest dictionary once daily in the background (ffdkj daily builds with new tags and Chinese translations)';
-
-  @override
   String get settingsTagTranslationsTitle => 'Show Chinese Tag Meanings';
 
   @override
-  String get settingsTagTranslationsSubtitle =>
-      'Show Chinese translations in the suggestion list and the tag browser';
-
-  @override
   String get settingsTagColorsTitle => 'Tag Category Highlight';
-
-  @override
-  String get settingsTagColorsSubtitle =>
-      'Colorize artist, character, copyright and general tags in the prompt editor';
 
   @override
   String dictOnlineInfo(int count, String date) {
@@ -515,10 +403,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsOpusTitle => 'Opus Free-Tier Protection';
-
-  @override
-  String get settingsOpusSubtitle =>
-      'Clamp default parameters into the free tier (pixels <= 1048576 and steps <= 28)';
 
   @override
   String dictUpdateFailed(String error) {
@@ -658,10 +542,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProviderName => 'Provider Name';
 
   @override
-  String get settingsProviderNameSubtitle =>
-      'Custom label displayed in UI and dropdown menus';
-
-  @override
   String get settingsProviderNameHint =>
       'e.g. DeepSeek / OpenAI / Local Ollama';
 
@@ -669,25 +549,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsApiEndpointAndProtocol => 'API Endpoint & Protocol';
 
   @override
-  String get settingsApiEndpointAndProtocolSubtitle =>
-      'Service base URL and communication protocol format';
-
-  @override
   String get settingsLlmApiKeyTitle => 'LLM API Key';
 
   @override
-  String get settingsLlmApiKeySubtitle =>
-      'Credentials required to access this provider';
-
-  @override
   String get settingsThinkingParamFormat => 'Thinking Param Format';
-
-  @override
-  String get settingsThinkingParamFormatSubtitle =>
-      'Different providers use different fields to toggle reasoning. Reasoning will be silently discarded if the format does not match; configure according to the upstream format for relays.';
-
-  @override
-  String get settingsModelsListTitle => 'Models';
 
   @override
   String get settingsModelsListSubtitle =>
@@ -701,10 +566,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsImageEditModelTitle => 'Drawing Model';
-
-  @override
-  String get settingsImageEditModelSubtitle =>
-      'Provider and model used by Inpaint \'AI Image Edit\' (drawing models only), independent of chat LLM; select a model with image output capabilities (e.g. nano banana / gpt-image)';
 
   @override
   String get settingsDropdownNotConfigured => 'Not Configured';
@@ -1129,22 +990,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDefaultModelTitle => 'Default Model';
 
   @override
-  String get settingsDefaultModelSubtitle =>
-      'Default factory model used at application startup or after parameter reset';
-
-  @override
   String get settingsDefaultSamplerTitle => 'Default Sampler';
 
   @override
-  String get settingsDefaultSamplerSubtitle =>
-      'Default denoising sampler used during image generation';
-
-  @override
   String get settingsDefaultNoiseScheduleTitle => 'Default Noise Schedule';
-
-  @override
-  String get settingsDefaultNoiseScheduleSubtitle =>
-      'Time step schedule algorithm used during denoising';
 
   @override
   String get settingsSectionDefaultStepsAndScale => 'Default Steps & Scale';
@@ -1153,25 +1002,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDefaultStepsTitle => 'Default Steps (Steps)';
 
   @override
-  String get settingsDefaultStepsSubtitle => 'Initial sampling iteration steps';
-
-  @override
   String get settingsDefaultScaleTitle => 'Default CFG Scale';
-
-  @override
-  String settingsDefaultScaleSubtitle(String scale) {
-    return 'Prompt guidance scale (current: $scale)';
-  }
 
   @override
   String get settingsSectionAgentLoop => 'Agent Loop';
 
   @override
   String get settingsAgentMaxTurnsTitle => 'Agent Max Turns';
-
-  @override
-  String get settingsAgentMaxTurnsSubtitle =>
-      'Maximum tool chain call turns allowed per single conversation before automatically wrapping up';
 
   @override
   String get settingsSectionUsageBill => 'Usage Bill';
@@ -1201,9 +1038,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get billTableHeaderRequests => 'Requests';
-
-  @override
-  String get billTableHeaderInput => 'Input';
 
   @override
   String get billTableHeaderOutput => 'Output';
@@ -1286,26 +1120,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paramsSeedModeGroup => 'Seed Mode';
 
   @override
-  String get paramsSeedModeRandomTitle => '1. Random';
-
-  @override
-  String get paramsSeedModeRandomSubtitle =>
-      'Generate a new random seed on each image generation';
-
-  @override
-  String get paramsSeedModeIncreaseTitle => '2. Increase';
-
-  @override
-  String get paramsSeedModeIncreaseSubtitle =>
-      'Increment seed value by 1 on each image generation';
-
-  @override
-  String get paramsSeedModeFixedTitle => '3. Fixed';
-
-  @override
-  String get paramsSeedModeFixedSubtitle => 'Keep current seed value unchanged';
-
-  @override
   String get paramsSeedTimingGroup => 'Generation Timing';
 
   @override
@@ -1327,22 +1141,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paramsStripMetadata => 'Strip Metadata';
 
   @override
-  String get paramsStripMetadataSubtitle =>
-      'Remove all generation parameters and steganography when exporting and copying';
-
-  @override
   String get paramsAddWatermark => 'Add Watermark';
 
   @override
-  String get paramsAddWatermarkSubtitle =>
-      'Applies only on copy/download, not displayed on canvas';
-
-  @override
   String get paramsKeepOriginalImage => 'Keep Original Image';
-
-  @override
-  String get paramsKeepOriginalImageSubtitle =>
-      'Save an additional clean raw image (_raw.png) when saving generated images';
 
   @override
   String get resolutionTitle => 'Resolution';
@@ -1411,15 +1213,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get watermarkAutoPosition => 'Auto Position';
 
   @override
-  String get watermarkAutoPositionSubtitle =>
-      'Analyze image on each composition and automatically place in lowest-detail area';
-
-  @override
   String get watermarkAutoContrast => 'Auto Contrast';
-
-  @override
-  String get watermarkAutoContrastSubtitle =>
-      'Automatically darken or brighten based on background luminance to ensure visibility';
 
   @override
   String get watermarkScalePercent => 'Watermark Scale (%)';
@@ -1448,9 +1242,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get watermarkLoadedImage => 'Watermark image loaded';
-
-  @override
-  String get watermarkEffectiveOnExport => 'Effective only upon copy/download';
 
   @override
   String get watermarkChangeImageTooltip => 'Change image';
@@ -1524,9 +1315,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptsTagBrowserTooltip => 'Open Danbooru tag browser';
 
   @override
-  String get promptsAffixesHint => 'Global fixed prefix & suffix affixes';
-
-  @override
   String get charPromptDeckTabCharacter => 'Character Prompts';
 
   @override
@@ -1543,9 +1331,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get charPromptPositionCustom => 'Custom';
-
-  @override
-  String get charPromptIsolationHint => 'Isolated character prompts';
 
   @override
   String get charPromptUnsupportedModel =>
@@ -1636,14 +1421,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Drag to resize negative prompt height (double-click to reset)';
 
   @override
-  String get affixPrefixTitle => 'Prefix (placed before main prompt)';
-
-  @override
   String get affixResizePrefixTooltip =>
       'Drag to resize prefix height (double-click to reset)';
-
-  @override
-  String get affixSuffixTitle => 'Suffix (placed after main prompt)';
 
   @override
   String get affixResizeSuffixTooltip =>
@@ -1707,29 +1486,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inpaintPageTitle => 'Inpaint Settings';
 
   @override
-  String get inpaintPageSubtitle =>
-      'Inpainting & high-precision latent focus closeup';
-
-  @override
   String get inpaintSectionMode => 'Inpaint Mode';
 
   @override
   String get inpaintModeFocus => 'Focus Closeup';
 
   @override
-  String get inpaintModeFocusSubtitle => 'Supersampled lossless blend';
-
-  @override
   String get inpaintModeStandard => 'Standard Inpaint';
 
   @override
-  String get inpaintModeStandardSubtitle => 'Full canvas inpainting';
-
-  @override
   String get inpaintModeAiEdit => 'AI Edit';
-
-  @override
-  String get inpaintModeAiEditSubtitle => 'External image model repaint';
 
   @override
   String get inpaintAiEditAspectRatio => 'Aspect Ratio';
@@ -1904,10 +1670,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRtxScaleTitle => 'Scale factor';
 
   @override
-  String get settingsRtxScaleSubtitle =>
-      'Used by the image context menu. Requires an NVIDIA RTX GPU; quality is controlled by NVIDIA Video Super Resolution settings.';
-
-  @override
   String get canvasActionCopyImage => 'Copy Image';
 
   @override
@@ -1937,14 +1699,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paletteExtractFailed => 'Failed to extract colors from this image';
-
-  @override
-  String get paletteHintAdaptive =>
-      'Follow Image is on: the theme accent updates automatically when the image changes';
-
-  @override
-  String get paletteHintManual =>
-      'Click a swatch to set it as the theme accent; right-click to copy the hex value';
 
   @override
   String get paletteCustomColor => 'Custom Color';
@@ -2104,22 +1858,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get metadataModelUnknown => 'Unknown Model';
-
-  @override
-  String get metadataSamplerDefault => 'Default';
-
-  @override
-  String metadataModelAndSampler(String model, String sampler) {
-    return 'Model: $model  ·  Sampler: $sampler';
-  }
-
-  @override
-  String metadataSeedLabel(String seed) {
-    return 'Seed: $seed';
-  }
-
-  @override
   String get metadataCharacterPromptsTitle => 'Character Prompts';
 
   @override
@@ -2194,10 +1932,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get metadataImportSelection => 'Choose What to Apply';
-
-  @override
-  String get metadataImportSelectionHint =>
-      'Unchecked or missing parameters stay unchanged.';
 
   @override
   String get metadataImportSelectAll => 'Select All';
@@ -2348,12 +2082,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Drag to connect to selection or pin';
 
   @override
-  String get boardNoteConnected => 'Connected';
-
-  @override
-  String get boardNoteTitle => 'Note';
-
-  @override
   String get boardNoteDisconnectTooltip => 'Disconnect wire';
 
   @override
@@ -2393,20 +2121,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryNewCombo => 'New Prompt Combo';
-
-  @override
-  String get libraryCategorySidebarTitle => 'Categories';
-
-  @override
-  String libraryEntriesCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count items',
-      one: '1 item',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get libraryCategoryAll => 'All';
@@ -2535,11 +2249,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryCardSendToAgentTooltip => 'Send to assistant input';
 
   @override
-  String librarySentCharacterToAgent(String title) {
-    return 'Sent character \"$title\" to assistant input';
-  }
-
-  @override
   String libraryApplyStyleSuccess(String title) {
     return 'Applied style preset: $title';
   }
@@ -2550,9 +2259,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryCardAddCharacter => '+ Character';
-
-  @override
-  String get libraryCardNoPreview => 'No Preview';
 
   @override
   String get libraryEditCustomCategoryOption => 'Custom...';
@@ -2752,9 +2458,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter drawing ideas, @ to link character, or /nai for quick generation...';
 
   @override
-  String get chatCharacterMentionHeader => 'Library Characters';
-
-  @override
   String get chatLinkedCharacterRemoveTooltip => 'Remove linked character';
 
   @override
@@ -2762,9 +2465,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatSendingTooltip => 'Replying';
-
-  @override
-  String get chatThinkingLabel => 'Thinking:';
 
   @override
   String get chatThinkingEffortNone => 'None';
@@ -2851,9 +2551,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rewindBackAction => 'Back to Chat';
-
-  @override
-  String get rewindLatestBadge => '(Latest)';
 
   @override
   String rewindSelectedTurn(int index) {
@@ -3040,9 +2737,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryCatOther => 'Other';
-
-  @override
-  String get libraryCatCustom => 'Custom...';
 
   @override
   String get vmGenDoneUnsaved =>
@@ -3560,9 +3254,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vmSlashParamsTitle => 'Workbench generation parameters:';
 
   @override
-  String get promptTokenLabel => 'Token';
-
-  @override
   String get promptTokenEstimated => '~';
 
   @override
@@ -3666,10 +3357,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsComfyEnabledTitle => 'Enable ComfyUI mode';
 
   @override
-  String get settingsComfyEnabledDesc =>
-      'Drive a local or LAN ComfyUI via the PromptToolkit AI Bridge; quality/UC presets and token limit counting are disabled in this mode';
-
-  @override
   String get settingsComfyBaseUrlTitle => 'Server address';
 
   @override
@@ -3677,10 +3364,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsComfyNodeIdsTitle => 'Target node IDs (optional)';
-
-  @override
-  String get settingsComfyNodeIdsHint =>
-      'Leave empty to use the first registered node in the workflow';
 
   @override
   String get settingsComfyPromptNodeHint => 'Prompt Panel node ID';
@@ -3701,10 +3384,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCacheModeOff => 'No cache hints';
 
   @override
-  String get settingsCacheModeDesc =>
-      'Automatic recognizes direct OpenAI and Anthropic models on OpenRouter only. Confirm proxy compatibility first; omitting hints does not disable automatic upstream caching.';
-
-  @override
   String get settingsCacheRetention => 'Cache retention';
 
   @override
@@ -3714,18 +3393,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCacheRetentionLong => 'Extended';
 
   @override
-  String get settingsCacheRetentionDesc =>
-      'Requires endpoint support: OpenAI 24h / Anthropic 1h. Pricing may change.';
-
-  @override
   String get settingsCacheAffinity => 'Session affinity headers';
 
   @override
   String get settingsCacheAffinityOff => 'Do not send';
-
-  @override
-  String get settingsCacheAffinityDesc =>
-      'Enable only when supported by the gateway. Helps route a session to the same cache; hits are not guaranteed.';
 
   @override
   String get cacheUsageUnreported => 'Not reported';
@@ -3790,15 +3461,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAutoCompaction => 'Automatic compaction';
 
   @override
-  String get settingsAutoCompactionHint =>
-      'Keep recent messages and summarize older content without deleting the original history.';
-
-  @override
   String get settingsBackgroundCompaction => 'Background compaction';
-
-  @override
-  String get settingsBackgroundCompactionHint =>
-      'Start compaction at 70% of the safe context window; wait only when the limit is reached.';
 
   @override
   String get settingsAgentPersistentImages => 'Persist image attachments';
@@ -3809,10 +3472,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsCompactionProvider => 'Compaction provider';
-
-  @override
-  String get settingsCompactionProviderHint =>
-      'Use the main model if no separate model is selected or available. Compaction requests are billed separately.';
 
   @override
   String get settingsCompactionModel => 'Compaction model';
@@ -3847,9 +3506,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get commonResizeWidth =>
       'Drag to resize width (double-click to reset)';
-
-  @override
-  String get inpaintSelectionLabel => 'Inpaint selection';
 
   @override
   String get promptsTransparentBackground => 'Transparent background';
@@ -4150,9 +3806,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolFallbackName => 'Tool';
 
   @override
-  String get chatAssistantLabel => 'AI Assistant';
-
-  @override
   String get chatCopyMessageTooltip => 'Copy message';
 
   @override
@@ -4166,26 +3819,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get chatScrollToBottomTooltip => 'Scroll to bottom';
-
-  @override
-  String get chatEmptyWelcomeTitle => 'What would you like to create?';
-
-  @override
-  String get chatEmptySuggestionDraw => 'Design a scene and generate an image';
-
-  @override
-  String get chatEmptySuggestionRefine =>
-      'Refine current prompt tags & weights';
-
-  @override
-  String get chatEmptySuggestionAnalyze =>
-      'Analyze the canvas image and suggest edits';
-
-  @override
-  String get chatToolArgsLabel => 'Arguments';
-
-  @override
-  String get chatToolOutputLabel => 'Output';
 
   @override
   String get settingsFrameRateLimit => 'Frame Rate Limit';
@@ -4938,17 +4571,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sourcesSendToAgent => 'Send to Agent composer';
-
-  @override
-  String get sourcesSentToAgent => 'Added to the Agent composer';
-
-  @override
-  String sourcesSendToAgentFailed(Object message) {
-    return 'Send failed: $message';
-  }
-
-  @override
   String get sourcesFavoritesTab => 'Favorites';
 
   @override
@@ -5134,9 +4756,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatImageBlocked => 'External image blocked';
 
   @override
-  String get paramsSectionImg2img => 'Img2img';
-
-  @override
   String get paramsImg2imgStrength => 'Source strength';
 
   @override
@@ -5150,9 +4769,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paramsImg2imgClear => 'Clear source';
-
-  @override
-  String get paramsVibeReference => 'Vibe references';
 
   @override
   String get paramsVibeAdd => 'Add reference';
@@ -5226,12 +4842,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptOutputTitle => 'Output';
 
   @override
-  String get promptKeepMetadata => 'Keep metadata (uncheck to strip)';
-
-  @override
-  String get promptKeepStealth => 'Keep steganography (uncheck to strip)';
-
-  @override
   String get promptStripTags =>
       'Private tags (removed from metadata after generation)';
 
@@ -5271,18 +4881,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get vmGenMovedToBackground =>
       'Generation moved to background. It will be added to history when done.';
-
-  @override
-  String get slashDreamEmpty =>
-      'No session to organize yet. Chat a little first.';
-
-  @override
-  String get slashDreamPrompt =>
-      'Entering \"Dream Journal\". First call the memory tool to list long-term memory, then:\n1. Merge duplicate or conflicting preferences and settings;\n2. Extract reusable lessons (prompt structures, parameter preferences, failure lessons);\n3. Use memory add/remove and keep only the most valuable entries;\n4. Use the reflection tool to add one thread (source=dream, title/summary/lessons);\n5. Summarize this dream journal in 3-5 lines.';
-
-  @override
-  String get slashReflectPrompt =>
-      'Do a self-reflection pass. Complete:\n1. Review misunderstandings, user corrections, and what worked especially well in this session;\n2. Extract 1-3 actionable lessons and write them with the memory tool;\n3. If the same issue repeats, propose a SKILL.md patch (do not modify skills or presets without user confirmation);\n4. Use the reflection tool to add one thread (source=reflect, title/summary/lessons);\n5. Report back with a short checklist.';
 
   @override
   String get settingsTabNetwork => 'Network';
@@ -5448,57 +5046,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get queueSendNow => 'Send now';
 
   @override
-  String get acctTitle => 'Account pool';
-
-  @override
-  String get acctHint =>
-      'API keys stay on this machine. Switching accounts updates the workbench key.';
-
-  @override
-  String get acctFixed => 'Fixed';
-
-  @override
-  String get acctRotate => 'Rotate';
-
-  @override
-  String get acctDefault => 'Default';
-
-  @override
-  String get acctSetDefault => 'Set as default';
-
-  @override
-  String get acctLabel => 'Label';
-
-  @override
-  String get acctKey => 'API Key';
-
-  @override
-  String get acctEmpty => 'No accounts yet. Add one below.';
-
-  @override
-  String get acctUnknownTier => 'Unknown tier';
-
-  @override
-  String get acctRefreshAll => 'Refresh all';
-
-  @override
-  String acctTierAnlasEnergy(String tier, int anlas, int energy) {
-    return '$tier · $anlas Anlas · V5 $energy%';
-  }
-
-  @override
-  String get libImport => 'Import documents';
-
-  @override
-  String get libResetDefault => 'Reset to default';
-
-  @override
   String get accountPoolApiKey => 'API Key';
-
-  @override
-  String libImportedCount(int count) {
-    return '$count documents imported';
-  }
 
   @override
   String get settingsExtAccounts => 'Account pool';
@@ -5629,11 +5177,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick any tag from the dictionary and send it to the agent';
 
   @override
-  String libraryAnyTagAdded(Object tag) {
-    return 'Added to positive prompt: $tag';
-  }
-
-  @override
   String libraryAnyTagSent(Object tag) {
     return 'Sent to agent: $tag';
   }
@@ -5705,4 +5248,90 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get librarySetPreview => 'Set preview image';
+
+  @override
+  String get inpaintToolPan =>
+      'Pan view (H / Hold Space / Middle or Right drag)';
+
+  @override
+  String get inpaintUndoMask => 'Undo mask (Ctrl+Z)';
+
+  @override
+  String get inpaintRedoMask => 'Redo mask (Ctrl+Shift+Z)';
+
+  @override
+  String get inpaintToggleMaskVisibility => 'Hide mask to compare (V)';
+
+  @override
+  String get inpaintShowMask => 'Show mask (V)';
+
+  @override
+  String get inpaintZoomOut => 'Zoom out';
+
+  @override
+  String get inpaintZoomIn => 'Zoom in';
+
+  @override
+  String get inpaintZoomReset => 'Fit to canvas (0)';
+
+  @override
+  String get canvasAddedToReference => 'Added to Precise Reference';
+
+  @override
+  String get canvasAddedToVibe => 'Added to Vibe Transfer';
+
+  @override
+  String get pasteDialogTitle => 'Paste Image';
+
+  @override
+  String get pasteMetadataDetected => 'Generation metadata found';
+
+  @override
+  String get pasteMetadataNone => 'Plain image';
+
+  @override
+  String get pasteActionReadMetadata => 'Inspect Image Metadata';
+
+  @override
+  String get pasteActionPrecise => 'Add to Precise Reference';
+
+  @override
+  String get pasteActionPreciseUnsupportedSubtitle =>
+      'Unsupported by current model (requires V5 / V4.5)';
+
+  @override
+  String get pasteActionVibe => 'Add to Vibe Transfer';
+
+  @override
+  String get pasteActionVibeUnsupportedSubtitle =>
+      'Not available on V5 (requires V4.5 / V4 / V3)';
+
+  @override
+  String get pasteActionBoard => 'Import to Canvas Board';
+
+  @override
+  String get referenceLibraryTitle => 'Reference Library';
+
+  @override
+  String get referenceLibraryEmpty => 'No reference images yet';
+
+  @override
+  String get referenceAddCanvas => 'Use current canvas image';
+
+  @override
+  String get libraryUsePreviewAsReference => 'Use preview as Precise Reference';
+
+  @override
+  String get libraryPreviewAddedToReference =>
+      'Preview added to Precise Reference';
+
+  @override
+  String get libraryAttachCurrentReferences => 'Attach current references';
+
+  @override
+  String get libraryApplySavedReferences => 'Apply saved references';
+
+  @override
+  String get libraryReferencesAttached =>
+      'Current references attached to combo';
 }

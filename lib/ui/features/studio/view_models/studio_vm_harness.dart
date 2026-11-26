@@ -275,7 +275,16 @@ mixin _StudioHarnessMixin on _StudioCore {
           required preferSameOutfit,
           required fromChat,
           required imageIndex,
-        }) => fromChat
+          required libraryEntryId,
+        }) => libraryEntryId != null
+            ? addLibraryImageAsPreciseReference(
+                entryId: libraryEntryId,
+                type: type,
+                strength: strength,
+                fidelity: fidelity,
+                preferSameOutfit: preferSameOutfit,
+              )
+            : fromChat
             ? addChatImageAsPreciseReference(
                 type: type,
                 strength: strength,
@@ -314,6 +323,7 @@ mixin _StudioHarnessMixin on _StudioCore {
           updateParams(_params.copyWith(preciseReferences: list));
         },
         clear: () => updateParams(_params.copyWith(clearPreciseReferences: true)),
+        addVibeFromLibrary: addLibraryImageAsVibeReference,
       ),
     );
     _toolRegistry.register(

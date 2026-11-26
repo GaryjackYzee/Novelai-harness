@@ -354,6 +354,10 @@ class PromptLibraryService {
     final idx = list.indexWhere((e) => e.id == entry.id);
     if (idx != -1) {
       final oldPath = list[idx].previewImagePath;
+      final oldRefs = <String>{
+        ...list[idx].preciseReferencePaths,
+        ...list[idx].vibeReferencePaths,
+      };
       list[idx] = entry;
       await saveEntries(list);
       await _clearTombstonesForIds([entry.id]);
@@ -361,6 +365,19 @@ class PromptLibraryService {
           oldPath != entry.previewImagePath &&
           !list.any((e) => e.previewImagePath == oldPath)) {
         await _deleteManagedPreviewFile(oldPath);
+      }
+      final newRefs = <String>{
+        ...entry.preciseReferencePaths,
+        ...entry.vibeReferencePaths,
+      };
+      for (final path in oldRefs.difference(newRefs)) {
+        if (!list.any(
+          (e) =>
+              e.preciseReferencePaths.contains(path) ||
+              e.vibeReferencePaths.contains(path),
+        )) {
+          await _deleteManagedPreviewFile(path);
+        }
       }
     }
   }

@@ -19,6 +19,7 @@ mixin _StudioLibraryMixin on _StudioCore {
   );
 
   /// 加载词组合列表
+  @override
   Future<void> loadPromptLibrary() async {
     try {
       final entries = await _promptLibraryService.loadEntries();

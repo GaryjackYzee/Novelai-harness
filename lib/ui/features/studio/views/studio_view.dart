@@ -24,6 +24,8 @@ import '../../../core/widgets/window_controls.dart';
 import '../../settings/views/settings_dialog.dart';
 import '../view_models/studio_view_model.dart';
 import '../widgets/agent_chat_card.dart';
+import '../widgets/reference_library_page.dart';
+import '../widgets/clipboard_image_action_dialog.dart';
 import '../widgets/image_paste_area.dart';
 import '../widgets/annotation_history_strip.dart';
 import '../widgets/image_canvas_actions.dart';
@@ -65,6 +67,7 @@ class _StudioViewState extends State<StudioView> {
 
   /// 根级 ESC 首按时刻 (双击窗口判定)
   DateTime? _lastRootEscTime;
+  bool _isHandlingGlobalPaste = false;
 
   /// 手机/窄屏模式三卡片水平滑动控制器
   late final PageController _mobilePageController;
@@ -286,33 +289,55 @@ class _StudioViewState extends State<StudioView> {
 
   /// 全局 Ctrl+V 粘贴图片处理：优先解析并弹窗检查元数据，无元数据则导入为画板参考图
   Future<void> _handleGlobalPaste() async {
+    if (_isHandlingGlobalPaste) return;
+    _isHandlingGlobalPaste = true;
     try {
       final (imageBytes, fileName) =
           await ImageMetadataService.readClipboardImageAsync();
-      if (imageBytes != null && imageBytes.isNotEmpty && mounted) {
-        final metadata = await ImageMetadataService.parseMetadataAsync(
-          imageBytes,
-        );
-        if (metadata != null && metadata.hasData && mounted) {
-          await MetadataReaderDialog.show(
-            context,
-            metadata: metadata,
-            imageBytes: imageBytes,
-            fileName: fileName ?? context.l10n.studioClipboardImageDefaultName,
-            viewModel: _viewModel,
-          );
-        } else if (mounted) {
+      if (imageBytes == null || imageBytes.isEmpty || !mounted) return;
+      final resolvedName =
+          fileName ?? context.l10n.studioClipboardImageDefaultName;
+      final metadata = await ImageMetadataService.parseMetadataAsync(imageBytes);
+      if (!mounted) return;
+      final action = await ClipboardImageActionDialog.show(
+        context,
+        imageBytes: imageBytes,
+        fileName: resolvedName,
+        metadata: metadata,
+        currentModel: _viewModel.params.model,
+      );
+      if (action == null || !mounted) return;
+      switch (action) {
+        case ClipboardImageAction.readMetadata:
+          if (metadata != null && metadata.hasData) {
+            await MetadataReaderDialog.show(
+              context,
+              metadata: metadata,
+              imageBytes: imageBytes,
+              fileName: resolvedName,
+              viewModel: _viewModel,
+            );
+          }
+        case ClipboardImageAction.addPreciseReference:
+          _viewModel.addPreciseReference(imageBytes);
+          showCanvasSnackBar(context, context.l10n.canvasAddedToReference);
+        case ClipboardImageAction.addVibeTransfer:
+          _viewModel.addReferenceImage(imageBytes);
+          showCanvasSnackBar(context, context.l10n.canvasAddedToVibe);
+        case ClipboardImageAction.importToBoard:
           await _viewModel.board.importReferenceImageFromBytes(
             imageBytes,
-            fileName: fileName,
+            fileName: resolvedName,
           );
           if (mounted) {
             showCanvasSnackBar(context, context.l10n.studioImportedReference);
           }
-        }
       }
     } catch (error) {
-    debugPrint('[ignored] $error');}
+      debugPrint('[ignored] $error');
+    } finally {
+      _isHandlingGlobalPaste = false;
+    }
   }
 
   /// 根级 ESC：双击 400ms 内进入回溯视图；单击中断生成/流式
@@ -468,6 +493,8 @@ class _StudioViewState extends State<StudioView> {
     required bool isSourcesTab,
   }) {
     final isLeftCollapsed = _viewModel.isLeftSidebarCollapsed;
+    final isReferencesTab =
+        _viewModel.activeSidebarTab == StudioSidebarTab.references;
 
     return Column(
       children: [
@@ -515,8 +542,12 @@ class _StudioViewState extends State<StudioView> {
               // 2. 主区域：全屏词库/图源视图 (覆盖所有三栏) 或 主三栏自适应工作台
               Expanded(
                 child: AppPageStack(
-                  index: isSourcesTab ? 2 : (isLibraryTab ? 1 : 0),
-                  itemCount: 3,
+                  index: isReferencesTab
+                      ? 3
+                      : isSourcesTab
+                      ? 2
+                      : (isLibraryTab ? 1 : 0),
+                  itemCount: 4,
                   itemBuilder: (context, index) => index == 1
                       ? PromptLibraryView(
                           viewModel: _viewModel,
@@ -543,6 +574,14 @@ class _StudioViewState extends State<StudioView> {
                           onClose: () {
                             _viewModel.setActiveSidebarTab(_previousSidebarTab);
                           },
+                        )
+                      : index == 3
+                      ? ReferenceLibraryPage(
+                          viewModel: _viewModel,
+                          onClose: () => _viewModel.setActiveSidebarTab(
+                            _previousSidebarTab,
+                            expandSidebar: false,
+                          ),
                         )
                       : ResizableThreeSplitView(
                           initialLeftWidth: _viewModel.splitLeftWidth,
@@ -939,7 +978,9 @@ class _StudioViewState extends State<StudioView> {
 
   /// 覆盖整页的侧栏页签（词库 / 图源）；错误提示统一由 AppBannerStack 浮层承载。
   static bool _isOverlayTab(StudioSidebarTab tab) =>
-      tab == StudioSidebarTab.library || tab == StudioSidebarTab.sources;
+      tab == StudioSidebarTab.library ||
+      tab == StudioSidebarTab.sources ||
+      tab == StudioSidebarTab.references;
 
   /// 移动端方案 A 一级底部主导航栏：生图 / 画板 / 助手 / 词库
   Widget _buildMobileBottomBar(

@@ -165,6 +165,8 @@ void main() {
       await tester.ensureVisible(mikuApply);
       await tester.tap(mikuApply);
       await tester.pumpAndSettle();
+      await tester.tap(find.text('追加到工作台提示词').last);
+      await tester.pumpAndSettle();
 
       // 主提示词应被追加初音未来预设内容
       expect(viewModel.params.prompt, startsWith('1girl, solo'));

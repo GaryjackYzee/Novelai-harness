@@ -104,23 +104,11 @@ abstract class AppLocalizations {
   /// **'流式输出'**
   String get settingsStreaming;
 
-  /// No description provided for @settingsStreamingSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'开启后边生成边显示。关闭后一次返回完整结果，适合不支持流式的接口。'**
-  String get settingsStreamingSubtitle;
-
   /// No description provided for @settingsPromptToolUse.
   ///
   /// In zh, this message translates to:
   /// **'提示词工具调用'**
   String get settingsPromptToolUse;
-
-  /// No description provided for @settingsPromptToolUseSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'将工具定义与结果转成聊天文本，绕过渠道原生工具协议。仅在工具调用不兼容时开启；可靠性取决于模型遵循格式的能力。'**
-  String get settingsPromptToolUseSubtitle;
 
   /// No description provided for @chatStopOutput.
   ///
@@ -146,12 +134,6 @@ abstract class AppLocalizations {
   /// **'上下文 ≈{tokens} / {window}'**
   String chatContextEstimate(int tokens, int window);
 
-  /// No description provided for @chatContextShort.
-  ///
-  /// In zh, this message translates to:
-  /// **'上下文 {percent}%'**
-  String chatContextShort(int percent);
-
   /// No description provided for @chatContextNotes.
   ///
   /// In zh, this message translates to:
@@ -169,12 +151,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'压缩失败'**
   String get chatContextFailed;
-
-  /// No description provided for @chatContextExplanation.
-  ///
-  /// In zh, this message translates to:
-  /// **'当前请求上下文估算，含系统提示词、工具、摘要和笔记；不是会话累计用量。可用 /compact 手动压缩。'**
-  String get chatContextExplanation;
 
   /// No description provided for @sessionManage.
   ///
@@ -199,12 +175,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'删除选中的 {count} 个会话？此操作无法撤销。'**
   String sessionDeleteBatchConfirm(int count);
-
-  /// No description provided for @appTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'NovelAI Harness'**
-  String get appTitle;
 
   /// No description provided for @generateImage.
   ///
@@ -236,23 +206,11 @@ abstract class AppLocalizations {
   /// **'Opus 免费'**
   String get opusFree;
 
-  /// No description provided for @needAnlas.
-  ///
-  /// In zh, this message translates to:
-  /// **'需点数'**
-  String get needAnlas;
-
   /// No description provided for @v5Stamina.
   ///
   /// In zh, this message translates to:
   /// **'V5 体力'**
   String get v5Stamina;
-
-  /// No description provided for @tabParameters.
-  ///
-  /// In zh, this message translates to:
-  /// **'参数设置'**
-  String get tabParameters;
 
   /// No description provided for @tabPrompts.
   ///
@@ -350,12 +308,6 @@ abstract class AppLocalizations {
   /// **'主题模式'**
   String get settingsThemeMode;
 
-  /// No description provided for @settingsThemeModeSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'切换亮色/深色工作台外观，深色采用 Notion 极简暗调色板'**
-  String get settingsThemeModeSubtitle;
-
   /// No description provided for @themeModeSystem.
   ///
   /// In zh, this message translates to:
@@ -380,12 +332,6 @@ abstract class AppLocalizations {
   /// **'强调色'**
   String get settingsAccentSource;
 
-  /// No description provided for @settingsAccentSourceSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'默认 Notion 蓝，或跟随当前图片主色 MD3 动态取色'**
-  String get settingsAccentSourceSubtitle;
-
   /// No description provided for @accentModeDefault.
   ///
   /// In zh, this message translates to:
@@ -409,12 +355,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'取色方案'**
   String get settingsAccentVariant;
-
-  /// No description provided for @settingsAccentVariantSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'MD3 DynamicScheme 推导风格，强调色跟随图片或手动指定时生效'**
-  String get settingsAccentVariantSubtitle;
 
   /// No description provided for @accentVariantTonalSpot.
   ///
@@ -469,12 +409,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'种子色'**
   String get settingsAccentSeed;
-
-  /// No description provided for @settingsAccentSeedSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'手动模式下生效：点击打开取色器自由指定任意颜色'**
-  String get settingsAccentSeedSubtitle;
 
   /// No description provided for @settingsBackgroundMode.
   ///
@@ -560,12 +494,6 @@ abstract class AppLocalizations {
   /// **'预设颜色'**
   String get colorPickerPresets;
 
-  /// No description provided for @colorPickerHexLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'十六进制色值'**
-  String get colorPickerHexLabel;
-
   /// No description provided for @colorPickerHexInvalid.
   ///
   /// In zh, this message translates to:
@@ -577,12 +505,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'语言'**
   String get settingsLanguage;
-
-  /// No description provided for @settingsLanguageSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'切换软件界面语言；技能正文、提示词和用户内容保持原样。'**
-  String get settingsLanguageSubtitle;
 
   /// No description provided for @localeSystem.
   ///
@@ -626,12 +548,6 @@ abstract class AppLocalizations {
   /// **'NovelAI API Key'**
   String get settingsApiKeyTitle;
 
-  /// No description provided for @settingsApiKeySubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'官方 API 凭证 (pst-...)，用于图像生成与体力池同步'**
-  String get settingsApiKeySubtitle;
-
   /// No description provided for @settingsSectionWebSearch.
   ///
   /// In zh, this message translates to:
@@ -644,47 +560,17 @@ abstract class AppLocalizations {
   /// **'AnySearch API Key'**
   String get settingsAnySearchKeyTitle;
 
-  /// No description provided for @settingsAnySearchKeySubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'可选，用于 Agent 网页搜索工具；未配置时匿名访问，限流较低'**
-  String get settingsAnySearchKeySubtitle;
-
   /// No description provided for @settingsImageSaveTemplateTitle.
   ///
   /// In zh, this message translates to:
   /// **'图片命名模板'**
   String get settingsImageSaveTemplateTitle;
 
-  /// No description provided for @settingsImageSaveTemplateSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'相对于存储目录；自动保存与手动保存共用，末尾自动补 .png'**
-  String get settingsImageSaveTemplateSubtitle;
-
   /// No description provided for @settingsImageSaveTemplatePreview.
   ///
   /// In zh, this message translates to:
   /// **'路径示例（相对于存储目录）'**
   String get settingsImageSaveTemplatePreview;
-
-  /// No description provided for @settingsImageSaveTemplateHelp.
-  ///
-  /// In zh, this message translates to:
-  /// **'宏用花括号包裹；/ 或反斜杠分隔子目录。日期使用图片生成时间；同名自动追加编号，原图副本保持同目录并加 _raw。非法字符和过长名称会自动净化、截短。留空恢复默认。'**
-  String get settingsImageSaveTemplateHelp;
-
-  /// No description provided for @settingsImageSaveMacroHelp.
-  ///
-  /// In zh, this message translates to:
-  /// **'prefix：来源前缀；type：generate / inpaint / ai_edit / upscale / comfyui；date / time / year / month / day：日期时间；seed：种子；model：模型 ID（ComfyUI 为 comfyui）；width / height / resolution：输出尺寸；steps / cfg / sampler / scheduler：生成参数；prompt：基础提示词（可能含私密内容，请谨慎用于文件名）。ComfyUI 的采样参数来自工作台，不代表未下发的工作流参数。'**
-  String get settingsImageSaveMacroHelp;
-
-  /// No description provided for @settingsImageSaveMacros.
-  ///
-  /// In zh, this message translates to:
-  /// **'宏说明'**
-  String get settingsImageSaveMacros;
 
   /// No description provided for @settingsImageSaveInsertMacro.
   ///
@@ -740,12 +626,6 @@ abstract class AppLocalizations {
   /// **'本地存储目录'**
   String get settingsSaveDirTitle;
 
-  /// No description provided for @settingsSaveDirSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'生成的高清图像与元数据自动保存至此路径'**
-  String get settingsSaveDirSubtitle;
-
   /// No description provided for @settingsAndroidSaveDirSubtitle.
   ///
   /// In zh, this message translates to:
@@ -770,18 +650,6 @@ abstract class AppLocalizations {
   /// **'自动保存生成图片'**
   String get settingsAutoSaveTitle;
 
-  /// No description provided for @settingsAutoSaveSubtitleOn.
-  ///
-  /// In zh, this message translates to:
-  /// **'生成图片自动写入本地存储目录 (按导出设置处理元数据与水印)'**
-  String get settingsAutoSaveSubtitleOn;
-
-  /// No description provided for @settingsAutoSaveSubtitleOff.
-  ///
-  /// In zh, this message translates to:
-  /// **'生成图片先存入缓存目录 (无水印)，在画板右下角点击保存按钮手动保存；超出历史上限的缓存图片自动删除'**
-  String get settingsAutoSaveSubtitleOff;
-
   /// No description provided for @settingsGalleryExportTitle.
   ///
   /// In zh, this message translates to:
@@ -793,12 +661,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'导出文件夹'**
   String get settingsExportFolderTitle;
-
-  /// No description provided for @settingsExportFolderSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'自动保存与手动导出的成品写入此文件夹，其他应用可见'**
-  String get settingsExportFolderSubtitle;
 
   /// No description provided for @settingsExportFolderNone.
   ///
@@ -830,12 +692,6 @@ abstract class AppLocalizations {
   /// **'实时生图预览'**
   String get settingsStreamPreviewTitle;
 
-  /// No description provided for @settingsStreamPreviewSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'生图过程中接收并实时渲染中间去噪步数预览图 (Stream Preview)'**
-  String get settingsStreamPreviewSubtitle;
-
   /// No description provided for @settingsImagePersistenceTitle.
   ///
   /// In zh, this message translates to:
@@ -853,12 +709,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'可持久化图像上限'**
   String get settingsMaxImagesTitle;
-
-  /// No description provided for @settingsMaxImagesSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'限制本地画板历史中保留的最大图片数量'**
-  String get settingsMaxImagesSubtitle;
 
   /// No description provided for @settingsImageCount.
   ///
@@ -878,12 +728,6 @@ abstract class AppLocalizations {
   /// **'标签智能自动补全'**
   String get settingsTagAutocompleteTitle;
 
-  /// No description provided for @settingsTagAutocompleteSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'输入提示词时自动弹出 32万+ Danbooru 词库悬浮联想建议'**
-  String get settingsTagAutocompleteSubtitle;
-
   /// No description provided for @settingsDictUpdateTitle.
   ///
   /// In zh, this message translates to:
@@ -902,35 +746,17 @@ abstract class AppLocalizations {
   /// **'启动时自动检查更新'**
   String get settingsDictAutoCheckTitle;
 
-  /// No description provided for @settingsDictAutoCheckSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'每日一次后台拉取最新词库 (ffdkj 每日构建，含新标签与中文翻译)'**
-  String get settingsDictAutoCheckSubtitle;
-
   /// No description provided for @settingsTagTranslationsTitle.
   ///
   /// In zh, this message translates to:
   /// **'显示标签中文释义'**
   String get settingsTagTranslationsTitle;
 
-  /// No description provided for @settingsTagTranslationsSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'在补全候选词列表与灵感库中展示对应的中文翻译释义'**
-  String get settingsTagTranslationsSubtitle;
-
   /// No description provided for @settingsTagColorsTitle.
   ///
   /// In zh, this message translates to:
   /// **'标签分类着色高亮'**
   String get settingsTagColorsTitle;
-
-  /// No description provided for @settingsTagColorsSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'在提示词输入框中对画师、角色、作品、通用等标签施加分类色彩高亮'**
-  String get settingsTagColorsSubtitle;
 
   /// No description provided for @dictOnlineInfo.
   ///
@@ -961,12 +787,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'Opus 免点数保护'**
   String get settingsOpusTitle;
-
-  /// No description provided for @settingsOpusSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'自动将默认参数限制在免费区间内 (像素 <= 1048576 且 步数 <= 28)'**
-  String get settingsOpusSubtitle;
 
   /// No description provided for @dictUpdateFailed.
   ///
@@ -1190,12 +1010,6 @@ abstract class AppLocalizations {
   /// **'供应商名称'**
   String get settingsProviderName;
 
-  /// No description provided for @settingsProviderNameSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'在界面与下拉菜单中显示的自定义标识'**
-  String get settingsProviderNameSubtitle;
-
   /// No description provided for @settingsProviderNameHint.
   ///
   /// In zh, this message translates to:
@@ -1208,41 +1022,17 @@ abstract class AppLocalizations {
   /// **'API 接口与协议'**
   String get settingsApiEndpointAndProtocol;
 
-  /// No description provided for @settingsApiEndpointAndProtocolSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'服务基础 URL 与对应的通讯协议格式'**
-  String get settingsApiEndpointAndProtocolSubtitle;
-
   /// No description provided for @settingsLlmApiKeyTitle.
   ///
   /// In zh, this message translates to:
   /// **'LLM API Key'**
   String get settingsLlmApiKeyTitle;
 
-  /// No description provided for @settingsLlmApiKeySubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'访问该供应商所需的身份密钥'**
-  String get settingsLlmApiKeySubtitle;
-
   /// No description provided for @settingsThinkingParamFormat.
   ///
   /// In zh, this message translates to:
   /// **'思考参数格式'**
   String get settingsThinkingParamFormat;
-
-  /// No description provided for @settingsThinkingParamFormatSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'不同供应商用不同字段开关思维链，格式不匹配时思考会被静默丢弃；中转站请按其上游格式指定'**
-  String get settingsThinkingParamFormatSubtitle;
-
-  /// No description provided for @settingsModelsListTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'模型列表'**
-  String get settingsModelsListTitle;
 
   /// No description provided for @settingsModelsListSubtitle.
   ///
@@ -1267,12 +1057,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'绘图模型'**
   String get settingsImageEditModelTitle;
-
-  /// No description provided for @settingsImageEditModelSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'修复页「AI 整图编辑」使用的供应商与模型 (仅列出绘图模型)，独立于对话 LLM；需选择具备图像输出能力的模型 (如 nano banana / gpt-image)'**
-  String get settingsImageEditModelSubtitle;
 
   /// No description provided for @settingsDropdownNotConfigured.
   ///
@@ -2006,35 +1790,17 @@ abstract class AppLocalizations {
   /// **'默认生图模型'**
   String get settingsDefaultModelTitle;
 
-  /// No description provided for @settingsDefaultModelSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'应用启动或参数重置时的默认出厂模型'**
-  String get settingsDefaultModelSubtitle;
-
   /// No description provided for @settingsDefaultSamplerTitle.
   ///
   /// In zh, this message translates to:
   /// **'默认采样算法'**
   String get settingsDefaultSamplerTitle;
 
-  /// No description provided for @settingsDefaultSamplerSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'生图时默认使用的降噪采样器'**
-  String get settingsDefaultSamplerSubtitle;
-
   /// No description provided for @settingsDefaultNoiseScheduleTitle.
   ///
   /// In zh, this message translates to:
   /// **'默认噪声调度'**
   String get settingsDefaultNoiseScheduleTitle;
-
-  /// No description provided for @settingsDefaultNoiseScheduleSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'采样降噪过程中的时间步长调度算法'**
-  String get settingsDefaultNoiseScheduleSubtitle;
 
   /// No description provided for @settingsSectionDefaultStepsAndScale.
   ///
@@ -2048,23 +1814,11 @@ abstract class AppLocalizations {
   /// **'默认步数 (Steps)'**
   String get settingsDefaultStepsTitle;
 
-  /// No description provided for @settingsDefaultStepsSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'初始采样迭代步数'**
-  String get settingsDefaultStepsSubtitle;
-
   /// No description provided for @settingsDefaultScaleTitle.
   ///
   /// In zh, this message translates to:
   /// **'默认 CFG Scale'**
   String get settingsDefaultScaleTitle;
-
-  /// No description provided for @settingsDefaultScaleSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'提示词引导强度 (当前: {scale})'**
-  String settingsDefaultScaleSubtitle(String scale);
 
   /// No description provided for @settingsSectionAgentLoop.
   ///
@@ -2077,12 +1831,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'Agent 最大工具轮数'**
   String get settingsAgentMaxTurnsTitle;
-
-  /// No description provided for @settingsAgentMaxTurnsSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'单次对话允许的工具链式调用轮数，达到后自动收尾总结'**
-  String get settingsAgentMaxTurnsSubtitle;
 
   /// No description provided for @settingsSectionUsageBill.
   ///
@@ -2137,12 +1885,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'请求数'**
   String get billTableHeaderRequests;
-
-  /// No description provided for @billTableHeaderInput.
-  ///
-  /// In zh, this message translates to:
-  /// **'输入'**
-  String get billTableHeaderInput;
 
   /// No description provided for @billTableHeaderOutput.
   ///
@@ -2294,42 +2036,6 @@ abstract class AppLocalizations {
   /// **'种子模式'**
   String get paramsSeedModeGroup;
 
-  /// No description provided for @paramsSeedModeRandomTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'1. Random (随机)'**
-  String get paramsSeedModeRandomTitle;
-
-  /// No description provided for @paramsSeedModeRandomSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'生图时自动生成全新随机种子'**
-  String get paramsSeedModeRandomSubtitle;
-
-  /// No description provided for @paramsSeedModeIncreaseTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'2. Increase (递增)'**
-  String get paramsSeedModeIncreaseTitle;
-
-  /// No description provided for @paramsSeedModeIncreaseSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'生图时种子数值自动 +1'**
-  String get paramsSeedModeIncreaseSubtitle;
-
-  /// No description provided for @paramsSeedModeFixedTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'3. Fixed (固定)'**
-  String get paramsSeedModeFixedTitle;
-
-  /// No description provided for @paramsSeedModeFixedSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'保持当前设置的种子数值不变'**
-  String get paramsSeedModeFixedSubtitle;
-
   /// No description provided for @paramsSeedTimingGroup.
   ///
   /// In zh, this message translates to:
@@ -2372,35 +2078,17 @@ abstract class AppLocalizations {
   /// **'删除元数据'**
   String get paramsStripMetadata;
 
-  /// No description provided for @paramsStripMetadataSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'导出与复制时抹除所有生成参数与隐写'**
-  String get paramsStripMetadataSubtitle;
-
   /// No description provided for @paramsAddWatermark.
   ///
   /// In zh, this message translates to:
   /// **'添加水印'**
   String get paramsAddWatermark;
 
-  /// No description provided for @paramsAddWatermarkSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'仅在复制/下载时生效，UI 画板不显示'**
-  String get paramsAddWatermarkSubtitle;
-
   /// No description provided for @paramsKeepOriginalImage.
   ///
   /// In zh, this message translates to:
   /// **'保持原图像'**
   String get paramsKeepOriginalImage;
-
-  /// No description provided for @paramsKeepOriginalImageSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'生图落盘时额外保存一份纯净原图 (_raw.png)'**
-  String get paramsKeepOriginalImageSubtitle;
 
   /// No description provided for @resolutionTitle.
   ///
@@ -2516,23 +2204,11 @@ abstract class AppLocalizations {
   /// **'自动选位'**
   String get watermarkAutoPosition;
 
-  /// No description provided for @watermarkAutoPositionSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'每次合成时分析图像，自动放入信息量最低的区域'**
-  String get watermarkAutoPositionSubtitle;
-
   /// No description provided for @watermarkAutoContrast.
   ///
   /// In zh, this message translates to:
   /// **'自动对比度'**
   String get watermarkAutoContrast;
-
-  /// No description provided for @watermarkAutoContrastSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'按水印下方背景亮度自动加深或提亮，保证可见'**
-  String get watermarkAutoContrastSubtitle;
 
   /// No description provided for @watermarkScalePercent.
   ///
@@ -2587,12 +2263,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已加载水印图片'**
   String get watermarkLoadedImage;
-
-  /// No description provided for @watermarkEffectiveOnExport.
-  ///
-  /// In zh, this message translates to:
-  /// **'仅在复制/下载时合成生效'**
-  String get watermarkEffectiveOnExport;
 
   /// No description provided for @watermarkChangeImageTooltip.
   ///
@@ -2708,12 +2378,6 @@ abstract class AppLocalizations {
   /// **'打开 Danbooru 标签灵感库'**
   String get promptsTagBrowserTooltip;
 
-  /// No description provided for @promptsAffixesHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'全局固定前置与后置词缀'**
-  String get promptsAffixesHint;
-
   /// No description provided for @charPromptDeckTabCharacter.
   ///
   /// In zh, this message translates to:
@@ -2749,12 +2413,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'自定义'**
   String get charPromptPositionCustom;
-
-  /// No description provided for @charPromptIsolationHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'独立角色物理隔离'**
-  String get charPromptIsolationHint;
 
   /// No description provided for @charPromptUnsupportedModel.
   ///
@@ -2906,23 +2564,11 @@ abstract class AppLocalizations {
   /// **'拖动调整负面提示词高度 (双击重置)'**
   String get charPromptResizeNegativeTooltip;
 
-  /// No description provided for @affixPrefixTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'前置词 (放置于主提示词最前)'**
-  String get affixPrefixTitle;
-
   /// No description provided for @affixResizePrefixTooltip.
   ///
   /// In zh, this message translates to:
   /// **'拖动调整前置词高度 (双击重置)'**
   String get affixResizePrefixTooltip;
-
-  /// No description provided for @affixSuffixTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'后缀词 (放置于主提示词最后)'**
-  String get affixSuffixTitle;
 
   /// No description provided for @affixResizeSuffixTooltip.
   ///
@@ -3026,12 +2672,6 @@ abstract class AppLocalizations {
   /// **'修复设置'**
   String get inpaintPageTitle;
 
-  /// No description provided for @inpaintPageSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'局部重绘与高精度潜空间焦点特写'**
-  String get inpaintPageSubtitle;
-
   /// No description provided for @inpaintSectionMode.
   ///
   /// In zh, this message translates to:
@@ -3044,35 +2684,17 @@ abstract class AppLocalizations {
   /// **'焦点特写'**
   String get inpaintModeFocus;
 
-  /// No description provided for @inpaintModeFocusSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'超采样无损回贴'**
-  String get inpaintModeFocusSubtitle;
-
   /// No description provided for @inpaintModeStandard.
   ///
   /// In zh, this message translates to:
   /// **'常规重绘'**
   String get inpaintModeStandard;
 
-  /// No description provided for @inpaintModeStandardSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'整图尺度重绘'**
-  String get inpaintModeStandardSubtitle;
-
   /// No description provided for @inpaintModeAiEdit.
   ///
   /// In zh, this message translates to:
   /// **'AI 整图编辑'**
   String get inpaintModeAiEdit;
-
-  /// No description provided for @inpaintModeAiEditSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'外部绘图模型重绘'**
-  String get inpaintModeAiEditSubtitle;
 
   /// No description provided for @inpaintAiEditAspectRatio.
   ///
@@ -3386,12 +3008,6 @@ abstract class AppLocalizations {
   /// **'放大倍率'**
   String get settingsRtxScaleTitle;
 
-  /// No description provided for @settingsRtxScaleSubtitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'图片右键菜单使用此倍率。需要 NVIDIA RTX 显卡，画质由 NVIDIA 视频超分设置控制。'**
-  String get settingsRtxScaleSubtitle;
-
   /// No description provided for @canvasActionCopyImage.
   ///
   /// In zh, this message translates to:
@@ -3451,18 +3067,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'未能从这张图片提取主色'**
   String get paletteExtractFailed;
-
-  /// No description provided for @paletteHintAdaptive.
-  ///
-  /// In zh, this message translates to:
-  /// **'已开启「跟随图片」：切换图片时主题强调色将自动更新'**
-  String get paletteHintAdaptive;
-
-  /// No description provided for @paletteHintManual.
-  ///
-  /// In zh, this message translates to:
-  /// **'点击色块设为主题强调色，右键复制色值'**
-  String get paletteHintManual;
 
   /// No description provided for @paletteCustomColor.
   ///
@@ -3722,30 +3326,6 @@ abstract class AppLocalizations {
   /// **'尺寸: {width} x {height}'**
   String metadataDimensions(String width, String height);
 
-  /// No description provided for @metadataModelUnknown.
-  ///
-  /// In zh, this message translates to:
-  /// **'未知模型'**
-  String get metadataModelUnknown;
-
-  /// No description provided for @metadataSamplerDefault.
-  ///
-  /// In zh, this message translates to:
-  /// **'默认'**
-  String get metadataSamplerDefault;
-
-  /// No description provided for @metadataModelAndSampler.
-  ///
-  /// In zh, this message translates to:
-  /// **'模型: {model}  ·  采样: {sampler}'**
-  String metadataModelAndSampler(String model, String sampler);
-
-  /// No description provided for @metadataSeedLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'种子: {seed}'**
-  String metadataSeedLabel(String seed);
-
   /// No description provided for @metadataCharacterPromptsTitle.
   ///
   /// In zh, this message translates to:
@@ -3889,12 +3469,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'选择要填入的内容'**
   String get metadataImportSelection;
-
-  /// No description provided for @metadataImportSelectionHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'未勾选或图片中缺失的参数保持不变。'**
-  String get metadataImportSelectionHint;
 
   /// No description provided for @metadataImportSelectAll.
   ///
@@ -4160,18 +3734,6 @@ abstract class AppLocalizations {
   /// **'按住拖出连线到选区/图钉'**
   String get boardWireDragSourceTooltip;
 
-  /// No description provided for @boardNoteConnected.
-  ///
-  /// In zh, this message translates to:
-  /// **'已连线'**
-  String get boardNoteConnected;
-
-  /// No description provided for @boardNoteTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'便签'**
-  String get boardNoteTitle;
-
   /// No description provided for @boardNoteDisconnectTooltip.
   ///
   /// In zh, this message translates to:
@@ -4249,18 +3811,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'新建词组合'**
   String get libraryNewCombo;
-
-  /// No description provided for @libraryCategorySidebarTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'标签分类'**
-  String get libraryCategorySidebarTitle;
-
-  /// No description provided for @libraryEntriesCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'{count} 条'**
-  String libraryEntriesCount(int count);
 
   /// No description provided for @libraryCategoryAll.
   ///
@@ -4454,12 +4004,6 @@ abstract class AppLocalizations {
   /// **'发送到助手输入框'**
   String get libraryCardSendToAgentTooltip;
 
-  /// No description provided for @librarySentCharacterToAgent.
-  ///
-  /// In zh, this message translates to:
-  /// **'已将角色「{title}」发送到助手输入框'**
-  String librarySentCharacterToAgent(String title);
-
   /// No description provided for @libraryApplyStyleSuccess.
   ///
   /// In zh, this message translates to:
@@ -4477,12 +4021,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'+ 角色'**
   String get libraryCardAddCharacter;
-
-  /// No description provided for @libraryCardNoPreview.
-  ///
-  /// In zh, this message translates to:
-  /// **'无预览图'**
-  String get libraryCardNoPreview;
 
   /// No description provided for @libraryEditCustomCategoryOption.
   ///
@@ -4796,12 +4334,6 @@ abstract class AppLocalizations {
   /// **'输入绘画构思，@ 关联词库角色，或 /nai 快速生图...'**
   String get chatInputHint;
 
-  /// No description provided for @chatCharacterMentionHeader.
-  ///
-  /// In zh, this message translates to:
-  /// **'词库角色'**
-  String get chatCharacterMentionHeader;
-
   /// No description provided for @chatLinkedCharacterRemoveTooltip.
   ///
   /// In zh, this message translates to:
@@ -4819,12 +4351,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'正在回复'**
   String get chatSendingTooltip;
-
-  /// No description provided for @chatThinkingLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'思考:'**
-  String get chatThinkingLabel;
 
   /// No description provided for @chatThinkingEffortNone.
   ///
@@ -4963,12 +4489,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'返回对话'**
   String get rewindBackAction;
-
-  /// No description provided for @rewindLatestBadge.
-  ///
-  /// In zh, this message translates to:
-  /// **'(最新时刻)'**
-  String get rewindLatestBadge;
 
   /// No description provided for @rewindSelectedTurn.
   ///
@@ -5311,12 +4831,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'其他'**
   String get libraryCatOther;
-
-  /// No description provided for @libraryCatCustom.
-  ///
-  /// In zh, this message translates to:
-  /// **'自定义...'**
-  String get libraryCatCustom;
 
   /// No description provided for @vmGenDoneUnsaved.
   ///
@@ -6092,12 +5606,6 @@ abstract class AppLocalizations {
   /// **'工作台当前生图参数：'**
   String get vmSlashParamsTitle;
 
-  /// No description provided for @promptTokenLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'Token'**
-  String get promptTokenLabel;
-
   /// No description provided for @promptTokenEstimated.
   ///
   /// In zh, this message translates to:
@@ -6278,12 +5786,6 @@ abstract class AppLocalizations {
   /// **'启用 ComfyUI 模式'**
   String get settingsComfyEnabledTitle;
 
-  /// No description provided for @settingsComfyEnabledDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'经 PromptToolkit AI Bridge 驱动本地或局域网 ComfyUI 生图；此模式下质量词与 UC 预设及 Token 上限计算均不生效'**
-  String get settingsComfyEnabledDesc;
-
   /// No description provided for @settingsComfyBaseUrlTitle.
   ///
   /// In zh, this message translates to:
@@ -6301,12 +5803,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'目标节点 ID (可选)'**
   String get settingsComfyNodeIdsTitle;
-
-  /// No description provided for @settingsComfyNodeIdsHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'留空自动使用工作流中第一个注册节点'**
-  String get settingsComfyNodeIdsHint;
 
   /// No description provided for @settingsComfyPromptNodeHint.
   ///
@@ -6344,12 +5840,6 @@ abstract class AppLocalizations {
   /// **'不发送缓存提示'**
   String get settingsCacheModeOff;
 
-  /// No description provided for @settingsCacheModeDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'自动仅识别 OpenAI 官方及 OpenRouter 的 Anthropic 模型。中转站需确认兼容格式；不发送提示不等于禁用上游自动缓存。'**
-  String get settingsCacheModeDesc;
-
   /// No description provided for @settingsCacheRetention.
   ///
   /// In zh, this message translates to:
@@ -6368,12 +5858,6 @@ abstract class AppLocalizations {
   /// **'延长'**
   String get settingsCacheRetentionLong;
 
-  /// No description provided for @settingsCacheRetentionDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'延长需端点支持：OpenAI 24 小时 / Anthropic 1 小时，可能改变计费。'**
-  String get settingsCacheRetentionDesc;
-
   /// No description provided for @settingsCacheAffinity.
   ///
   /// In zh, this message translates to:
@@ -6385,12 +5869,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'不发送'**
   String get settingsCacheAffinityOff;
-
-  /// No description provided for @settingsCacheAffinityDesc.
-  ///
-  /// In zh, this message translates to:
-  /// **'仅在网关支持时启用，帮助同一会话路由至同一缓存；不保证命中。'**
-  String get settingsCacheAffinityDesc;
 
   /// No description provided for @cacheUsageUnreported.
   ///
@@ -6512,23 +5990,11 @@ abstract class AppLocalizations {
   /// **'自动压缩'**
   String get settingsAutoCompaction;
 
-  /// No description provided for @settingsAutoCompactionHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'保留近期消息，将更早内容转换为摘要；原始历史不删除。'**
-  String get settingsAutoCompactionHint;
-
   /// No description provided for @settingsBackgroundCompaction.
   ///
   /// In zh, this message translates to:
   /// **'后台异步压缩'**
   String get settingsBackgroundCompaction;
-
-  /// No description provided for @settingsBackgroundCompactionHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'安全窗口使用到 70% 时提前压缩；到达上限才等待。'**
-  String get settingsBackgroundCompactionHint;
 
   /// No description provided for @settingsAgentPersistentImages.
   ///
@@ -6547,12 +6013,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'压缩供应商'**
   String get settingsCompactionProvider;
-
-  /// No description provided for @settingsCompactionProviderHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'未选择独立模型或配置不可用时使用主模型。压缩请求单独计入账单。'**
-  String get settingsCompactionProviderHint;
 
   /// No description provided for @settingsCompactionModel.
   ///
@@ -6619,12 +6079,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'左右拖动调整宽度（双击重置）'**
   String get commonResizeWidth;
-
-  /// No description provided for @inpaintSelectionLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'修复选区'**
-  String get inpaintSelectionLabel;
 
   /// No description provided for @promptsTransparentBackground.
   ///
@@ -7106,12 +6560,6 @@ abstract class AppLocalizations {
   /// **'工具'**
   String get toolFallbackName;
 
-  /// No description provided for @chatAssistantLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'AI 助手'**
-  String get chatAssistantLabel;
-
   /// No description provided for @chatCopyMessageTooltip.
   ///
   /// In zh, this message translates to:
@@ -7141,42 +6589,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'回到底部'**
   String get chatScrollToBottomTooltip;
-
-  /// No description provided for @chatEmptyWelcomeTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'有什么可以帮您创作？'**
-  String get chatEmptyWelcomeTitle;
-
-  /// No description provided for @chatEmptySuggestionDraw.
-  ///
-  /// In zh, this message translates to:
-  /// **'帮我构思画面并生成图片'**
-  String get chatEmptySuggestionDraw;
-
-  /// No description provided for @chatEmptySuggestionRefine.
-  ///
-  /// In zh, this message translates to:
-  /// **'优化当前提示词标签与权重'**
-  String get chatEmptySuggestionRefine;
-
-  /// No description provided for @chatEmptySuggestionAnalyze.
-  ///
-  /// In zh, this message translates to:
-  /// **'分析画板图片并给出修改建议'**
-  String get chatEmptySuggestionAnalyze;
-
-  /// No description provided for @chatToolArgsLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'调用参数'**
-  String get chatToolArgsLabel;
-
-  /// No description provided for @chatToolOutputLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'返回结果'**
-  String get chatToolOutputLabel;
 
   /// No description provided for @settingsFrameRateLimit.
   ///
@@ -8487,24 +7899,6 @@ abstract class AppLocalizations {
   /// **'收藏失败：{message}'**
   String sourcesDanbooruFavoriteFailed(Object message);
 
-  /// No description provided for @sourcesSendToAgent.
-  ///
-  /// In zh, this message translates to:
-  /// **'发送到 Agent 对话框'**
-  String get sourcesSendToAgent;
-
-  /// No description provided for @sourcesSentToAgent.
-  ///
-  /// In zh, this message translates to:
-  /// **'已放入 Agent 对话框'**
-  String get sourcesSentToAgent;
-
-  /// No description provided for @sourcesSendToAgentFailed.
-  ///
-  /// In zh, this message translates to:
-  /// **'发送失败：{message}'**
-  String sourcesSendToAgentFailed(Object message);
-
   /// No description provided for @sourcesFavoritesTab.
   ///
   /// In zh, this message translates to:
@@ -8841,12 +8235,6 @@ abstract class AppLocalizations {
   /// **'已阻止加载外部图片'**
   String get chatImageBlocked;
 
-  /// No description provided for @paramsSectionImg2img.
-  ///
-  /// In zh, this message translates to:
-  /// **'图生图'**
-  String get paramsSectionImg2img;
-
   /// No description provided for @paramsImg2imgStrength.
   ///
   /// In zh, this message translates to:
@@ -8876,12 +8264,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'清除源图'**
   String get paramsImg2imgClear;
-
-  /// No description provided for @paramsVibeReference.
-  ///
-  /// In zh, this message translates to:
-  /// **'Vibe 参考'**
-  String get paramsVibeReference;
 
   /// No description provided for @paramsVibeAdd.
   ///
@@ -9015,18 +8397,6 @@ abstract class AppLocalizations {
   /// **'输出'**
   String get promptOutputTitle;
 
-  /// No description provided for @promptKeepMetadata.
-  ///
-  /// In zh, this message translates to:
-  /// **'保留元数据（取消勾选则清除）'**
-  String get promptKeepMetadata;
-
-  /// No description provided for @promptKeepStealth.
-  ///
-  /// In zh, this message translates to:
-  /// **'保留隐写（取消勾选则清除）'**
-  String get promptKeepStealth;
-
   /// No description provided for @promptStripTags.
   ///
   /// In zh, this message translates to:
@@ -9092,24 +8462,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'生成已转入后台，完成后会自动加入历史。'**
   String get vmGenMovedToBackground;
-
-  /// No description provided for @slashDreamEmpty.
-  ///
-  /// In zh, this message translates to:
-  /// **'还没有可整理的会话，先聊几句再来做梦。'**
-  String get slashDreamEmpty;
-
-  /// No description provided for @slashDreamPrompt.
-  ///
-  /// In zh, this message translates to:
-  /// **'现在进入「梦境整理」。请先调用 memory 工具列出长期记忆，然后完成：\n1. 合并重复/冲突的偏好与设定；\n2. 提炼可复用的经验（有效的提示词结构、参数偏好、失败教训）；\n3. 用 memory 工具 add/remove，只保留最有价值的条目；\n4. 用 reflection 工具 add 写入一条梳理串（source=dream，title/summary/lessons）；\n5. 用 3-5 行总结这次梦境整理。'**
-  String get slashDreamPrompt;
-
-  /// No description provided for @slashReflectPrompt.
-  ///
-  /// In zh, this message translates to:
-  /// **'现在做一次「自迭代复盘」。请完成：\n1. 回顾本次会话里理解错误、被用户纠正、或效果特别好的地方；\n2. 提炼 1-3 条可执行经验，用 memory 工具写入；\n3. 如果同类问题反复出现，给出一份 SKILL.md 补丁建议（不要直接修改技能或预设，除非用户确认）；\n4. 用 reflection 工具 add 写入一条梳理串（source=reflect，title/summary/lessons）；\n5. 用简短清单汇报。'**
-  String get slashReflectPrompt;
 
   /// No description provided for @settingsTabNetwork.
   ///
@@ -9405,101 +8757,11 @@ abstract class AppLocalizations {
   /// **'立即发送'**
   String get queueSendNow;
 
-  /// No description provided for @acctTitle.
-  ///
-  /// In zh, this message translates to:
-  /// **'订阅账号池'**
-  String get acctTitle;
-
-  /// No description provided for @acctHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'API Key 只保存在本机；切换账号会同步更新工作台密钥。'**
-  String get acctHint;
-
-  /// No description provided for @acctFixed.
-  ///
-  /// In zh, this message translates to:
-  /// **'固定'**
-  String get acctFixed;
-
-  /// No description provided for @acctRotate.
-  ///
-  /// In zh, this message translates to:
-  /// **'轮换'**
-  String get acctRotate;
-
-  /// No description provided for @acctDefault.
-  ///
-  /// In zh, this message translates to:
-  /// **'默认'**
-  String get acctDefault;
-
-  /// No description provided for @acctSetDefault.
-  ///
-  /// In zh, this message translates to:
-  /// **'设为默认'**
-  String get acctSetDefault;
-
-  /// No description provided for @acctLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'备注'**
-  String get acctLabel;
-
-  /// No description provided for @acctKey.
-  ///
-  /// In zh, this message translates to:
-  /// **'API Key'**
-  String get acctKey;
-
-  /// No description provided for @acctEmpty.
-  ///
-  /// In zh, this message translates to:
-  /// **'还没有账号，先在下面添加一个。'**
-  String get acctEmpty;
-
-  /// No description provided for @acctUnknownTier.
-  ///
-  /// In zh, this message translates to:
-  /// **'档位未知'**
-  String get acctUnknownTier;
-
-  /// No description provided for @acctRefreshAll.
-  ///
-  /// In zh, this message translates to:
-  /// **'刷新全部'**
-  String get acctRefreshAll;
-
-  /// No description provided for @acctTierAnlasEnergy.
-  ///
-  /// In zh, this message translates to:
-  /// **'{tier} · {anlas} Anlas · V5 {energy}%'**
-  String acctTierAnlasEnergy(String tier, int anlas, int energy);
-
-  /// No description provided for @libImport.
-  ///
-  /// In zh, this message translates to:
-  /// **'导入文档'**
-  String get libImport;
-
-  /// No description provided for @libResetDefault.
-  ///
-  /// In zh, this message translates to:
-  /// **'恢复默认'**
-  String get libResetDefault;
-
   /// No description provided for @accountPoolApiKey.
   ///
   /// In zh, this message translates to:
   /// **'API Key'**
   String get accountPoolApiKey;
-
-  /// No description provided for @libImportedCount.
-  ///
-  /// In zh, this message translates to:
-  /// **'已导入 {count} 个文档'**
-  String libImportedCount(int count);
 
   /// No description provided for @settingsExtAccounts.
   ///
@@ -9729,12 +8991,6 @@ abstract class AppLocalizations {
   /// **'从词库选择任意 tag 发送给 Agent'**
   String get libraryAnyTagTooltip;
 
-  /// No description provided for @libraryAnyTagAdded.
-  ///
-  /// In zh, this message translates to:
-  /// **'已加入正面提示词：{tag}'**
-  String libraryAnyTagAdded(Object tag);
-
   /// No description provided for @libraryAnyTagSent.
   ///
   /// In zh, this message translates to:
@@ -9854,6 +9110,168 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'设置展示图'**
   String get librarySetPreview;
+
+  /// No description provided for @inpaintToolPan.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓手漫游 (H / 按住空格 / 中键或右键拖拽)'**
+  String get inpaintToolPan;
+
+  /// No description provided for @inpaintUndoMask.
+  ///
+  /// In zh, this message translates to:
+  /// **'撤销蒙版 (Ctrl+Z)'**
+  String get inpaintUndoMask;
+
+  /// No description provided for @inpaintRedoMask.
+  ///
+  /// In zh, this message translates to:
+  /// **'重做蒙版 (Ctrl+Shift+Z)'**
+  String get inpaintRedoMask;
+
+  /// No description provided for @inpaintToggleMaskVisibility.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐藏蒙版对比原图 (V)'**
+  String get inpaintToggleMaskVisibility;
+
+  /// No description provided for @inpaintShowMask.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示蒙版 (V)'**
+  String get inpaintShowMask;
+
+  /// No description provided for @inpaintZoomOut.
+  ///
+  /// In zh, this message translates to:
+  /// **'缩小视图'**
+  String get inpaintZoomOut;
+
+  /// No description provided for @inpaintZoomIn.
+  ///
+  /// In zh, this message translates to:
+  /// **'放大视图'**
+  String get inpaintZoomIn;
+
+  /// No description provided for @inpaintZoomReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'适应画布 (0)'**
+  String get inpaintZoomReset;
+
+  /// No description provided for @canvasAddedToReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加到精准参考'**
+  String get canvasAddedToReference;
+
+  /// No description provided for @canvasAddedToVibe.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加到 Vibe Transfer'**
+  String get canvasAddedToVibe;
+
+  /// No description provided for @pasteDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'粘贴图片'**
+  String get pasteDialogTitle;
+
+  /// No description provided for @pasteMetadataDetected.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到生成元数据'**
+  String get pasteMetadataDetected;
+
+  /// No description provided for @pasteMetadataNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'普通图片'**
+  String get pasteMetadataNone;
+
+  /// No description provided for @pasteActionReadMetadata.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取图片元数据'**
+  String get pasteActionReadMetadata;
+
+  /// No description provided for @pasteActionPrecise.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为精准参考'**
+  String get pasteActionPrecise;
+
+  /// No description provided for @pasteActionPreciseUnsupportedSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前模型不支持，切换至 V5 / V4.5 后生效'**
+  String get pasteActionPreciseUnsupportedSubtitle;
+
+  /// No description provided for @pasteActionVibe.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为 Vibe Transfer'**
+  String get pasteActionVibe;
+
+  /// No description provided for @pasteActionVibeUnsupportedSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'V5 暂不支持，切换至 V4.5 / V4 / V3 后生效'**
+  String get pasteActionVibeUnsupportedSubtitle;
+
+  /// No description provided for @pasteActionBoard.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入大画布参考图'**
+  String get pasteActionBoard;
+
+  /// No description provided for @referenceLibraryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'参考图库'**
+  String get referenceLibraryTitle;
+
+  /// No description provided for @referenceLibraryEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有参考图'**
+  String get referenceLibraryEmpty;
+
+  /// No description provided for @referenceAddCanvas.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用画板当前图'**
+  String get referenceAddCanvas;
+
+  /// No description provided for @libraryUsePreviewAsReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'展示图设为精准参考'**
+  String get libraryUsePreviewAsReference;
+
+  /// No description provided for @libraryPreviewAddedToReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'已将展示图加入精准参考'**
+  String get libraryPreviewAddedToReference;
+
+  /// No description provided for @libraryAttachCurrentReferences.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存当前参考到词条'**
+  String get libraryAttachCurrentReferences;
+
+  /// No description provided for @libraryApplySavedReferences.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用词条参考图'**
+  String get libraryApplySavedReferences;
+
+  /// No description provided for @libraryReferencesAttached.
+  ///
+  /// In zh, this message translates to:
+  /// **'已将当前参考图绑定到词条'**
+  String get libraryReferencesAttached;
 }
 
 class _AppLocalizationsDelegate

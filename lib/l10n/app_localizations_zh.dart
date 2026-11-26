@@ -12,14 +12,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsStreaming => '流式输出';
 
   @override
-  String get settingsStreamingSubtitle => '开启后边生成边显示。关闭后一次返回完整结果，适合不支持流式的接口。';
-
-  @override
   String get settingsPromptToolUse => '提示词工具调用';
-
-  @override
-  String get settingsPromptToolUseSubtitle =>
-      '将工具定义与结果转成聊天文本，绕过渠道原生工具协议。仅在工具调用不兼容时开启；可靠性取决于模型遵循格式的能力。';
 
   @override
   String get chatStopOutput => '停止输出 (Esc)';
@@ -36,11 +29,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String chatContextShort(int percent) {
-    return '上下文 $percent%';
-  }
-
-  @override
   String chatContextNotes(int count) {
     return '笔记 $count';
   }
@@ -50,10 +38,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chatContextFailed => '压缩失败';
-
-  @override
-  String get chatContextExplanation =>
-      '当前请求上下文估算，含系统提示词、工具、摘要和笔记；不是会话累计用量。可用 /compact 手动压缩。';
 
   @override
   String get sessionManage => '批量管理';
@@ -72,9 +56,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get appTitle => 'NovelAI Harness';
-
-  @override
   String get generateImage => '生成图片';
 
   @override
@@ -90,13 +71,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get opusFree => 'Opus 免费';
 
   @override
-  String get needAnlas => '需点数';
-
-  @override
   String get v5Stamina => 'V5 体力';
-
-  @override
-  String get tabParameters => '参数设置';
 
   @override
   String get tabPrompts => '提示词';
@@ -147,9 +122,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsThemeMode => '主题模式';
 
   @override
-  String get settingsThemeModeSubtitle => '切换亮色/深色工作台外观，深色采用 Notion 极简暗调色板';
-
-  @override
   String get themeModeSystem => '跟随系统';
 
   @override
@@ -162,9 +134,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAccentSource => '强调色';
 
   @override
-  String get settingsAccentSourceSubtitle => '默认 Notion 蓝，或跟随当前图片主色 MD3 动态取色';
-
-  @override
   String get accentModeDefault => '默认蓝色';
 
   @override
@@ -175,10 +144,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAccentVariant => '取色方案';
-
-  @override
-  String get settingsAccentVariantSubtitle =>
-      'MD3 DynamicScheme 推导风格，强调色跟随图片或手动指定时生效';
 
   @override
   String get accentVariantTonalSpot => '色斑 (默认)';
@@ -206,9 +171,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAccentSeed => '种子色';
-
-  @override
-  String get settingsAccentSeedSubtitle => '手动模式下生效：点击打开取色器自由指定任意颜色';
 
   @override
   String get settingsBackgroundMode => '背景色';
@@ -254,16 +216,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get colorPickerPresets => '预设颜色';
 
   @override
-  String get colorPickerHexLabel => '十六进制色值';
-
-  @override
   String get colorPickerHexInvalid => '色值格式无效，请输入 #RRGGBB';
 
   @override
   String get settingsLanguage => '语言';
-
-  @override
-  String get settingsLanguageSubtitle => '切换软件界面语言；技能正文、提示词和用户内容保持原样。';
 
   @override
   String get localeSystem => '跟随系统';
@@ -289,37 +245,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsApiKeyTitle => 'NovelAI API Key';
 
   @override
-  String get settingsApiKeySubtitle => '官方 API 凭证 (pst-...)，用于图像生成与体力池同步';
-
-  @override
   String get settingsSectionWebSearch => '网络搜索';
 
   @override
   String get settingsAnySearchKeyTitle => 'AnySearch API Key';
 
   @override
-  String get settingsAnySearchKeySubtitle => '可选，用于 Agent 网页搜索工具；未配置时匿名访问，限流较低';
-
-  @override
   String get settingsImageSaveTemplateTitle => '图片命名模板';
 
   @override
-  String get settingsImageSaveTemplateSubtitle =>
-      '相对于存储目录；自动保存与手动保存共用，末尾自动补 .png';
-
-  @override
   String get settingsImageSaveTemplatePreview => '路径示例（相对于存储目录）';
-
-  @override
-  String get settingsImageSaveTemplateHelp =>
-      '宏用花括号包裹；/ 或反斜杠分隔子目录。日期使用图片生成时间；同名自动追加编号，原图副本保持同目录并加 _raw。非法字符和过长名称会自动净化、截短。留空恢复默认。';
-
-  @override
-  String get settingsImageSaveMacroHelp =>
-      'prefix：来源前缀；type：generate / inpaint / ai_edit / upscale / comfyui；date / time / year / month / day：日期时间；seed：种子；model：模型 ID（ComfyUI 为 comfyui）；width / height / resolution：输出尺寸；steps / cfg / sampler / scheduler：生成参数；prompt：基础提示词（可能含私密内容，请谨慎用于文件名）。ComfyUI 的采样参数来自工作台，不代表未下发的工作流参数。';
-
-  @override
-  String get settingsImageSaveMacros => '宏说明';
 
   @override
   String get settingsImageSaveInsertMacro => '插入宏';
@@ -350,9 +285,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsSaveDirTitle => '本地存储目录';
 
   @override
-  String get settingsSaveDirSubtitle => '生成的高清图像与元数据自动保存至此路径';
-
-  @override
   String get settingsAndroidSaveDirSubtitle =>
       '图片与历史保存在应用可写目录，重启后保留。长按图片选择保存到文件夹可写入公共 Pictures 目录；开启同步导出到系统图库后自动保存也会写入。卸载应用会删除应用内图片。';
 
@@ -366,20 +298,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAutoSaveTitle => '自动保存生成图片';
 
   @override
-  String get settingsAutoSaveSubtitleOn => '生成图片自动写入本地存储目录 (按导出设置处理元数据与水印)';
-
-  @override
-  String get settingsAutoSaveSubtitleOff =>
-      '生成图片先存入缓存目录 (无水印)，在画板右下角点击保存按钮手动保存；超出历史上限的缓存图片自动删除';
-
-  @override
   String get settingsGalleryExportTitle => '同步导出到系统图库';
 
   @override
   String get settingsExportFolderTitle => '导出文件夹';
-
-  @override
-  String get settingsExportFolderSubtitle => '自动保存与手动导出的成品写入此文件夹，其他应用可见';
 
   @override
   String get settingsExportFolderNone => '未选择，默认写入系统图库 Pictures/NovelAI';
@@ -400,10 +322,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsStreamPreviewTitle => '实时生图预览';
 
   @override
-  String get settingsStreamPreviewSubtitle =>
-      '生图过程中接收并实时渲染中间去噪步数预览图 (Stream Preview)';
-
-  @override
   String get settingsImagePersistenceTitle => '图片历史持久化';
 
   @override
@@ -411,9 +329,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsMaxImagesTitle => '可持久化图像上限';
-
-  @override
-  String get settingsMaxImagesSubtitle => '限制本地画板历史中保留的最大图片数量';
 
   @override
   String settingsImageCount(int count) {
@@ -427,10 +342,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTagAutocompleteTitle => '标签智能自动补全';
 
   @override
-  String get settingsTagAutocompleteSubtitle =>
-      '输入提示词时自动弹出 32万+ Danbooru 词库悬浮联想建议';
-
-  @override
   String get settingsDictUpdateTitle => '词库在线更新';
 
   @override
@@ -440,20 +351,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDictAutoCheckTitle => '启动时自动检查更新';
 
   @override
-  String get settingsDictAutoCheckSubtitle =>
-      '每日一次后台拉取最新词库 (ffdkj 每日构建，含新标签与中文翻译)';
-
-  @override
   String get settingsTagTranslationsTitle => '显示标签中文释义';
 
   @override
-  String get settingsTagTranslationsSubtitle => '在补全候选词列表与灵感库中展示对应的中文翻译释义';
-
-  @override
   String get settingsTagColorsTitle => '标签分类着色高亮';
-
-  @override
-  String get settingsTagColorsSubtitle => '在提示词输入框中对画师、角色、作品、通用等标签施加分类色彩高亮';
 
   @override
   String dictOnlineInfo(int count, String date) {
@@ -473,10 +374,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsOpusTitle => 'Opus 免点数保护';
-
-  @override
-  String get settingsOpusSubtitle =>
-      '自动将默认参数限制在免费区间内 (像素 <= 1048576 且 步数 <= 28)';
 
   @override
   String dictUpdateFailed(String error) {
@@ -602,32 +499,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsProviderName => '供应商名称';
 
   @override
-  String get settingsProviderNameSubtitle => '在界面与下拉菜单中显示的自定义标识';
-
-  @override
   String get settingsProviderNameHint => '如 DeepSeek / OpenAI / 本地 Ollama';
 
   @override
   String get settingsApiEndpointAndProtocol => 'API 接口与协议';
 
   @override
-  String get settingsApiEndpointAndProtocolSubtitle => '服务基础 URL 与对应的通讯协议格式';
-
-  @override
   String get settingsLlmApiKeyTitle => 'LLM API Key';
 
   @override
-  String get settingsLlmApiKeySubtitle => '访问该供应商所需的身份密钥';
-
-  @override
   String get settingsThinkingParamFormat => '思考参数格式';
-
-  @override
-  String get settingsThinkingParamFormatSubtitle =>
-      '不同供应商用不同字段开关思维链，格式不匹配时思考会被静默丢弃；中转站请按其上游格式指定';
-
-  @override
-  String get settingsModelsListTitle => '模型列表';
 
   @override
   String get settingsModelsListSubtitle => '点击卡片切换当前模型，设置按钮调整模型参数与能力档案';
@@ -640,10 +521,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsImageEditModelTitle => '绘图模型';
-
-  @override
-  String get settingsImageEditModelSubtitle =>
-      '修复页「AI 整图编辑」使用的供应商与模型 (仅列出绘图模型)，独立于对话 LLM；需选择具备图像输出能力的模型 (如 nano banana / gpt-image)';
 
   @override
   String get settingsDropdownNotConfigured => '未配置';
@@ -1048,19 +925,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDefaultModelTitle => '默认生图模型';
 
   @override
-  String get settingsDefaultModelSubtitle => '应用启动或参数重置时的默认出厂模型';
-
-  @override
   String get settingsDefaultSamplerTitle => '默认采样算法';
 
   @override
-  String get settingsDefaultSamplerSubtitle => '生图时默认使用的降噪采样器';
-
-  @override
   String get settingsDefaultNoiseScheduleTitle => '默认噪声调度';
-
-  @override
-  String get settingsDefaultNoiseScheduleSubtitle => '采样降噪过程中的时间步长调度算法';
 
   @override
   String get settingsSectionDefaultStepsAndScale => '默认步数与引导强度';
@@ -1069,24 +937,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDefaultStepsTitle => '默认步数 (Steps)';
 
   @override
-  String get settingsDefaultStepsSubtitle => '初始采样迭代步数';
-
-  @override
   String get settingsDefaultScaleTitle => '默认 CFG Scale';
-
-  @override
-  String settingsDefaultScaleSubtitle(String scale) {
-    return '提示词引导强度 (当前: $scale)';
-  }
 
   @override
   String get settingsSectionAgentLoop => '助手循环';
 
   @override
   String get settingsAgentMaxTurnsTitle => 'Agent 最大工具轮数';
-
-  @override
-  String get settingsAgentMaxTurnsSubtitle => '单次对话允许的工具链式调用轮数，达到后自动收尾总结';
 
   @override
   String get settingsSectionUsageBill => '用量账单';
@@ -1116,9 +973,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get billTableHeaderRequests => '请求数';
-
-  @override
-  String get billTableHeaderInput => '输入';
 
   @override
   String get billTableHeaderOutput => '输出';
@@ -1199,24 +1053,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get paramsSeedModeGroup => '种子模式';
 
   @override
-  String get paramsSeedModeRandomTitle => '1. Random (随机)';
-
-  @override
-  String get paramsSeedModeRandomSubtitle => '生图时自动生成全新随机种子';
-
-  @override
-  String get paramsSeedModeIncreaseTitle => '2. Increase (递增)';
-
-  @override
-  String get paramsSeedModeIncreaseSubtitle => '生图时种子数值自动 +1';
-
-  @override
-  String get paramsSeedModeFixedTitle => '3. Fixed (固定)';
-
-  @override
-  String get paramsSeedModeFixedSubtitle => '保持当前设置的种子数值不变';
-
-  @override
   String get paramsSeedTimingGroup => '生成控制';
 
   @override
@@ -1238,19 +1074,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get paramsStripMetadata => '删除元数据';
 
   @override
-  String get paramsStripMetadataSubtitle => '导出与复制时抹除所有生成参数与隐写';
-
-  @override
   String get paramsAddWatermark => '添加水印';
 
   @override
-  String get paramsAddWatermarkSubtitle => '仅在复制/下载时生效，UI 画板不显示';
-
-  @override
   String get paramsKeepOriginalImage => '保持原图像';
-
-  @override
-  String get paramsKeepOriginalImageSubtitle => '生图落盘时额外保存一份纯净原图 (_raw.png)';
 
   @override
   String get resolutionTitle => '分辨率';
@@ -1315,13 +1142,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get watermarkAutoPosition => '自动选位';
 
   @override
-  String get watermarkAutoPositionSubtitle => '每次合成时分析图像，自动放入信息量最低的区域';
-
-  @override
   String get watermarkAutoContrast => '自动对比度';
-
-  @override
-  String get watermarkAutoContrastSubtitle => '按水印下方背景亮度自动加深或提亮，保证可见';
 
   @override
   String get watermarkScalePercent => '水印缩放 (%)';
@@ -1349,9 +1170,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get watermarkLoadedImage => '已加载水印图片';
-
-  @override
-  String get watermarkEffectiveOnExport => '仅在复制/下载时合成生效';
 
   @override
   String get watermarkChangeImageTooltip => '更换图片';
@@ -1419,9 +1237,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptsTagBrowserTooltip => '打开 Danbooru 标签灵感库';
 
   @override
-  String get promptsAffixesHint => '全局固定前置与后置词缀';
-
-  @override
   String get charPromptDeckTabCharacter => '多角色提示词';
 
   @override
@@ -1438,9 +1253,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get charPromptPositionCustom => '自定义';
-
-  @override
-  String get charPromptIsolationHint => '独立角色物理隔离';
 
   @override
   String get charPromptUnsupportedModel =>
@@ -1523,13 +1335,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get charPromptResizeNegativeTooltip => '拖动调整负面提示词高度 (双击重置)';
 
   @override
-  String get affixPrefixTitle => '前置词 (放置于主提示词最前)';
-
-  @override
   String get affixResizePrefixTooltip => '拖动调整前置词高度 (双击重置)';
-
-  @override
-  String get affixSuffixTitle => '后缀词 (放置于主提示词最后)';
 
   @override
   String get affixResizeSuffixTooltip => '拖动调整后缀词高度 (双击重置)';
@@ -1585,28 +1391,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inpaintPageTitle => '修复设置';
 
   @override
-  String get inpaintPageSubtitle => '局部重绘与高精度潜空间焦点特写';
-
-  @override
   String get inpaintSectionMode => '修复模式';
 
   @override
   String get inpaintModeFocus => '焦点特写';
 
   @override
-  String get inpaintModeFocusSubtitle => '超采样无损回贴';
-
-  @override
   String get inpaintModeStandard => '常规重绘';
 
   @override
-  String get inpaintModeStandardSubtitle => '整图尺度重绘';
-
-  @override
   String get inpaintModeAiEdit => 'AI 整图编辑';
-
-  @override
-  String get inpaintModeAiEditSubtitle => '外部绘图模型重绘';
 
   @override
   String get inpaintAiEditAspectRatio => '生图比例';
@@ -1776,10 +1570,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRtxScaleTitle => '放大倍率';
 
   @override
-  String get settingsRtxScaleSubtitle =>
-      '图片右键菜单使用此倍率。需要 NVIDIA RTX 显卡，画质由 NVIDIA 视频超分设置控制。';
-
-  @override
   String get canvasActionCopyImage => '复制图像';
 
   @override
@@ -1808,12 +1598,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paletteExtractFailed => '未能从这张图片提取主色';
-
-  @override
-  String get paletteHintAdaptive => '已开启「跟随图片」：切换图片时主题强调色将自动更新';
-
-  @override
-  String get paletteHintManual => '点击色块设为主题强调色，右键复制色值';
 
   @override
   String get paletteCustomColor => '自定义颜色';
@@ -1955,22 +1739,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get metadataModelUnknown => '未知模型';
-
-  @override
-  String get metadataSamplerDefault => '默认';
-
-  @override
-  String metadataModelAndSampler(String model, String sampler) {
-    return '模型: $model  ·  采样: $sampler';
-  }
-
-  @override
-  String metadataSeedLabel(String seed) {
-    return '种子: $seed';
-  }
-
-  @override
   String get metadataCharacterPromptsTitle => '多角色提示词';
 
   @override
@@ -2045,9 +1813,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get metadataImportSelection => '选择要填入的内容';
-
-  @override
-  String get metadataImportSelectionHint => '未勾选或图片中缺失的参数保持不变。';
 
   @override
   String get metadataImportSelectAll => '全选';
@@ -2192,12 +1957,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get boardWireDragSourceTooltip => '按住拖出连线到选区/图钉';
 
   @override
-  String get boardNoteConnected => '已连线';
-
-  @override
-  String get boardNoteTitle => '便签';
-
-  @override
   String get boardNoteDisconnectTooltip => '断开连线';
 
   @override
@@ -2237,14 +1996,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get libraryNewCombo => '新建词组合';
-
-  @override
-  String get libraryCategorySidebarTitle => '标签分类';
-
-  @override
-  String libraryEntriesCount(int count) {
-    return '$count 条';
-  }
 
   @override
   String get libraryCategoryAll => '全部';
@@ -2363,11 +2114,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryCardSendToAgentTooltip => '发送到助手输入框';
 
   @override
-  String librarySentCharacterToAgent(String title) {
-    return '已将角色「$title」发送到助手输入框';
-  }
-
-  @override
   String libraryApplyStyleSuccess(String title) {
     return '已填入画风预设: $title';
   }
@@ -2377,9 +2123,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get libraryCardAddCharacter => '+ 角色';
-
-  @override
-  String get libraryCardNoPreview => '无预览图';
 
   @override
   String get libraryEditCustomCategoryOption => '自定义...';
@@ -2558,9 +2301,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatInputHint => '输入绘画构思，@ 关联词库角色，或 /nai 快速生图...';
 
   @override
-  String get chatCharacterMentionHeader => '词库角色';
-
-  @override
   String get chatLinkedCharacterRemoveTooltip => '移除关联角色';
 
   @override
@@ -2568,9 +2308,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chatSendingTooltip => '正在回复';
-
-  @override
-  String get chatThinkingLabel => '思考:';
 
   @override
   String get chatThinkingEffortNone => '无';
@@ -2649,9 +2386,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get rewindBackAction => '返回对话';
-
-  @override
-  String get rewindLatestBadge => '(最新时刻)';
 
   @override
   String rewindSelectedTurn(int index) {
@@ -2832,9 +2566,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get libraryCatOther => '其他';
-
-  @override
-  String get libraryCatCustom => '自定义...';
 
   @override
   String get vmGenDoneUnsaved => '生图完成 (未保存，可点击画板右下角保存)';
@@ -3310,9 +3041,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get vmSlashParamsTitle => '工作台当前生图参数：';
 
   @override
-  String get promptTokenLabel => 'Token';
-
-  @override
   String get promptTokenEstimated => '约';
 
   @override
@@ -3411,10 +3139,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsComfyEnabledTitle => '启用 ComfyUI 模式';
 
   @override
-  String get settingsComfyEnabledDesc =>
-      '经 PromptToolkit AI Bridge 驱动本地或局域网 ComfyUI 生图；此模式下质量词与 UC 预设及 Token 上限计算均不生效';
-
-  @override
   String get settingsComfyBaseUrlTitle => '服务地址';
 
   @override
@@ -3422,9 +3146,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsComfyNodeIdsTitle => '目标节点 ID (可选)';
-
-  @override
-  String get settingsComfyNodeIdsHint => '留空自动使用工作流中第一个注册节点';
 
   @override
   String get settingsComfyPromptNodeHint => 'Prompt Panel 节点 ID';
@@ -3445,10 +3166,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsCacheModeOff => '不发送缓存提示';
 
   @override
-  String get settingsCacheModeDesc =>
-      '自动仅识别 OpenAI 官方及 OpenRouter 的 Anthropic 模型。中转站需确认兼容格式；不发送提示不等于禁用上游自动缓存。';
-
-  @override
   String get settingsCacheRetention => '缓存保留时间';
 
   @override
@@ -3458,17 +3175,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsCacheRetentionLong => '延长';
 
   @override
-  String get settingsCacheRetentionDesc =>
-      '延长需端点支持：OpenAI 24 小时 / Anthropic 1 小时，可能改变计费。';
-
-  @override
   String get settingsCacheAffinity => '会话亲和请求头';
 
   @override
   String get settingsCacheAffinityOff => '不发送';
-
-  @override
-  String get settingsCacheAffinityDesc => '仅在网关支持时启用，帮助同一会话路由至同一缓存；不保证命中。';
 
   @override
   String get cacheUsageUnreported => '未报告';
@@ -3531,13 +3241,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAutoCompaction => '自动压缩';
 
   @override
-  String get settingsAutoCompactionHint => '保留近期消息，将更早内容转换为摘要；原始历史不删除。';
-
-  @override
   String get settingsBackgroundCompaction => '后台异步压缩';
-
-  @override
-  String get settingsBackgroundCompactionHint => '安全窗口使用到 70% 时提前压缩；到达上限才等待。';
 
   @override
   String get settingsAgentPersistentImages => '图片持久发送';
@@ -3548,10 +3252,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsCompactionProvider => '压缩供应商';
-
-  @override
-  String get settingsCompactionProviderHint =>
-      '未选择独立模型或配置不可用时使用主模型。压缩请求单独计入账单。';
 
   @override
   String get settingsCompactionModel => '压缩模型';
@@ -3585,9 +3285,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonResizeWidth => '左右拖动调整宽度（双击重置）';
-
-  @override
-  String get inpaintSelectionLabel => '修复选区';
 
   @override
   String get promptsTransparentBackground => '透明背景';
@@ -3850,9 +3547,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolFallbackName => '工具';
 
   @override
-  String get chatAssistantLabel => 'AI 助手';
-
-  @override
   String get chatCopyMessageTooltip => '复制内容';
 
   @override
@@ -3866,24 +3560,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chatScrollToBottomTooltip => '回到底部';
-
-  @override
-  String get chatEmptyWelcomeTitle => '有什么可以帮您创作？';
-
-  @override
-  String get chatEmptySuggestionDraw => '帮我构思画面并生成图片';
-
-  @override
-  String get chatEmptySuggestionRefine => '优化当前提示词标签与权重';
-
-  @override
-  String get chatEmptySuggestionAnalyze => '分析画板图片并给出修改建议';
-
-  @override
-  String get chatToolArgsLabel => '调用参数';
-
-  @override
-  String get chatToolOutputLabel => '返回结果';
 
   @override
   String get settingsFrameRateLimit => '帧率上限';
@@ -4619,17 +4295,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get sourcesSendToAgent => '发送到 Agent 对话框';
-
-  @override
-  String get sourcesSentToAgent => '已放入 Agent 对话框';
-
-  @override
-  String sourcesSendToAgentFailed(Object message) {
-    return '发送失败：$message';
-  }
-
-  @override
   String get sourcesFavoritesTab => '收藏';
 
   @override
@@ -4812,9 +4477,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatImageBlocked => '已阻止加载外部图片';
 
   @override
-  String get paramsSectionImg2img => '图生图';
-
-  @override
   String get paramsImg2imgStrength => '源图强度';
 
   @override
@@ -4828,9 +4490,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paramsImg2imgClear => '清除源图';
-
-  @override
-  String get paramsVibeReference => 'Vibe 参考';
 
   @override
   String get paramsVibeAdd => '添加参考';
@@ -4900,12 +4559,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptOutputTitle => '输出';
 
   @override
-  String get promptKeepMetadata => '保留元数据（取消勾选则清除）';
-
-  @override
-  String get promptKeepStealth => '保留隐写（取消勾选则清除）';
-
-  @override
   String get promptStripTags => '正面 tag（出图后从元数据/隐写中去除）';
 
   @override
@@ -4937,17 +4590,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vmGenMovedToBackground => '生成已转入后台，完成后会自动加入历史。';
-
-  @override
-  String get slashDreamEmpty => '还没有可整理的会话，先聊几句再来做梦。';
-
-  @override
-  String get slashDreamPrompt =>
-      '现在进入「梦境整理」。请先调用 memory 工具列出长期记忆，然后完成：\n1. 合并重复/冲突的偏好与设定；\n2. 提炼可复用的经验（有效的提示词结构、参数偏好、失败教训）；\n3. 用 memory 工具 add/remove，只保留最有价值的条目；\n4. 用 reflection 工具 add 写入一条梳理串（source=dream，title/summary/lessons）；\n5. 用 3-5 行总结这次梦境整理。';
-
-  @override
-  String get slashReflectPrompt =>
-      '现在做一次「自迭代复盘」。请完成：\n1. 回顾本次会话里理解错误、被用户纠正、或效果特别好的地方；\n2. 提炼 1-3 条可执行经验，用 memory 工具写入；\n3. 如果同类问题反复出现，给出一份 SKILL.md 补丁建议（不要直接修改技能或预设，除非用户确认）；\n4. 用 reflection 工具 add 写入一条梳理串（source=reflect，title/summary/lessons）；\n5. 用简短清单汇报。';
 
   @override
   String get settingsTabNetwork => '网络';
@@ -5107,56 +4749,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get queueSendNow => '立即发送';
 
   @override
-  String get acctTitle => '订阅账号池';
-
-  @override
-  String get acctHint => 'API Key 只保存在本机；切换账号会同步更新工作台密钥。';
-
-  @override
-  String get acctFixed => '固定';
-
-  @override
-  String get acctRotate => '轮换';
-
-  @override
-  String get acctDefault => '默认';
-
-  @override
-  String get acctSetDefault => '设为默认';
-
-  @override
-  String get acctLabel => '备注';
-
-  @override
-  String get acctKey => 'API Key';
-
-  @override
-  String get acctEmpty => '还没有账号，先在下面添加一个。';
-
-  @override
-  String get acctUnknownTier => '档位未知';
-
-  @override
-  String get acctRefreshAll => '刷新全部';
-
-  @override
-  String acctTierAnlasEnergy(String tier, int anlas, int energy) {
-    return '$tier · $anlas Anlas · V5 $energy%';
-  }
-
-  @override
-  String get libImport => '导入文档';
-
-  @override
-  String get libResetDefault => '恢复默认';
-
-  @override
   String get accountPoolApiKey => 'API Key';
-
-  @override
-  String libImportedCount(int count) {
-    return '已导入 $count 个文档';
-  }
 
   @override
   String get settingsExtAccounts => '账号池管理';
@@ -5279,11 +4872,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryAnyTagTooltip => '从词库选择任意 tag 发送给 Agent';
 
   @override
-  String libraryAnyTagAdded(Object tag) {
-    return '已加入正面提示词：$tag';
-  }
-
-  @override
   String libraryAnyTagSent(Object tag) {
     return '已发送给 Agent：$tag';
   }
@@ -5351,4 +4939,87 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get librarySetPreview => '设置展示图';
+
+  @override
+  String get inpaintToolPan => '抓手漫游 (H / 按住空格 / 中键或右键拖拽)';
+
+  @override
+  String get inpaintUndoMask => '撤销蒙版 (Ctrl+Z)';
+
+  @override
+  String get inpaintRedoMask => '重做蒙版 (Ctrl+Shift+Z)';
+
+  @override
+  String get inpaintToggleMaskVisibility => '隐藏蒙版对比原图 (V)';
+
+  @override
+  String get inpaintShowMask => '显示蒙版 (V)';
+
+  @override
+  String get inpaintZoomOut => '缩小视图';
+
+  @override
+  String get inpaintZoomIn => '放大视图';
+
+  @override
+  String get inpaintZoomReset => '适应画布 (0)';
+
+  @override
+  String get canvasAddedToReference => '已添加到精准参考';
+
+  @override
+  String get canvasAddedToVibe => '已添加到 Vibe Transfer';
+
+  @override
+  String get pasteDialogTitle => '粘贴图片';
+
+  @override
+  String get pasteMetadataDetected => '检测到生成元数据';
+
+  @override
+  String get pasteMetadataNone => '普通图片';
+
+  @override
+  String get pasteActionReadMetadata => '读取图片元数据';
+
+  @override
+  String get pasteActionPrecise => '设为精准参考';
+
+  @override
+  String get pasteActionPreciseUnsupportedSubtitle =>
+      '当前模型不支持，切换至 V5 / V4.5 后生效';
+
+  @override
+  String get pasteActionVibe => '设为 Vibe Transfer';
+
+  @override
+  String get pasteActionVibeUnsupportedSubtitle =>
+      'V5 暂不支持，切换至 V4.5 / V4 / V3 后生效';
+
+  @override
+  String get pasteActionBoard => '导入大画布参考图';
+
+  @override
+  String get referenceLibraryTitle => '参考图库';
+
+  @override
+  String get referenceLibraryEmpty => '还没有参考图';
+
+  @override
+  String get referenceAddCanvas => '使用画板当前图';
+
+  @override
+  String get libraryUsePreviewAsReference => '展示图设为精准参考';
+
+  @override
+  String get libraryPreviewAddedToReference => '已将展示图加入精准参考';
+
+  @override
+  String get libraryAttachCurrentReferences => '保存当前参考到词条';
+
+  @override
+  String get libraryApplySavedReferences => '应用词条参考图';
+
+  @override
+  String get libraryReferencesAttached => '已将当前参考图绑定到词条';
 }

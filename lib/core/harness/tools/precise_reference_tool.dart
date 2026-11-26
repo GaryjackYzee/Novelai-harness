@@ -14,6 +14,7 @@ typedef PreciseRefAddFromCanvas =
       required bool preferSameOutfit,
       required bool fromChat,
       required int imageIndex,
+      required String? libraryEntryId,
     });
 typedef PreciseRefUpdate =
     void Function(
@@ -33,6 +34,8 @@ class PreciseReferenceTool extends AgentTool {
   final PreciseRefUpdate update;
   final void Function(int index) remove;
   final void Function() clear;
+  final Future<bool> Function(String entryId, {double? strength})?
+  addVibeFromLibrary;
 
   PreciseReferenceTool({
     required this.list,
@@ -41,6 +44,7 @@ class PreciseReferenceTool extends AgentTool {
     required this.update,
     required this.remove,
     required this.clear,
+    this.addVibeFromLibrary,
   }) : super(
          name: 'precise_reference',
          label: '精准参考',
@@ -53,7 +57,7 @@ class PreciseReferenceTool extends AgentTool {
            'properties': {
              'action': {
                'type': 'string',
-               'enum': ['list', 'add', 'update', 'remove', 'clear', 'view'],
+               'enum': ['list', 'add', 'add_vibe_library', 'update', 'remove', 'clear', 'view'],
              },
              'index': {'type': 'integer'},
              'type': {
@@ -66,8 +70,12 @@ class PreciseReferenceTool extends AgentTool {
              'enabled': {'type': 'boolean'},
              'source': {
                'type': 'string',
-               'enum': ['canvas', 'chat'],
-               'description': 'canvas = 画板当前图；chat = 最近一条带图聊天消息',
+               'enum': ['canvas', 'chat', 'library'],
+               'description': 'canvas = 画板当前图；chat = 最近一条带图聊天消息；library = 词库条目展示图',
+             },
+             'library_entry_id': {
+               'type': 'string',
+               'description': 'source=library 时的词库条目 ID',
              },
              'image_index': {
                'type': 'integer',
@@ -106,7 +114,7 @@ class PreciseReferenceTool extends AgentTool {
       for (var i = 0; i < entries.length; i += 1) {
         final entry = entries[i];
         buffer.writeln(
-          '- [$i] ${entry.type.apiValue} strength=${entry.strength.toStringAsFixed(2)} '
+          '- [${entry.id ?? i}] ${entry.type.apiValue} strength=${entry.strength.toStringAsFixed(2)} '
           'fidelity=${entry.fidelity.toStringAsFixed(2)} '
           'prefer_same_outfit=${entry.preferSameOutfit} enabled=${entry.enabled}',
         );
@@ -147,6 +155,35 @@ class PreciseReferenceTool extends AgentTool {
         content: '已删除精准参考 #$index。',
       );
     }
+    if (action == 'add_vibe_library') {
+      final entryId = '${args['library_entry_id'] ?? ''}'.trim();
+      if (entryId.isEmpty) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: 'add_vibe_library 必须提供 library_entry_id。',
+          isError: true,
+        );
+      }
+      final callback = addVibeFromLibrary;
+      if (callback == null) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: '当前环境未接入 Vibe 参考库。',
+          isError: true,
+        );
+      }
+      final ok = await callback(
+        entryId,
+        strength: args['strength'] == null
+            ? null
+            : _number(args['strength'], 0.6),
+      );
+      return ToolResult(
+        toolCallId: toolCallId,
+        content: ok ? '已将词库展示图加入 Vibe Transfer。' : '词库条目没有展示图或读取失败。',
+        isError: !ok,
+      );
+    }
     if (action == 'add') {
       if (entries.length >= 16) {
         return ToolResult(
@@ -165,7 +202,18 @@ class PreciseReferenceTool extends AgentTool {
       final type = _type(args['type']) ?? NaiPreciseRefType.characterAndStyle;
       final strength = _number(args['strength'], 1.0);
       final fidelity = _number(args['fidelity'], 1.0);
-      final fromChat = '${args['source'] ?? 'canvas'}' == 'chat';
+      final source = '${args['source'] ?? 'canvas'}';
+      final fromChat = source == 'chat';
+      final libraryEntryId = source == 'library'
+          ? '${args['library_entry_id'] ?? ''}'.trim()
+          : null;
+      if (source == 'library' && (libraryEntryId == null || libraryEntryId.isEmpty)) {
+        return ToolResult(
+          toolCallId: toolCallId,
+          content: 'source=library 时必须提供 library_entry_id。',
+          isError: true,
+        );
+      }
       final ok = await addFromCanvas(
         type: type,
         strength: strength,
@@ -173,14 +221,21 @@ class PreciseReferenceTool extends AgentTool {
         preferSameOutfit: args['prefer_same_outfit'] == true,
         fromChat: fromChat,
         imageIndex: (args['image_index'] as num?)?.toInt() ?? -1,
+        libraryEntryId: libraryEntryId,
       );
       return ToolResult(
         toolCallId: toolCallId,
         content: ok
             ? (fromChat
                 ? '已将聊天最新附图加入精准参考。'
+                : libraryEntryId != null
+                ? '已将词库展示图加入精准参考。'
                 : '已将画板当前图加入精准参考。')
-            : (fromChat ? '聊天消息里没有图片。' : '画板没有可用图片。'),
+            : (fromChat
+                ? '聊天消息里没有图片。'
+                : libraryEntryId != null
+                ? '词库条目没有展示图或读取失败。'
+                : '画板没有可用图片。'),
         isError: !ok,
       );
     }

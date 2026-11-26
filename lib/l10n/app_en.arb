@@ -1,9 +1,7 @@
 {
   "@@locale": "en",
   "settingsStreaming": "Streaming",
-  "settingsStreamingSubtitle": "Show text as it is generated. Turn off to wait for the full response when the API does not support streaming.",
   "settingsPromptToolUse": "Prompt-based tool calling",
-  "settingsPromptToolUseSubtitle": "Send tool definitions and results as chat text to bypass native tool protocol incompatibilities. Enable only when needed; reliability depends on the model following the format.",
   "chatStopOutput": "Stop output (Esc)",
   "chatStopOutputMobile": "Stop output",
   "chatContextTitle": "Context and usage",
@@ -18,14 +16,6 @@
       }
     }
   },
-  "chatContextShort": "Context {percent}%",
-  "@chatContextShort": {
-    "placeholders": {
-      "percent": {
-        "type": "int"
-      }
-    }
-  },
   "chatContextNotes": "Notes {count}",
   "@chatContextNotes": {
     "placeholders": {
@@ -36,7 +26,6 @@
   },
   "chatContextCompacting": "Compacting in background",
   "chatContextFailed": "Compaction failed",
-  "chatContextExplanation": "Estimated current request context, including system instructions, tools, summaries and notes; not cumulative session usage. Use /compact to compact manually.",
   "sessionManage": "Manage sessions",
   "sessionSelectAll": "Select search results",
   "sessionSelectedCount": "{count} selected",
@@ -55,15 +44,12 @@
       }
     }
   },
-  "appTitle": "NovelAI Harness",
   "generateImage": "Generate Image",
   "startInpaint": "Start Inpaint",
   "startAiEdit": "Start AI Edit",
   "abortGeneration": "Abort Generation",
   "opusFree": "Opus Free",
-  "needAnlas": "Costs Anlas",
   "v5Stamina": "V5 Stamina",
-  "tabParameters": "Parameters",
   "tabPrompts": "Prompts",
   "tabInpaint": "Inpaint",
   "tabLibrary": "Library",
@@ -80,17 +66,14 @@
   "export": "Export",
   "settingsSectionAppearance": "Appearance",
   "settingsThemeMode": "Theme Mode",
-  "settingsThemeModeSubtitle": "Switch between light/dark workspace; dark uses a Notion-minimal palette",
   "themeModeSystem": "Follow System",
   "themeModeLight": "Light",
   "themeModeDark": "Dark",
   "settingsAccentSource": "Accent Color",
-  "settingsAccentSourceSubtitle": "Default Notion blue, or MD3 dynamic color from the current image",
   "accentModeDefault": "Default Blue",
   "accentModeAdaptive": "Follow Image",
   "accentModeManual": "Manual",
   "settingsAccentVariant": "Color Scheme",
-  "settingsAccentVariantSubtitle": "MD3 DynamicScheme style, applies when accent follows image or manual seed",
   "accentVariantTonalSpot": "Tonal Spot (Default)",
   "accentVariantVibrant": "Vibrant",
   "accentVariantExpressive": "Expressive",
@@ -100,7 +83,6 @@
   "accentVariantRainbow": "Rainbow",
   "accentVariantFruitSalad": "Fruit Salad",
   "settingsAccentSeed": "Seed Color",
-  "settingsAccentSeedSubtitle": "Applies in Manual mode: open the picker to choose any color",
   "settingsBackgroundMode": "Background",
   "settingsBackgroundModeSubtitle": "Customize workspace canvas and surfaces: default, softly tinted by accent, or custom color",
   "backgroundModeDefault": "Default",
@@ -115,10 +97,8 @@
   "colorPickerSaturation": "Saturation",
   "colorPickerBrightness": "Brightness",
   "colorPickerPresets": "Presets",
-  "colorPickerHexLabel": "Hex value",
   "colorPickerHexInvalid": "Invalid color, expected #RRGGBB",
   "settingsLanguage": "Language",
-  "settingsLanguageSubtitle": "Change the interface language. Skills, prompts and your content keep their original text.",
   "localeSystem": "Follow System",
   "localeChinese": "中文",
   "localeEnglish": "English",
@@ -126,16 +106,10 @@
   "settingsUiZoomSubtitle": "Scale the whole workspace; {modifier}+= / {modifier}+- to step, {modifier}+0 to reset",
   "settingsSectionNovelaiService": "NovelAI Service",
   "settingsApiKeyTitle": "NovelAI API Key",
-  "settingsApiKeySubtitle": "Official API token (pst-...) for image generation and stamina sync",
   "settingsSectionWebSearch": "Web Search",
   "settingsAnySearchKeyTitle": "AnySearch API Key",
-  "settingsAnySearchKeySubtitle": "Optional key for the agent web search tools; anonymous access works with lower rate limits",
   "settingsImageSaveTemplateTitle": "Image Naming Template",
-  "settingsImageSaveTemplateSubtitle": "Relative to the storage directory; shared by automatic and manual saves. Adds .png automatically.",
   "settingsImageSaveTemplatePreview": "Example path (relative to storage directory)",
-  "settingsImageSaveTemplateHelp": "Wrap macros in braces; / or backslash separates folders. Dates use image creation time. Duplicates receive a number; originals share the folder with a _raw suffix. Invalid characters and long names are sanitized or truncated. Leave blank for the default.",
-  "settingsImageSaveMacroHelp": "prefix: source prefix; type: generate / inpaint / ai_edit / upscale / comfyui; date / time / year / month / day: creation time; seed: seed; model: model ID (comfyui for ComfyUI); width / height / resolution: output size; steps / cfg / sampler / scheduler: generation parameters; prompt: base prompt (may contain private information). ComfyUI sampling parameters reflect the workbench, not unspecified workflow values.",
-  "settingsImageSaveMacros": "Macro Reference",
   "settingsImageSaveInsertMacro": "Insert Macro",
   "settingsImageSavePreset": "Use Example",
   "settingsImageSaveDefault": "Default Names",
@@ -145,16 +119,12 @@
   "settingsImageSaveInvalidPath": "Use a relative path without empty folders, .., absolute paths, invalid characters or cache / board_refs as the first folder.",
   "settingsImageSaveTooLong": "Use at most 512 characters and 7 levels of subfolders.",
   "settingsSaveDirTitle": "Local Storage Directory",
-  "settingsSaveDirSubtitle": "Generated images and metadata are saved to this path",
   "settingsAndroidSaveDirSubtitle": "Images and history use app-writable storage and survive restarts. Long-press an image and choose Save to folder to write into the public Pictures directory; with gallery export enabled, auto-saved images go there too. Uninstalling the app deletes its private images.",
   "settingsSaveDirHint": "Storage path...",
   "settingsChooseButton": "Choose",
   "settingsAutoSaveTitle": "Auto-save Generated Images",
-  "settingsAutoSaveSubtitleOn": "Images are written to the storage directory automatically (metadata & watermark follow export settings)",
-  "settingsAutoSaveSubtitleOff": "Images go to the cache directory (no watermark) first; save manually from the canvas, and cache beyond the history limit is pruned automatically",
   "settingsGalleryExportTitle": "Also Export to System Gallery",
   "settingsExportFolderTitle": "Export Folder",
-  "settingsExportFolderSubtitle": "Auto-saved and manually exported images are written here, visible to other apps",
   "settingsExportFolderNone": "Not selected; defaults to system gallery Pictures/NovelAI",
   "settingsExportFolderSelected": "Selected: {name}",
   "settingsExportFolderClear": "Clear",
@@ -165,11 +135,9 @@
   },
   "settingsGalleryExportSubtitle": "Auto-saved images are also written to the public Pictures/NovelAI folder (registered in MediaStore, visible to gallery and other apps)",
   "settingsStreamPreviewTitle": "Live Generation Preview",
-  "settingsStreamPreviewSubtitle": "Receive and render intermediate denoising previews during generation (Stream Preview)",
   "settingsImagePersistenceTitle": "Image History Persistence",
   "settingsImagePersistenceSubtitle": "Restore canvas history images after app restart",
   "settingsMaxImagesTitle": "Max Persisted Images",
-  "settingsMaxImagesSubtitle": "Cap the number of images kept in local canvas history",
   "settingsImageCount": "{count, plural, =1{1 image} other{{count} images}}",
   "@settingsImageCount": {
     "placeholders": {
@@ -180,15 +148,11 @@
   },
   "settingsSectionTagAutocomplete": "Danbooru Tag Autocomplete",
   "settingsTagAutocompleteTitle": "Smart Tag Autocomplete",
-  "settingsTagAutocompleteSubtitle": "Pop up suggestions from the 320k+ Danbooru dictionary while typing prompts",
   "settingsDictUpdateTitle": "Online Dictionary Update",
   "settingsDictUpdateNowButton": "Update Now",
   "settingsDictAutoCheckTitle": "Check for Updates at Startup",
-  "settingsDictAutoCheckSubtitle": "Fetch the latest dictionary once daily in the background (ffdkj daily builds with new tags and Chinese translations)",
   "settingsTagTranslationsTitle": "Show Chinese Tag Meanings",
-  "settingsTagTranslationsSubtitle": "Show Chinese translations in the suggestion list and the tag browser",
   "settingsTagColorsTitle": "Tag Category Highlight",
-  "settingsTagColorsSubtitle": "Colorize artist, character, copyright and general tags in the prompt editor",
   "dictOnlineInfo": "Online dictionary, {count, plural, =1{1 entry} other{{count} entries}} · updated {date}",
   "@dictOnlineInfo": {
     "placeholders": {
@@ -211,7 +175,6 @@
   "dictBuiltinLoading": "Built-in dictionary (loading)",
   "settingsSectionProtection": "Protection",
   "settingsOpusTitle": "Opus Free-Tier Protection",
-  "settingsOpusSubtitle": "Clamp default parameters into the free tier (pixels <= 1048576 and steps <= 28)",
   "dictUpdateFailed": "Update failed: {error}",
   "@dictUpdateFailed": {
     "placeholders": {
@@ -294,20 +257,14 @@
   "settingsNewProviderButton": "New",
   "settingsDeleteCurrentProviderTooltip": "Delete current provider",
   "settingsProviderName": "Provider Name",
-  "settingsProviderNameSubtitle": "Custom label displayed in UI and dropdown menus",
   "settingsProviderNameHint": "e.g. DeepSeek / OpenAI / Local Ollama",
   "settingsApiEndpointAndProtocol": "API Endpoint & Protocol",
-  "settingsApiEndpointAndProtocolSubtitle": "Service base URL and communication protocol format",
   "settingsLlmApiKeyTitle": "LLM API Key",
-  "settingsLlmApiKeySubtitle": "Credentials required to access this provider",
   "settingsThinkingParamFormat": "Thinking Param Format",
-  "settingsThinkingParamFormatSubtitle": "Different providers use different fields to toggle reasoning. Reasoning will be silently discarded if the format does not match; configure according to the upstream format for relays.",
-  "settingsModelsListTitle": "Models",
   "settingsModelsListSubtitle": "Click a card to switch current model; use settings to adjust parameters and capability profiles",
   "settingsFetchingModels": "Fetching...",
   "settingsFetchModelsOnline": "Fetch Models Online",
   "settingsImageEditModelTitle": "Drawing Model",
-  "settingsImageEditModelSubtitle": "Provider and model used by Inpaint 'AI Image Edit' (drawing models only), independent of chat LLM; select a model with image output capabilities (e.g. nano banana / gpt-image)",
   "settingsDropdownNotConfigured": "Not Configured",
   "settingsDropdownNoModelSelected": "No Model Selected",
   "settingsImageEditUnrecognizedModel": "{modelId} (not recognized as drawing model)",
@@ -531,26 +488,13 @@
   "settingsSubtitleBill": "Track Token usage bills for each model by period, powered by the local incremental ledger.",
   "settingsSectionModelAndSampler": "Model & Sampler",
   "settingsDefaultModelTitle": "Default Model",
-  "settingsDefaultModelSubtitle": "Default factory model used at application startup or after parameter reset",
   "settingsDefaultSamplerTitle": "Default Sampler",
-  "settingsDefaultSamplerSubtitle": "Default denoising sampler used during image generation",
   "settingsDefaultNoiseScheduleTitle": "Default Noise Schedule",
-  "settingsDefaultNoiseScheduleSubtitle": "Time step schedule algorithm used during denoising",
   "settingsSectionDefaultStepsAndScale": "Default Steps & Scale",
   "settingsDefaultStepsTitle": "Default Steps (Steps)",
-  "settingsDefaultStepsSubtitle": "Initial sampling iteration steps",
   "settingsDefaultScaleTitle": "Default CFG Scale",
-  "settingsDefaultScaleSubtitle": "Prompt guidance scale (current: {scale})",
-  "@settingsDefaultScaleSubtitle": {
-    "placeholders": {
-      "scale": {
-        "type": "String"
-      }
-    }
-  },
   "settingsSectionAgentLoop": "Agent Loop",
   "settingsAgentMaxTurnsTitle": "Agent Max Turns",
-  "settingsAgentMaxTurnsSubtitle": "Maximum tool chain call turns allowed per single conversation before automatically wrapping up",
   "settingsSectionUsageBill": "Usage Bill",
   "billPeriodToday": "Today",
   "billPeriodLast7Days": "Last 7 Days",
@@ -570,7 +514,6 @@
   "billEmptyRecords": "No usage records in this period",
   "billTableHeaderModel": "Model",
   "billTableHeaderRequests": "Requests",
-  "billTableHeaderInput": "Input",
   "billTableHeaderOutput": "Output",
   "billTableHeaderCacheRead": "Cache Read",
   "billTableHeaderHitRate": "Hit Rate",
@@ -606,12 +549,6 @@
   "paramsSeedTimingAfter": "After",
   "paramsSectionSampler": "Sampler",
   "paramsSeedModeGroup": "Seed Mode",
-  "paramsSeedModeRandomTitle": "1. Random",
-  "paramsSeedModeRandomSubtitle": "Generate a new random seed on each image generation",
-  "paramsSeedModeIncreaseTitle": "2. Increase",
-  "paramsSeedModeIncreaseSubtitle": "Increment seed value by 1 on each image generation",
-  "paramsSeedModeFixedTitle": "3. Fixed",
-  "paramsSeedModeFixedSubtitle": "Keep current seed value unchanged",
   "paramsSeedTimingGroup": "Generation Timing",
   "paramsSeedRandomizeNow": "Randomize Seed Now",
   "paramsSeedResetRandom": "Reset to Random (-1)",
@@ -619,11 +556,8 @@
   "paramsPromptGuidanceRescale": "Prompt Guidance Rescale",
   "paramsSectionNoiseSchedule": "Noise Schedule",
   "paramsStripMetadata": "Strip Metadata",
-  "paramsStripMetadataSubtitle": "Remove all generation parameters and steganography when exporting and copying",
   "paramsAddWatermark": "Add Watermark",
-  "paramsAddWatermarkSubtitle": "Applies only on copy/download, not displayed on canvas",
   "paramsKeepOriginalImage": "Keep Original Image",
-  "paramsKeepOriginalImageSubtitle": "Save an additional clean raw image (_raw.png) when saving generated images",
   "resolutionTitle": "Resolution",
   "resolutionOrientationLandscape": "Landscape",
   "resolutionOrientationPortrait": "Portrait",
@@ -657,9 +591,7 @@
     }
   },
   "watermarkAutoPosition": "Auto Position",
-  "watermarkAutoPositionSubtitle": "Analyze image on each composition and automatically place in lowest-detail area",
   "watermarkAutoContrast": "Auto Contrast",
-  "watermarkAutoContrastSubtitle": "Automatically darken or brighten based on background luminance to ensure visibility",
   "watermarkScalePercent": "Watermark Scale (%)",
   "watermarkOpacityPercent": "Opacity (%)",
   "watermarkMarginPercent": "Margin (%)",
@@ -669,7 +601,6 @@
   "watermarkBlindTextHint": "Signature / copyright text",
   "watermarkBlindStrength": "Blind Watermark Strength",
   "watermarkLoadedImage": "Watermark image loaded",
-  "watermarkEffectiveOnExport": "Effective only upon copy/download",
   "watermarkChangeImageTooltip": "Change image",
   "watermarkClearImageTooltip": "Clear watermark image",
   "watermarkSelectLocalImage": "Click to select local watermark image (PNG/JPG)",
@@ -706,14 +637,12 @@
   "promptsToggleDisabledTooltip": "Toggle disabled state (Ctrl+/)",
   "promptsFormatTooltip": "Format and convert SD syntax (Ctrl+Shift+F)",
   "promptsTagBrowserTooltip": "Open Danbooru tag browser",
-  "promptsAffixesHint": "Global fixed prefix & suffix affixes",
   "charPromptDeckTabCharacter": "Character Prompts",
   "charPromptDeckTabAffixes": "Fixed Affixes",
   "charPromptEnabled": "Enabled",
   "charPromptDisabled": "Disabled",
   "charPromptPositionAi": "AI Auto",
   "charPromptPositionCustom": "Custom",
-  "charPromptIsolationHint": "Isolated character prompts",
   "charPromptUnsupportedModel": "Current model does not support character prompts (V4+ only). Settings below are kept but will not be used in generation.",
   "charPromptEmptyTitle": "No character prompts yet",
   "charPromptEmptyDescription": "Click Add Character above to choose a preset and start multi-character generation",
@@ -746,9 +675,7 @@
   "charPromptResizePromptTooltip": "Drag to resize prompt height (double-click to reset)",
   "charPromptNegativePromptHint": "Character negative prompt (optional), e.g.: bad hands, blurry...",
   "charPromptResizeNegativeTooltip": "Drag to resize negative prompt height (double-click to reset)",
-  "affixPrefixTitle": "Prefix (placed before main prompt)",
   "affixResizePrefixTooltip": "Drag to resize prefix height (double-click to reset)",
-  "affixSuffixTitle": "Suffix (placed after main prompt)",
   "affixResizeSuffixTooltip": "Drag to resize suffix height (double-click to reset)",
   "affixSaveStyleLabel": "Save Style",
   "affixSaveStyleTooltip": "Save current prefix, suffix, and negative prompt as a style preset",
@@ -773,14 +700,10 @@
   "annotHistoryImportTooltip": "Import local image as reference",
   "annotHistoryImportImage": "Import Image",
   "inpaintPageTitle": "Inpaint Settings",
-  "inpaintPageSubtitle": "Inpainting & high-precision latent focus closeup",
   "inpaintSectionMode": "Inpaint Mode",
   "inpaintModeFocus": "Focus Closeup",
-  "inpaintModeFocusSubtitle": "Supersampled lossless blend",
   "inpaintModeStandard": "Standard Inpaint",
-  "inpaintModeStandardSubtitle": "Full canvas inpainting",
   "inpaintModeAiEdit": "AI Edit",
-  "inpaintModeAiEditSubtitle": "External image model repaint",
   "inpaintAiEditAspectRatio": "Aspect Ratio",
   "inpaintAiEditFollowSource": "Match Source",
   "inpaintAiEditResolution": "Resolution",
@@ -868,7 +791,6 @@
   "canvasActionUpscale": "Upscale",
   "canvasActionRtxUpscale": "RTX Upscale",
   "settingsRtxScaleTitle": "Scale factor",
-  "settingsRtxScaleSubtitle": "Used by the image context menu. Requires an NVIDIA RTX GPU; quality is controlled by NVIDIA Video Super Resolution settings.",
   "canvasActionCopyImage": "Copy Image",
   "canvasActionCopyRawImage": "Copy Original Image",
   "canvasActionCopyPrompt": "Copy Prompt",
@@ -879,8 +801,6 @@
   "canvasActionViewPalette": "View Palette",
   "paletteDialogTitle": "Color Palette",
   "paletteExtractFailed": "Failed to extract colors from this image",
-  "paletteHintAdaptive": "Follow Image is on: the theme accent updates automatically when the image changes",
-  "paletteHintManual": "Click a swatch to set it as the theme accent; right-click to copy the hex value",
   "paletteCustomColor": "Custom Color",
   "paletteAppliedAccent": "Set as theme accent color",
   "paletteCopiedHex": "Hex value copied",
@@ -962,27 +882,6 @@
       }
     }
   },
-  "metadataModelUnknown": "Unknown Model",
-  "metadataSamplerDefault": "Default",
-  "metadataModelAndSampler": "Model: {model}  ·  Sampler: {sampler}",
-  "@metadataModelAndSampler": {
-    "placeholders": {
-      "model": {
-        "type": "String"
-      },
-      "sampler": {
-        "type": "String"
-      }
-    }
-  },
-  "metadataSeedLabel": "Seed: {seed}",
-  "@metadataSeedLabel": {
-    "placeholders": {
-      "seed": {
-        "type": "String"
-      }
-    }
-  },
   "metadataCharacterPromptsTitle": "Character Prompts",
   "metadataCharacterIndex": "Character {index}",
   "@metadataCharacterIndex": {
@@ -1021,7 +920,6 @@
   "metadataImportedReference": "Imported reference image",
   "metadataApplyToWorkbench": "Apply Selected Parameters",
   "metadataImportSelection": "Choose What to Apply",
-  "metadataImportSelectionHint": "Unchecked or missing parameters stay unchanged.",
   "metadataImportSelectAll": "Select All",
   "metadataImportSelectNone": "Deselect All",
   "metadataImportQuality": "Quality Toggle and Preset",
@@ -1100,8 +998,6 @@
   "boardAnnotationResizeRect": "Drag to resize selection",
   "boardAnnotationSelectTooltip": "Click to select annotation",
   "boardWireDragSourceTooltip": "Drag to connect to selection or pin",
-  "boardNoteConnected": "Connected",
-  "boardNoteTitle": "Note",
   "boardNoteDisconnectTooltip": "Disconnect wire",
   "boardNoteDeleteTooltip": "Delete note",
   "boardNoteHint": "Enter feedback or notes...",
@@ -1125,15 +1021,6 @@
   "libraryImportJson": "Import Library (JSON)",
   "libraryManageButton": "Manage",
   "libraryNewCombo": "New Prompt Combo",
-  "libraryCategorySidebarTitle": "Categories",
-  "libraryEntriesCount": "{count, plural, =1{1 item} other{{count} items}}",
-  "@libraryEntriesCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "libraryCategoryAll": "All",
   "libraryExportCopied": "Copied prompt library JSON to clipboard for backup or sharing",
   "libraryExportFailed": "Export failed: {error}",
@@ -1236,14 +1123,6 @@
   "libraryCardApply": "Apply to Workbench",
   "libraryCardApplyStyle": "Apply Style",
   "libraryCardSendToAgentTooltip": "Send to assistant input",
-  "librarySentCharacterToAgent": "Sent character \"{title}\" to assistant input",
-  "@librarySentCharacterToAgent": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
-  },
   "libraryApplyStyleSuccess": "Applied style preset: {title}",
   "@libraryApplyStyleSuccess": {
     "placeholders": {
@@ -1254,7 +1133,6 @@
   },
   "libraryCardAddAsCharacterTooltip": "Add as workbench character card",
   "libraryCardAddCharacter": "+ Character",
-  "libraryCardNoPreview": "No Preview",
   "libraryEditCustomCategoryOption": "Custom...",
   "libraryEditPickImageFailed": "Failed to select image: {error}",
   "@libraryEditPickImageFailed": {
@@ -1366,11 +1244,9 @@
   "chatImageParseFailedNotice": "Image parsing failed, please try another image",
   "chatModelNoVisionBeforeSendNotice": "Current model does not support image input, please switch to a multimodal model before sending",
   "chatInputHint": "Enter drawing ideas, @ to link character, or /nai for quick generation...",
-  "chatCharacterMentionHeader": "Library Characters",
   "chatLinkedCharacterRemoveTooltip": "Remove linked character",
   "chatSendTooltip": "Send (Enter)",
   "chatSendingTooltip": "Replying",
-  "chatThinkingLabel": "Thinking:",
   "chatThinkingEffortNone": "None",
   "chatThinkingEffortLow": "Low",
   "chatThinkingEffortMedium": "Medium",
@@ -1434,7 +1310,6 @@
   "rewindDescription": "Select a turn to rewind. That message returns to the input for editing. This turn and everything after it are discarded. Nothing is sent until you send it.",
   "rewindEmptyTitle": "No chat checkpoints available to rewind in current session",
   "rewindBackAction": "Back to Chat",
-  "rewindLatestBadge": "(Latest)",
   "rewindSelectedTurn": "Selected turn #{index}",
   "@rewindSelectedTurn": {
     "placeholders": {
@@ -1526,7 +1401,6 @@
   "libraryCatEnvironment": "Environment",
   "libraryCatEffect": "Effects",
   "libraryCatOther": "Other",
-  "libraryCatCustom": "Custom...",
   "vmGenDoneUnsaved": "Generation complete (unsaved, click save at the canvas bottom-right)",
   "vmGenDoneSavedTo": "Generation complete, saved to {path}",
   "@vmGenDoneSavedTo": {
@@ -1995,7 +1869,6 @@
     }
   },
   "vmSlashParamsTitle": "Workbench generation parameters:",
-  "promptTokenLabel": "Token",
   "promptTokenEstimated": "~",
   "promptTokenEstimatedTooltip": "V3 uses a CLIP heuristic estimate, for reference only",
   "promptTokenBreakdownPrompt": "Prompt",
@@ -2053,25 +1926,20 @@
   "comfyOptionsPendingHint": "Connect to ComfyUI to fetch the available samplers and schedulers",
   "settingsSectionComfy": "ComfyUI Mode",
   "settingsComfyEnabledTitle": "Enable ComfyUI mode",
-  "settingsComfyEnabledDesc": "Drive a local or LAN ComfyUI via the PromptToolkit AI Bridge; quality/UC presets and token limit counting are disabled in this mode",
   "settingsComfyBaseUrlTitle": "Server address",
   "settingsComfyBaseUrlHint": "http://192.168.1.20:8188",
   "settingsComfyNodeIdsTitle": "Target node IDs (optional)",
-  "settingsComfyNodeIdsHint": "Leave empty to use the first registered node in the workflow",
   "settingsComfyPromptNodeHint": "Prompt Panel node ID",
   "settingsComfyResolutionNodeHint": "Resolution Master node ID",
   "settingsComfyParamsNodeHint": "Params Panel node ID",
   "settingsCacheMode": "Prompt cache format",
   "settingsCacheModeAuto": "Automatic",
   "settingsCacheModeOff": "No cache hints",
-  "settingsCacheModeDesc": "Automatic recognizes direct OpenAI and Anthropic models on OpenRouter only. Confirm proxy compatibility first; omitting hints does not disable automatic upstream caching.",
   "settingsCacheRetention": "Cache retention",
   "settingsCacheRetentionShort": "Default",
   "settingsCacheRetentionLong": "Extended",
-  "settingsCacheRetentionDesc": "Requires endpoint support: OpenAI 24h / Anthropic 1h. Pricing may change.",
   "settingsCacheAffinity": "Session affinity headers",
   "settingsCacheAffinityOff": "Do not send",
-  "settingsCacheAffinityDesc": "Enable only when supported by the gateway. Helps route a session to the same cache; hits are not guaranteed.",
   "cacheUsageUnreported": "Not reported",
   "cacheUsagePartial": "Partially reported",
   "cacheUsageInputUncached": "Input (uncached)",
@@ -2092,13 +1960,10 @@
   "bootStorageFallbackBanner": "Image storage directory unavailable; running in temporary memory mode. Check permissions or free space.",
   "settingsSectionContextManagement": "Context management",
   "settingsAutoCompaction": "Automatic compaction",
-  "settingsAutoCompactionHint": "Keep recent messages and summarize older content without deleting the original history.",
   "settingsBackgroundCompaction": "Background compaction",
-  "settingsBackgroundCompactionHint": "Start compaction at 70% of the safe context window; wait only when the limit is reached.",
   "settingsAgentPersistentImages": "Persist image attachments",
   "settingsAgentPersistentImagesHint": "Image attachments from earlier turns are re-sent to the vision model every turn instead of being collapsed; this noticeably increases token usage and may break prompt caching.",
   "settingsCompactionProvider": "Compaction provider",
-  "settingsCompactionProviderHint": "Use the main model if no separate model is selected or available. Compaction requests are billed separately.",
   "settingsCompactionModel": "Compaction model",
   "settingsFollowMainModel": "Use main model",
   "commonSearchHint": "Search…",
@@ -2110,7 +1975,6 @@
   "commonDropImage": "Drop image to import",
   "commonUnrecognizedOption": "Unrecognized",
   "commonResizeWidth": "Drag to resize width (double-click to reset)",
-  "inpaintSelectionLabel": "Inpaint selection",
   "promptsTransparentBackground": "Transparent background",
   "promptsQualityTags": "Quality tags",
   "skillFileUnreadable": "Cannot read the selected file.",
@@ -2268,18 +2132,11 @@
   "promptsUcPreset": "UC preset",
   "referenceImageBadge": "REF",
   "toolFallbackName": "Tool",
-  "chatAssistantLabel": "AI Assistant",
   "chatCopyMessageTooltip": "Copy message",
   "chatCopiedTooltip": "Copied",
   "chatEditAndRewindTooltip": "Edit & rewind following messages",
   "chatRewindToHereTooltip": "Rewind to this reply",
   "chatScrollToBottomTooltip": "Scroll to bottom",
-  "chatEmptyWelcomeTitle": "What would you like to create?",
-  "chatEmptySuggestionDraw": "Design a scene and generate an image",
-  "chatEmptySuggestionRefine": "Refine current prompt tags & weights",
-  "chatEmptySuggestionAnalyze": "Analyze the canvas image and suggest edits",
-  "chatToolArgsLabel": "Arguments",
-  "chatToolOutputLabel": "Output",
   "@settingsUiZoomSubtitle": {
     "placeholders": {
       "modifier": {
@@ -2709,9 +2566,6 @@
   "sourcesFavoriteSaved": "Saved to local favorites",
   "sourcesFavoriteFailed": "Save failed: {message}",
   "sourcesDanbooruFavoriteFailed": "Save failed: {message}",
-  "sourcesSendToAgent": "Send to Agent composer",
-  "sourcesSentToAgent": "Added to the Agent composer",
-  "sourcesSendToAgentFailed": "Send failed: {message}",
   "sourcesFavoritesTab": "Favorites",
   "sourcesFavoritesEmpty": "No local favorites yet",
   "sourcesUnfavorite": "Remove from favorites",
@@ -2768,13 +2622,11 @@
   "preciseRefFidelity": "Fidelity",
   "dockAccountPool": "Account pool",
   "chatImageBlocked": "External image blocked",
-  "paramsSectionImg2img": "Img2img",
   "paramsImg2imgStrength": "Source strength",
   "paramsSelectFile": "Choose file",
   "paramsImg2imgNoise": "Noise",
   "paramsImg2imgUseCanvas": "Use canvas image",
   "paramsImg2imgClear": "Clear source",
-  "paramsVibeReference": "Vibe references",
   "paramsVibeAdd": "Add reference",
   "paramsVibeClear": "Clear references",
   "paramsVibeStrength": "Reference strength",
@@ -2797,8 +2649,6 @@
   "settingsProxyUseGalleryTitle": "Proxy source galleries",
   "settingsProxyUseGallerySubtitle": "Turn off to connect directly for Danbooru, AITag, Codex and their images.",
   "promptOutputTitle": "Output",
-  "promptKeepMetadata": "Keep metadata (uncheck to strip)",
-  "promptKeepStealth": "Keep steganography (uncheck to strip)",
   "promptStripTags": "Private tags (removed from metadata after generation)",
   "promptStripNegativeTags": "Private negative tags (removed from metadata after generation)",
   "canvasGeneratingDiscard": "Discard",
@@ -2810,9 +2660,6 @@
   "viewGeneration": "View generation",
   "vmGenCacheFailed": "Image generated, but the original cache could not be written. Check the save folder, or choose another folder and save manually.",
   "vmGenMovedToBackground": "Generation moved to background. It will be added to history when done.",
-  "slashDreamEmpty": "No session to organize yet. Chat a little first.",
-  "slashDreamPrompt": "Entering \"Dream Journal\". First call the memory tool to list long-term memory, then:\n1. Merge duplicate or conflicting preferences and settings;\n2. Extract reusable lessons (prompt structures, parameter preferences, failure lessons);\n3. Use memory add/remove and keep only the most valuable entries;\n4. Use the reflection tool to add one thread (source=dream, title/summary/lessons);\n5. Summarize this dream journal in 3-5 lines.",
-  "slashReflectPrompt": "Do a self-reflection pass. Complete:\n1. Review misunderstandings, user corrections, and what worked especially well in this session;\n2. Extract 1-3 actionable lessons and write them with the memory tool;\n3. If the same issue repeats, propose a SKILL.md patch (do not modify skills or presets without user confirmation);\n4. Use the reflection tool to add one thread (source=reflect, title/summary/lessons);\n5. Report back with a short checklist.",
   "settingsTabNetwork": "Network",
   "settingsProxyIntro": "Configure an HTTP proxy here. Once enabled, the feature switches below decide which requests use it.",
   "settingsProxyPerFeatureTitle": "Feature proxy policy",
@@ -2883,42 +2730,7 @@
     }
   },
   "queueSendNow": "Send now",
-  "acctTitle": "Account pool",
-  "acctHint": "API keys stay on this machine. Switching accounts updates the workbench key.",
-  "acctFixed": "Fixed",
-  "acctRotate": "Rotate",
-  "acctDefault": "Default",
-  "acctSetDefault": "Set as default",
-  "acctLabel": "Label",
-  "acctKey": "API Key",
-  "acctEmpty": "No accounts yet. Add one below.",
-  "acctUnknownTier": "Unknown tier",
-  "acctRefreshAll": "Refresh all",
-  "acctTierAnlasEnergy": "{tier} · {anlas} Anlas · V5 {energy}%",
-  "libImport": "Import documents",
-  "libResetDefault": "Reset to default",
-  "@acctTierAnlasEnergy": {
-    "placeholders": {
-      "tier": {
-        "type": "String"
-      },
-      "anlas": {
-        "type": "int"
-      },
-      "energy": {
-        "type": "int"
-      }
-    }
-  },
   "accountPoolApiKey": "API Key",
-  "libImportedCount": "{count} documents imported",
-  "@libImportedCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "settingsExtAccounts": "Account pool",
   "settingsExtQueue": "Message queue",
   "settingsExtHint": "WD14 tagging and style presets are on the Prompts page.",
@@ -2957,7 +2769,6 @@
   "sessionDiscardMemoryDoneContextFailed": "Discarded {count} memories, but context notes could not be removed (file may be locked).",
   "libraryAnyTag": "Any tag",
   "libraryAnyTagTooltip": "Pick any tag from the dictionary and send it to the agent",
-  "libraryAnyTagAdded": "Added to positive prompt: {tag}",
   "libraryAnyTagSent": "Sent to agent: {tag}",
   "chatInsertTagTooltip": "Insert tag from dictionary",
   "librarySentEntryToAgent": "Sent library entry to agent: {title}",
@@ -2977,5 +2788,32 @@
   "settingsAgentAutoApproveTitle": "Auto-approve generation under",
   "settingsAgentAutoApproveSubtitle": "Agent generates without confirmation when estimated cost is below this Anlas value; 0 = always confirm",
   "libraryNoPreview": "No preview image",
-  "librarySetPreview": "Set preview image"
+  "librarySetPreview": "Set preview image",
+  "inpaintToolPan": "Pan view (H / Hold Space / Middle or Right drag)",
+  "inpaintUndoMask": "Undo mask (Ctrl+Z)",
+  "inpaintRedoMask": "Redo mask (Ctrl+Shift+Z)",
+  "inpaintToggleMaskVisibility": "Hide mask to compare (V)",
+  "inpaintShowMask": "Show mask (V)",
+  "inpaintZoomOut": "Zoom out",
+  "inpaintZoomIn": "Zoom in",
+  "inpaintZoomReset": "Fit to canvas (0)",
+  "canvasAddedToReference": "Added to Precise Reference",
+  "canvasAddedToVibe": "Added to Vibe Transfer",
+  "pasteDialogTitle": "Paste Image",
+  "pasteMetadataDetected": "Generation metadata found",
+  "pasteMetadataNone": "Plain image",
+  "pasteActionReadMetadata": "Inspect Image Metadata",
+  "pasteActionPrecise": "Add to Precise Reference",
+  "pasteActionPreciseUnsupportedSubtitle": "Unsupported by current model (requires V5 / V4.5)",
+  "pasteActionVibe": "Add to Vibe Transfer",
+  "pasteActionVibeUnsupportedSubtitle": "Not available on V5 (requires V4.5 / V4 / V3)",
+  "pasteActionBoard": "Import to Canvas Board",
+  "referenceLibraryTitle": "Reference Library",
+  "referenceLibraryEmpty": "No reference images yet",
+  "referenceAddCanvas": "Use current canvas image",
+  "libraryUsePreviewAsReference": "Use preview as Precise Reference",
+  "libraryPreviewAddedToReference": "Preview added to Precise Reference",
+  "libraryAttachCurrentReferences": "Attach current references",
+  "libraryApplySavedReferences": "Apply saved references",
+  "libraryReferencesAttached": "Current references attached to combo"
 }
