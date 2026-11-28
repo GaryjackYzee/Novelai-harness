@@ -254,23 +254,35 @@ class NovelAiRepository {
     VoidCallback? onUpdated,
   ) async {
     final epoch = _cacheEpoch;
-    var changes = 0;
-    for (final image in List.of(_history)) {
+    final pending = _history
+        .where((image) => image.thumbnailBytes == null)
+        .toList(growable: false);
+    const batchSize = 6;
+    for (var offset = 0; offset < pending.length; offset += batchSize) {
       if (epoch != _cacheEpoch) return;
-      if (image.thumbnailBytes != null) continue;
-      final path = image.displayFilePath;
-      if (path == null) continue;
-      final thumb = await ImageThumbnailService.load(
-        sourcePath: path,
-        cacheDirectory: thumbnailDirOf(saveDir),
+      final batch = pending.skip(offset).take(batchSize).toList();
+      final results = await Future.wait(
+        batch.map((image) async {
+          final path = image.displayFilePath;
+          if (path == null) return null;
+          final thumb = await ImageThumbnailService.load(
+            sourcePath: path,
+            cacheDirectory: thumbnailDirOf(saveDir),
+          );
+          return thumb == null ? null : (image.id, thumb);
+        }),
       );
       if (epoch != _cacheEpoch) return;
-      final index = _history.indexWhere((entry) => entry.id == image.id);
-      if (thumb == null || index < 0) continue;
-      _history[index] = _history[index].copyWith(thumbnailBytes: thumb);
-      if (++changes % 4 == 0) onUpdated?.call();
+      for (final result in results) {
+        if (result == null) continue;
+        final index = _history.indexWhere((entry) => entry.id == result.$1);
+        if (index < 0) continue;
+        _history[index] = _history[index].copyWith(
+          thumbnailBytes: result.$2,
+        );
+      }
+      onUpdated?.call();
     }
-    if (changes % 4 != 0) onUpdated?.call();
   }
 
   /// 将当前历史记录保存至本地存储目录 (自动裁剪至 maxImages)。

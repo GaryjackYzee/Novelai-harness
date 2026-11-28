@@ -265,6 +265,23 @@ mixin _StudioHarnessMixin on _StudioCore {
       ),
     );
     _toolRegistry.register(
+      ReferenceLibraryTool(
+        list: ReferenceLibraryService.instance.load,
+        addHistory: (imageId, kind) async =>
+            await saveHistoryToReferenceLibrary(imageId, kind) != null,
+        addCanvas: (kind) async =>
+            await saveCurrentCanvasToReferenceLibrary(kind) != null,
+        apply: applyReferenceLibraryEntryById,
+        remove: removeReferenceLibraryEntryById,
+      ),
+    );
+    _toolRegistry.register(
+      HistoryMetadataTool(
+        getHistory: () => _repository.history,
+        reuse: _reuseHistoryMetadata,
+      ),
+    );
+    _toolRegistry.register(
       PreciseReferenceTool(
         list: () => _params.preciseReferences,
         supported: () => _params.model.supportsPreciseReference,
@@ -532,6 +549,34 @@ mixin _StudioHarnessMixin on _StudioCore {
   }
 
   /// 动态调整 Agent 思考强度 (在对话工作台中随点随切)
+  void _reuseHistoryMetadata(NaiGeneratedImage image, Set<String> fields) {
+    final source = image.params;
+    var next = _params;
+    if (fields.contains('prompt')) next = next.copyWith(prompt: source.prompt);
+    if (fields.contains('negative_prompt')) {
+      next = next.copyWith(negativePrompt: source.negativePrompt);
+    }
+    if (fields.contains('model')) next = next.copyWith(model: source.model);
+    if (fields.contains('resolution')) {
+      next = next.copyWith(width: source.width, height: source.height);
+    }
+    if (fields.contains('steps')) next = next.copyWith(steps: source.steps);
+    if (fields.contains('scale')) next = next.copyWith(scale: source.scale);
+    if (fields.contains('cfg_rescale')) {
+      next = next.copyWith(cfgRescale: source.cfgRescale);
+    }
+    if (fields.contains('sampler')) next = next.copyWith(sampler: source.sampler);
+    if (fields.contains('noise_schedule')) {
+      next = next.copyWith(noiseSchedule: source.noiseSchedule);
+    }
+    if (fields.contains('seed')) next = next.copyWith(seed: image.seed);
+    if (fields.contains('effort')) next = next.copyWith(effort: source.effort);
+    if (fields.contains('characters')) {
+      next = next.copyWith(characterPrompts: source.characterPrompts);
+    }
+    updateParams(next);
+  }
+
   void setThinkingEffort(ThinkingEffort effort) {
     final normalized = _config.activeLlmProvider.activeModel
         .normalizeThinkingEffort(effort);

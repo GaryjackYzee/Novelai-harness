@@ -27,6 +27,8 @@ import '../../../../core/harness/tools/ai_edit_image_tool.dart';
 import 'chat_checkpoints.dart';
 import '../../../core/locale/app_locale_controller.dart';
 import '../../../../core/harness/tools/precise_reference_tool.dart';
+import '../../../../core/harness/tools/history_metadata_tool.dart';
+import '../../../../core/harness/tools/reference_library_tool.dart';
 import '../../../core/theme/app_accent_controller.dart';
 import '../../../core/theme/frame_rate_controller.dart';
 import '../../../core/theme/theme_mode_controller.dart';
@@ -59,6 +61,7 @@ import '../../../../data/services/anlas_calculator.dart';
 import '../../../../data/services/annotation_overlay_renderer.dart';
 import '../../../../data/services/config_service.dart';
 import '../../../../data/services/studio_reference_store.dart';
+import '../../../../data/services/reference_library_service.dart';
 import '../../../../data/services/network_proxy_service.dart';
 import '../../../../data/services/novelai_service.dart';
 import '../../../../data/services/image_edit_service.dart';
@@ -1211,6 +1214,100 @@ mixin _StudioCore on ChangeNotifier {
     }
   }
 
+  Future<ReferenceLibraryEntry?> saveCurrentCanvasToReferenceLibrary(
+    ReferenceLibraryKind kind, {
+    String name = '',
+  }) async {
+    final image = _selectedImage;
+    if (image == null) return null;
+    final bytes = await ensureImageLoaded(image);
+    if (bytes == null || bytes.isEmpty) return null;
+    return ReferenceLibraryService.instance.add(
+      kind: kind,
+      name: name.isEmpty ? image.id : name,
+      bytes: bytes,
+    );
+  }
+
+  Future<ReferenceLibraryEntry?> saveHistoryToReferenceLibrary(
+    String imageId,
+    ReferenceLibraryKind kind, {
+    String name = '',
+  }) async {
+    final image = _repository.history
+        .where((item) => item.id == imageId)
+        .firstOrNull;
+    if (image == null) return null;
+    final bytes = await ensureImageLoaded(image) ?? image.bytes;
+    if (bytes.isEmpty) return null;
+    return ReferenceLibraryService.instance.add(
+      kind: kind,
+      name: name.isEmpty ? image.id : name,
+      bytes: bytes,
+    );
+  }
+
+  Future<void> applyReferenceLibraryEntry(ReferenceLibraryEntry entry) async {
+    final fullBytes =
+        entry.bytes ?? await ReferenceLibraryService.instance.loadFull(entry);
+    if (fullBytes == null || fullBytes.isEmpty) return;
+    if (entry.kind == ReferenceLibraryKind.precise) {
+      if (!_params.model.supportsPreciseReference ||
+          _params.preciseReferences.length >= 16) {
+        return;
+      }
+      updateParams(
+        _params.copyWith(
+          preciseReferences: <NaiPreciseReference>[
+            ..._params.preciseReferences,
+            NaiPreciseReference(
+              id: _nextReferenceId('precise'),
+              fileName: entry.name,
+              bytes: fullBytes,
+              type: entry.preciseType,
+              strength: entry.strength,
+              fidelity: entry.fidelity,
+              preferSameOutfit: entry.preferSameOutfit,
+            ),
+          ],
+        ),
+      );
+    } else {
+      if (!_params.model.supportsVibeTransfer ||
+          _params.referenceImages.length >= 16) {
+        return;
+      }
+      updateParams(
+        _params.copyWith(
+          referenceImages: <NaiReferenceImage>[
+            ..._params.referenceImages,
+            NaiReferenceImage(
+              id: _nextReferenceId('vibe'),
+              fileName: entry.name,
+              bytes: fullBytes,
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Future<bool> applyReferenceLibraryEntryById(String id) async {
+    final entries = await ReferenceLibraryService.instance.load();
+    final entry = entries.where((item) => item.id == id).firstOrNull;
+    if (entry == null) return false;
+    await applyReferenceLibraryEntry(entry);
+    return true;
+  }
+
+  Future<bool> removeReferenceLibraryEntryById(String id) async {
+    final entries = await ReferenceLibraryService.instance.load();
+    final entry = entries.where((item) => item.id == id).firstOrNull;
+    if (entry == null) return false;
+    await ReferenceLibraryService.instance.remove(entry);
+    return true;
+  }
+
   Future<void> setAgentAutoApproveAnlas(int value) async {
     final next = value.clamp(0, 500);
     if (_config.agentAutoApproveAnlas == next) return;
@@ -2341,7 +2438,12 @@ class StudioViewModel extends ChangeNotifier
         unawaited(ensureImageLoaded(_selectedImage!));
         _scheduleAdaptiveAccent(_selectedImage!);
       }
-      unawaited(backfillPromptLibraryPreviews());
+      unawaited(
+        Future<void>.delayed(
+          const Duration(seconds: 4),
+          backfillPromptLibraryPreviews,
+        ),
+      );
 
       // 恢复大画布布局 (节点位置尺寸/便利贴/连线/视口)
       final restoredBoard = await _repository.loadBoardLayout(

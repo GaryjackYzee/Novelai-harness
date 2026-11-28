@@ -74,6 +74,8 @@ class PresetToolKeys {
   static const String reflection = 'reflection';
   static const String wd14Tag = 'wd14_tag';
   static const String preciseReference = 'precise_reference';
+  static const String historyMetadata = 'history_metadata';
+  static const String referenceLibrary = 'reference_library';
   static const String grep = 'grep';
   static const String characterTags = 'character_tags';
   static const String webSearch = 'web_search';
@@ -104,6 +106,8 @@ class PresetToolKeys {
     reflection: '梳理串',
     wd14Tag: '在线 WD14',
     preciseReference: '精准参考',
+    historyMetadata: '历史图片元数据',
+    referenceLibrary: '参考图库',
     grep: '正则检索',
     characterTags: '角色标签检索',
     webSearch: '网页搜索',
@@ -172,6 +176,8 @@ const List<String> _fullTools = [
   PresetToolKeys.updateParams,
   PresetToolKeys.characterPrompts,
   PresetToolKeys.preciseReference,
+  PresetToolKeys.historyMetadata,
+  PresetToolKeys.referenceLibrary,
   PresetToolKeys.imageAnnotations,
   PresetToolKeys.promptLibrary,
   PresetToolKeys.danbooruTags,
@@ -200,6 +206,8 @@ const List<String> _coreTools = [
   PresetToolKeys.updateParams,
   PresetToolKeys.characterPrompts,
   PresetToolKeys.preciseReference,
+  PresetToolKeys.historyMetadata,
+  PresetToolKeys.referenceLibrary,
   PresetToolKeys.imageAnnotations,
   PresetToolKeys.promptLibrary,
   PresetToolKeys.danbooruTags,
@@ -229,6 +237,8 @@ const List<String> _coreUpscaleTools = [
   PresetToolKeys.updateParams,
   PresetToolKeys.characterPrompts,
   PresetToolKeys.preciseReference,
+  PresetToolKeys.historyMetadata,
+  PresetToolKeys.referenceLibrary,
   PresetToolKeys.imageAnnotations,
   PresetToolKeys.promptLibrary,
   PresetToolKeys.danbooruTags,

@@ -58,7 +58,7 @@ void main() async {
       title: 'NovelAI Harness',
     );
 
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    unawaited(windowManager.waitUntilReadyToShow(windowOptions, () async {
       if (hasValidPosition) {
         await windowManager.setPosition(
           Offset(windowState.posX!, windowState.posY!),
@@ -67,9 +67,7 @@ void main() async {
       if (windowState.isMaximized) {
         await windowManager.maximize();
       }
-      await windowManager.show();
-      await windowManager.focus();
-    });
+    }));
 
     await WindowStateService.instance.initialize();
   }
@@ -84,6 +82,15 @@ void main() async {
     runApp(const NovelAiHarnessApp());
   } else {
     runApp(_BootFailureApp(initialError: bootError));
+  }
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS)) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
   }
 }
 
