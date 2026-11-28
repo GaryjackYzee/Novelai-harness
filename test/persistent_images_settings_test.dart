@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:novelai_harness/data/models/llm_models.dart';
 import 'package:novelai_harness/data/services/config_service.dart';
 import 'package:novelai_harness/l10n/app_localizations.dart';
 import 'package:novelai_harness/ui/features/settings/widgets/defaults_settings_tab.dart';
@@ -94,6 +95,20 @@ void main() {
     expect(vm.config.agentAutoApproveAnlas, 0);
     await vm.setAgentAutoApproveAnlas(10);
     expect(vm.config.agentAutoApproveAnlas, 10);
+    vm.dispose();
+  });
+
+  test('agent thinking effort is stored per provider/model', () async {
+    SharedPreferences.setMockInitialValues({});
+    final vm = StudioViewModel();
+    final before = vm.currentThinkingEffort;
+    vm.setThinkingEffort(
+      before == ThinkingEffort.low ? ThinkingEffort.high : ThinkingEffort.low,
+    );
+    final key =
+        '${vm.config.activeLlmProvider.id}/'
+        '${vm.config.activeLlmProvider.activeModel.id}';
+    expect(vm.config.thinkingEfforts[key], vm.currentThinkingEffort.id);
     vm.dispose();
   });
 }

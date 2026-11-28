@@ -107,6 +107,19 @@ part 'studio_vm_library.dart';
 part 'studio_vm_sessions.dart';
 part 'studio_vm_slash.dart';
 
+String _thinkingEffortKey(String providerId, String modelId) =>
+    '$providerId/$modelId';
+
+ThinkingEffort _configuredThinkingEffort(
+  AppConfig config,
+  String providerId,
+  LlmModelConfig model,
+) {
+  final saved = config.thinkingEfforts[_thinkingEffortKey(providerId, model.id)];
+  final effort = saved == null ? model.defaultThinkingEffort : ThinkingEffort.fromId(saved);
+  return model.normalizeThinkingEffort(effort);
+}
+
 int _referenceIdSeq = 0;
 
 String _nextReferenceId(String prefix) =>
@@ -2239,8 +2252,11 @@ class StudioViewModel extends ChangeNotifier
     // 加载词组合库
     await loadPromptLibrary();
 
-    _currentThinkingEffort =
-        _config.activeLlmProvider.activeModel.defaultThinkingEffort;
+    _currentThinkingEffort = _configuredThinkingEffort(
+      _config,
+      _config.activeLlmProvider.id,
+      _config.activeLlmProvider.activeModel,
+    );
 
     final legacyParams = NaiGenerationParams(
       prompt: lastPrompt,
@@ -2456,7 +2472,11 @@ class StudioViewModel extends ChangeNotifier
         oldActive.id != newActive.id ||
         oldActive.activeModelId != newActive.activeModelId;
     if (llmChanged) {
-      _currentThinkingEffort = newActive.activeModel.defaultThinkingEffort;
+      _currentThinkingEffort = _configuredThinkingEffort(
+        newConfig,
+        newActive.id,
+        newActive.activeModel,
+      );
     }
     _setupHarnessAndTools();
     unawaited(_mcpManager.syncConfigs(_config.mcpServers));

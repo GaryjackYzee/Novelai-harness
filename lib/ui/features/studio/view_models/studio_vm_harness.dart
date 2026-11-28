@@ -535,8 +535,22 @@ mixin _StudioHarnessMixin on _StudioCore {
   void setThinkingEffort(ThinkingEffort effort) {
     final normalized = _config.activeLlmProvider.activeModel
         .normalizeThinkingEffort(effort);
-    if (_currentThinkingEffort == normalized) return;
+    final key = _thinkingEffortKey(
+      _config.activeLlmProvider.id,
+      _config.activeLlmProvider.activeModel.id,
+    );
+    _config = _config.copyWith(
+      thinkingEfforts: <String, String>{
+        ..._config.thinkingEfforts,
+        key: normalized.id,
+      },
+    );
+    if (_currentThinkingEffort == normalized) {
+      _configService.saveConfig(_config);
+      return;
+    }
     _currentThinkingEffort = normalized;
+    _configService.saveConfig(_config);
     _setupHarnessAndTools();
     _sessionLog.recordThinkingLevelChange(normalized.id);
     notifyListeners();
@@ -558,7 +572,11 @@ mixin _StudioHarnessMixin on _StudioCore {
     final targetModel = activeProvider.models.firstWhere(
       (m) => m.id == modelId,
     );
-    _currentThinkingEffort = targetModel.defaultThinkingEffort;
+    _currentThinkingEffort = _configuredThinkingEffort(
+      _config,
+      activeProvider.id,
+      targetModel,
+    );
 
     _configService.saveConfig(_config);
     _sessionLog.recordModelChange(activeProvider.id, modelId);
@@ -570,8 +588,11 @@ mixin _StudioHarnessMixin on _StudioCore {
   void switchActiveProvider(String providerId) {
     if (!_config.llmProviders.any((p) => p.id == providerId)) return;
     _config = _config.copyWith(activeLlmProviderId: providerId);
-    _currentThinkingEffort =
-        _config.activeLlmProvider.activeModel.defaultThinkingEffort;
+    _currentThinkingEffort = _configuredThinkingEffort(
+      _config,
+      _config.activeLlmProvider.id,
+      _config.activeLlmProvider.activeModel,
+    );
 
     _configService.saveConfig(_config);
     _sessionLog.recordModelChange(
@@ -591,8 +612,11 @@ mixin _StudioHarnessMixin on _StudioCore {
       llmProviders: providers,
       activeLlmProviderId: activeProviderId,
     );
-    _currentThinkingEffort =
-        _config.activeLlmProvider.activeModel.defaultThinkingEffort;
+    _currentThinkingEffort = _configuredThinkingEffort(
+      _config,
+      _config.activeLlmProvider.id,
+      _config.activeLlmProvider.activeModel,
+    );
 
     await _configService.saveConfig(_config);
     _setupHarnessAndTools();

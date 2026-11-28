@@ -42,6 +42,7 @@ class _ImagePasteAreaState extends State<ImagePasteArea> {
     return Listener(
       onPointerDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
       child: MouseRegion(
+        cursor: SystemMouseCursors.copy,
         onEnter: (_) => _activate(),
         onExit: (_) => _deactivate(),
         child: widget.child,
@@ -54,6 +55,9 @@ class _ImagePasteAreaState extends State<ImagePasteArea> {
 /// the paste while the pointer is over a reference area.
 class ImagePasteAreaRouter {
   const ImagePasteAreaRouter._();
+
+  static bool get hasActiveTarget =>
+      _ImagePasteAreaState._activePastes.isNotEmpty;
 
   static bool tryHandle() {
     if (_ImagePasteAreaState._activePastes.isEmpty) return false;

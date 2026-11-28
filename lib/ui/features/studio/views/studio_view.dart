@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,7 @@ import '../../../core/widgets/window_controls.dart';
 import '../../settings/views/settings_dialog.dart';
 import '../view_models/studio_view_model.dart';
 import '../widgets/agent_chat_card.dart';
+import '../widgets/agent_chat_input_bar.dart';
 import '../widgets/reference_library_page.dart';
 import '../widgets/clipboard_image_action_dialog.dart';
 import '../widgets/image_paste_area.dart';
@@ -228,18 +230,13 @@ class _StudioViewState extends State<StudioView> {
         HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     if (isControlOrCmd && event.logicalKey == LogicalKeyboardKey.keyV) {
-      if (_isTypingText()) return false;
-      if (event is KeyDownEvent && ImagePasteAreaRouter.tryHandle()) {
-        return true;
+      if (!AgentChatInputBar.composerFocused && _isTypingText()) {
+        return false;
       }
-      if (!_viewModel.isEditingCharacterPositions &&
-          !_viewModel.isEditingWatermarkPosition &&
-          !_viewModel.board.isAnnotatingImage) {
-        if (event is KeyDownEvent) {
-          _handleGlobalPaste();
-        }
-        return true;
+      if (event is KeyDownEvent) {
+        unawaited(_routePasteShortcut());
       }
+      return true;
     }
 
     // 全局 Ctrl+O / Cmd+O：全局展开/折叠对话思考块 (与 Pi TUI 习惯一致)。
@@ -288,6 +285,21 @@ class _StudioViewState extends State<StudioView> {
   }
 
   /// 全局 Ctrl+V 粘贴图片处理：优先解析并弹窗检查元数据，无元数据则导入为画板参考图
+  Future<void> _routePasteShortcut() async {
+    final textData = await Clipboard.getData('text/plain');
+    final hasText = textData?.text?.isNotEmpty == true;
+    if (hasText && AgentChatInputBar.composerFocused) {
+      await AgentChatInputBar.pasteFromClipboard?.call();
+      return;
+    }
+    if (ImagePasteAreaRouter.tryHandle()) return;
+    if (AgentChatInputBar.composerFocused) {
+      await AgentChatInputBar.pasteFromClipboard?.call();
+      return;
+    }
+    await _handleGlobalPaste();
+  }
+
   Future<void> _handleGlobalPaste() async {
     if (_isHandlingGlobalPaste) return;
     _isHandlingGlobalPaste = true;

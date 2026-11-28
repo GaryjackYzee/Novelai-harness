@@ -47,7 +47,8 @@ class CharacterMentionPanel extends StatelessWidget {
             ? entry.tags.join(', ')
             : entry.prompt;
 
-        return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 90),
           height: rowHeight,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(

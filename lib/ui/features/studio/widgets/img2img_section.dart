@@ -62,6 +62,19 @@ class Img2imgSection extends StatelessWidget {
     }
   }
 
+  Future<void> _pasteImg2img(BuildContext context) async {
+    final bytes = await ClipboardImageService.read();
+    if (bytes == null || bytes.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.paramsVibeClipboardEmpty)),
+        );
+      }
+      return;
+    }
+    viewModel.setImg2imgSource(bytes);
+  }
+
   Future<void> _pasteReference(BuildContext context) async {
     if (viewModel.params.referenceImages.length >= 16) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,6 +115,11 @@ class Img2imgSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        ImagePasteArea(
+          onPaste: () => _pasteImg2img(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
         if (params.img2imgBytes == null)
           Text(l10n.paramsImg2imgEmpty, style: small)
         else
@@ -139,6 +157,9 @@ class Img2imgSection extends StatelessWidget {
               ),
             ],
           ),
+            ],
+          ),
+        ),
         Wrap(
           spacing: 8,
           children: [

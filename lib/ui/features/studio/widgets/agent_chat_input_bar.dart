@@ -5,6 +5,7 @@ import '../../../../core/harness/types.dart';
 import '../../../../data/models/novelai_models.dart';
 import '../../../../data/models/prompt_library_models.dart';
 import '../../../../data/services/clipboard_image_service.dart';
+import '../../../../data/services/image_metadata_service.dart';
 import '../../../../data/services/prompt_library_mention.dart';
 import '../../../../data/services/usage_ledger_service.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -26,6 +27,7 @@ import 'tag_browser_dialog.dart';
 import 'chat_context_status.dart';
 import 'chat_image_attachment.dart';
 import 'chat_mention_text_controller.dart';
+import 'image_paste_area.dart';
 import 'slash_command_overlay.dart';
 import '../view_models/studio_view_model.dart';
 import 'chat_queue_dialog.dart';
@@ -44,6 +46,9 @@ String _localizedEffortLabel(AppLocalizations l10n, ThinkingEffort effort) =>
 /// Agent 对话卡底部一体化输入与控制区 (桌面/移动端统一):
 /// 图片附件预览 + 多行文本输入框 + 底部内嵌工具栏 (附件 / 模型与思考选择器 / 上下文 / 发送停止)
 class AgentChatInputBar extends StatefulWidget {
+  static int _focusedCount = 0;
+  static bool get composerFocused => _focusedCount > 0;
+  static Future<void> Function()? pasteFromClipboard;
   final StudioViewModel viewModel;
   final bool compact;
 
@@ -69,6 +74,8 @@ class _PendingAttachment {
 }
 
 class _AgentChatInputBarState extends State<AgentChatInputBar> {
+  bool _inputFocused = false;
+  bool _handlingPaste = false;
   late final ChatMentionTextController _inputController;
   final ScrollController _inputScrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
@@ -181,6 +188,7 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
     _inputController.addListener(_handleDraftChanged);
     _inputController.addListener(_updateComposerSuggestions);
     _inputFocusNode.addListener(_handleInputFocusChanged);
+    AgentChatInputBar.pasteFromClipboard = _handlePaste;
     widget.viewModel.promptLibraryNotifier.addListener(_onPromptLibraryChanged);
     // 焦点节点自身拦截 Ctrl+V / Ctrl+C / Ctrl+X：
     // 粘贴支持文本角色解码与图片附件，复制/剪切将行内卡片占位符还原为 @[标题]。
@@ -335,6 +343,14 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
 
   /// 失焦时收起补全面板，重新聚焦时按当前文本重算
   void _handleInputFocusChanged() {
+    final focused = _inputFocusNode.hasFocus;
+    if (focused == _inputFocused) return;
+    _inputFocused = focused;
+    if (focused) {
+      AgentChatInputBar._focusedCount += 1;
+    } else if (AgentChatInputBar._focusedCount > 0) {
+      AgentChatInputBar._focusedCount -= 1;
+    }
     if (_inputFocusNode.hasFocus) {
       _updateComposerSuggestions();
     } else {
@@ -525,17 +541,27 @@ class _AgentChatInputBarState extends State<AgentChatInputBar> {
   /// 粘贴：剪贴板有文本时按默认行为插入光标处；
   /// 无文本时读取剪贴板图片并加入待发送附件 (截图/网页图片直接 Ctrl+V)
   Future<void> _handlePaste() async {
-    final textData = await Clipboard.getData('text/plain');
-    if (!mounted) return;
-    final text = textData?.text;
-    if (text != null && text.isNotEmpty) {
-      _insertTextAtSelection(_inputController.encodeSerializedText(text));
-      return;
+    if (_handlingPaste) return;
+    _handlingPaste = true;
+    try {
+      final textData = await Clipboard.getData('text/plain');
+      if (!mounted) return;
+      final text = textData?.text;
+      if (text != null && text.isNotEmpty) {
+        _insertTextAtSelection(_inputController.encodeSerializedText(text));
+        return;
+      }
+      if (ImagePasteAreaRouter.hasActiveTarget) return;
+      var imageBytes = await ClipboardImageService.read();
+      if (imageBytes == null || imageBytes.isEmpty) {
+        final fallback = await ImageMetadataService.readClipboardImageAsync();
+        imageBytes = fallback.$1;
+      }
+      if (imageBytes == null || imageBytes.isEmpty) return;
+      await _addImageAttachment(imageBytes);
+    } finally {
+      _handlingPaste = false;
     }
-
-    final imageBytes = await ClipboardImageService.read();
-    if (imageBytes == null || imageBytes.isEmpty) return;
-    await _addImageAttachment(imageBytes);
   }
 
   /// 📎 按钮选择本地图片文件

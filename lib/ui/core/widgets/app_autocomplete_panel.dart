@@ -77,7 +77,7 @@ class _AppAutocompletePanelState<T> extends State<AppAutocompletePanel<T>>
   late final AnimationController _entryController;
   late final Animation<double> _entryCurved;
   Offset? _lastPointerPos;
-  DateTime? _lastKeyboardNavTime;
+  DateTime? _lastHoverTime;
   bool _reduceMotion = false;
   bool _initialized = false;
 
@@ -128,8 +128,12 @@ class _AppAutocompletePanelState<T> extends State<AppAutocompletePanel<T>>
     // 仅在键盘导航状态下选中下标变更时平滑滚动入视野，防止鼠标滑动冲突
     if (oldWidget.selectedIndex != widget.selectedIndex &&
         widget.isKeyboardNavigated) {
-      _lastKeyboardNavTime = DateTime.now();
-      _scrollToIndex(widget.selectedIndex);
+      final hoverAge = _lastHoverTime == null
+          ? null
+          : DateTime.now().difference(_lastHoverTime!);
+      if (hoverAge == null || hoverAge.inMilliseconds > 180) {
+        _scrollToIndex(widget.selectedIndex);
+      }
     }
   }
 
@@ -160,14 +164,7 @@ class _AppAutocompletePanelState<T> extends State<AppAutocompletePanel<T>>
   }
 
   void _handlePointerHover(PointerHoverEvent event, int index) {
-    // 1. 若最近 250ms 内刚发生过键盘方向键导航，忽略列表滚动引起的被动 hover
-    if (_lastKeyboardNavTime != null &&
-        DateTime.now().difference(_lastKeyboardNavTime!).inMilliseconds < 250) {
-      _lastPointerPos = event.position;
-      return;
-    }
-
-    // 2. 检查鼠标是否真的在屏幕上有物理位移 (防止列表被动滚动时静止光标产生伪 Hover)
+    // 只过滤列表自身滚动导致的伪 hover，不拦截真实鼠标移动。
     if (_lastPointerPos != null) {
       final delta = (event.position - _lastPointerPos!).distance;
       if (delta < 2.5) {
@@ -176,6 +173,7 @@ class _AppAutocompletePanelState<T> extends State<AppAutocompletePanel<T>>
     }
 
     _lastPointerPos = event.position;
+    _lastHoverTime = DateTime.now();
     widget.onHover?.call(index);
   }
 
@@ -208,9 +206,19 @@ class _AppAutocompletePanelState<T> extends State<AppAutocompletePanel<T>>
 
         return MouseRegion(
           key: index < _itemKeys.length ? _itemKeys[index] : null,
+          cursor: SystemMouseCursors.click,
+          onEnter: (event) => _handlePointerHover(
+            PointerHoverEvent(position: event.position),
+            index,
+          ),
           onHover: (event) => _handlePointerHover(event, index),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onTapDown: (_) {
+              if (index != widget.selectedIndex) {
+                widget.onHover?.call(index);
+              }
+            },
             onTap: () => widget.onSelect(item),
             child: widget.itemBuilder(ctx, item, index, isSelected),
           ),

@@ -286,6 +286,9 @@ class AppConfig {
   /// 历史图片每轮重发（关闭时折叠为占位符）。
   final bool agentPersistentImages;
 
+  /// 每个模型上次选择的思考强度，键为 providerId/modelId。
+  final Map<String, String> thinkingEfforts;
+
   /// 生图预计消耗低于该 Anlas 时，Agent 无需用户确认。0 = 总是确认。
   final int agentAutoApproveAnlas;
 
@@ -418,6 +421,7 @@ class AppConfig {
     this.agentCompactionEnabled = true,
     this.agentBackgroundCompaction = true,
     this.agentPersistentImages = false,
+    this.thinkingEfforts = const {},
     this.agentAutoApproveAnlas = 0,
     this.sessionMaxCount = 300,
     this.sessionRetentionDays = 90,
@@ -500,6 +504,7 @@ class AppConfig {
     bool? agentCompactionEnabled,
     bool? agentBackgroundCompaction,
     bool? agentPersistentImages,
+    Map<String, String>? thinkingEfforts,
     int? agentAutoApproveAnlas,
     int? sessionMaxCount,
     int? sessionRetentionDays,
@@ -594,6 +599,7 @@ class AppConfig {
           agentBackgroundCompaction ?? this.agentBackgroundCompaction,
       agentPersistentImages:
           agentPersistentImages ?? this.agentPersistentImages,
+      thinkingEfforts: thinkingEfforts ?? this.thinkingEfforts,
       agentAutoApproveAnlas:
           agentAutoApproveAnlas ?? this.agentAutoApproveAnlas,
       sessionMaxCount: sessionMaxCount ?? this.sessionMaxCount,
@@ -781,6 +787,18 @@ class ConfigService {
   static const String _keySessionMaxCount = 'novelai_session_max_count';
   static const String _keySessionRetentionDays =
       'novelai_session_retention_days';
+  static const String _keyThinkingEfforts = 'novelai_thinking_efforts';
+
+  static Map<String, String> _decodeThinkingEfforts(String? raw) {
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return const {};
+      return decoded.map((key, value) => MapEntry('$key', '$value'));
+    } on Object {
+      return const {};
+    }
+  }
   static const String _keyAgentPersistentImages =
       'novelai_agent_persistent_images';
   static const String _keyAgentAutoApproveAnlas =
@@ -1199,6 +1217,7 @@ class ConfigService {
       agentBackgroundCompaction:
           prefs.getBool(_keyAgentBackgroundCompaction) ?? true,
       agentPersistentImages: prefs.getBool(_keyAgentPersistentImages) ?? false,
+      thinkingEfforts: _decodeThinkingEfforts(prefs.getString(_keyThinkingEfforts)),
       agentAutoApproveAnlas: prefs.getInt(_keyAgentAutoApproveAnlas) ?? 0,
       sessionMaxCount: prefs.getInt(_keySessionMaxCount) ?? 300,
       sessionRetentionDays: prefs.getInt(_keySessionRetentionDays) ?? 90,
@@ -1322,6 +1341,7 @@ class ConfigService {
       _keyAgentCompactionEnabled: config.agentCompactionEnabled,
       _keyAgentBackgroundCompaction: config.agentBackgroundCompaction,
       _keyAgentPersistentImages: config.agentPersistentImages,
+      _keyThinkingEfforts: jsonEncode(config.thinkingEfforts),
       _keyAgentAutoApproveAnlas: config.agentAutoApproveAnlas,
       _keySessionMaxCount: config.sessionMaxCount,
       _keySessionRetentionDays: config.sessionRetentionDays,
